@@ -3,6 +3,7 @@
 This is a pre-release checklist only.
 
 **Do not tag, publish, or release this repo until Tony explicitly says so.**
+Contributor documentation and GitHub templates are welcome, but they do not constitute release approval.
 
 ## 1. First pass
 

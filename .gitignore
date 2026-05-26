@@ -12,4 +12,5 @@ htmlcov/
 *.egg-info/
 *.log
 .dreaming/
+.hermes/
 .DS_Store

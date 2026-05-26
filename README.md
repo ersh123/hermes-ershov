@@ -85,10 +85,22 @@ The artifact is intentionally simple, deterministic, and easy to review on disk 
 
 ## Repo docs
 
+- `CONTRIBUTING.md` is the contributor guide and local workflow contract
+- `SECURITY.md` covers private vulnerability reporting
+- `CODE_OF_CONDUCT.md` sets the collaboration rules
 - `brief.md` has the project brief and non-goals
 - `specs/mvp-implementation-plan.md` describes the current implementation contract and package layout
 - `docs/release-checklist.md` is the pre-release checklist
 - `reviews/final-sanity.md` records the most recent QA pass
+
+## Contributing
+
+If you want to contribute, start with `CONTRIBUTING.md`.
+
+- Use the issue templates so the scope and intent are clear.
+- Run `pytest -q`, `python -m build --wheel`, and `git diff --check` before requesting review.
+- If your change touches live roots, artifact roots, or writeback behavior, state that explicitly.
+- If you change release-facing text or safety rules, make sure the docs still match shipped behavior.
 
 ## Development
 
