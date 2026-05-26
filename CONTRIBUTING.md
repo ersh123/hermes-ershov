@@ -31,6 +31,7 @@ dreaming status
 ## Repo rules
 
 - Do not tag, publish, or release anything without Tony's explicit approval.
+- Only repo admins can create releases or tags unless Tony explicitly grants write access.
 - Keep live roots and artifact roots separate.
 - `.dreaming/` is runtime output, not source.
 - If you touch memory, user, skill, or fact writeback behavior, include provenance and tests.
