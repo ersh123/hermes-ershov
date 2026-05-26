@@ -11,7 +11,7 @@ It scans explicit source inputs, stages proposed changes in a reviewable artifac
 - Artifact-first MVP is implemented
 - Apply and discard are explicit
 - Tests pass locally
-- The repo is *not* released or tagged yet
+- Released as v0.1.0
 
 ## Install
 
@@ -64,7 +64,7 @@ The artifact is intentionally simple, deterministic, and easy to review on disk 
 
 - `brief.md` has the project brief and non-goals
 - `specs/mvp-implementation-plan.md` describes the current implementation contract and package layout
-- `docs/release-checklist.md` is the pre-release checklist, and it explicitly says *do not release yet* unless Tony says so
+- `docs/release-checklist.md` is the pre-release checklist
 - `reviews/final-sanity.md` records the most recent QA pass
 
 ## Development
@@ -75,4 +75,4 @@ python -m pip install build
 python -m build --wheel
 ```
 
-The repo is intentionally self-contained and safe for public release review, but it is not being released from this pass.
+The repo is intentionally self-contained and safe for public release review.
