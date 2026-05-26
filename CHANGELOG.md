@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Added a proper Hermes plugin wrapper so the repo can install as `hermes-dreaming`.
+- Bundled a Hermes skill for the staged self-improvement workflow.
+- Added an install-time handoff note for the Hermes plugin path.
+
 ## 0.1.0 — 2026-05-25
 
 - Added the Hermes Dreaming artifact-first MVP.

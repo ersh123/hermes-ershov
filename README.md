@@ -3,15 +3,32 @@
 ![Hermes Dreaming hero banner](assets/readme/hermes-dreaming-hero.png)
 
 A standalone, open-source staged self-improvement engine for Hermes-style memory, user, skill, and fact updates.
-
 It scans explicit source inputs, stages proposed changes in a reviewable artifact directory, and only writes to live state after an explicit apply step.
+
+## Hermes plugin
+
+This repo now ships as a proper Hermes plugin too.
+
+Install from a git checkout with:
+
+```bash
+hermes plugins install file:///path/to/hermes-dreaming --enable
+```
+
+Once installed, use:
+
+```bash
+hermes dreaming --help
+```
+
+The plugin also bundles a Hermes skill for the staged review workflow.
 
 ## Current status
 
 - Artifact-first MVP is implemented
 - Apply and discard are explicit
 - Tests pass locally
-- Released as v0.1.0
+- Hermes plugin wrapper is included
 
 ## Install
 

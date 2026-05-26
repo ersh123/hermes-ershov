@@ -1,0 +1,5 @@
+name: hermes-dreaming
+version: 0.1.0
+description: Staged self-improvement engine for Hermes-style memory, user, skill, and fact updates.
+author: Tony Simons
+kind: standalone
