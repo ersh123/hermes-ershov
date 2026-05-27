@@ -76,14 +76,51 @@ def validate_artifact(artifact: DreamArtifact, *, live_root: Path | str) -> list
     return errors
 
 
-def validate_proposals(proposals: Iterable[DreamProposal]) -> list[str]:
+def validate_memory_op(
+    *,
+    op: str,
+    target: str,
+    old_text: str | None,
+    new_text: str | None,
+    reason: str,
+    sources: Iterable[str],
+    score: float,
+    supersession_confidence: float = 0.0,
+) -> list[str]:
+    """Validate a live memory mutation before score gating and write attempts."""
     errors: list[str] = []
-    seen_targets: dict[str, str] = {}
-    for proposal in proposals:
-        errors.extend(_proposal_errors(proposal))
-        existing = seen_targets.get(proposal.target_path)
-        if existing is not None and existing != proposal.proposed_text:
-            errors.append(f"conflicting proposals target the same path {proposal.target_path!r}")
-        else:
-            seen_targets[proposal.target_path] = proposal.proposed_text
+
+    if target not in VALID_TARGET_KINDS:
+        errors.append(f"unsupported target kind {target!r}")
+    if op not in {"add", "replace", "remove"}:
+        errors.append(f"unsupported operation {op!r}")
+    if not reason.strip():
+        errors.append("reason is required")
+    sources_list = [str(source) for source in sources]
+    if not sources_list or any(not source.strip() for source in sources_list):
+        errors.append("sources are required")
+
+    if _secret_like(reason):
+        errors.append("reason contains secret-like content")
+    if old_text and _secret_like(old_text):
+        errors.append("old_text contains secret-like content")
+    if new_text and _secret_like(new_text):
+        errors.append("new_text contains secret-like content")
+
+    if op in {"add", "replace"}:
+        if new_text is None or not new_text.strip():
+            errors.append(f"{op} requires new_text")
+        elif not new_text.strip().startswith("-"):
+            errors.append(f"{op} new_text must be a bullet entry")
+    if op in {"replace", "remove"} and (old_text is None or not old_text.strip()):
+        errors.append(f"{op} requires old_text")
+
+    if op == "replace" and supersession_confidence < 0.75:
+        errors.append("replace requires supersession confidence >= 0.75")
+    if op == "remove" and supersession_confidence < 0.85:
+        errors.append("remove requires supersession confidence >= 0.85")
+
+    if score < 0.0 or score > 1.0:
+        errors.append(f"score must be between 0.0 and 1.0, got {score!r}")
+
     return errors

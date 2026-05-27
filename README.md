@@ -33,10 +33,13 @@ The plugin also bundles a Hermes skill for the staged review workflow as `hermes
 
 ## Current status
 
-- Artifact-first MVP is implemented
-- Apply and discard are explicit
-- Tests pass locally
-- Hermes plugin wrapper is included
+- **Full feature set:** create, review, diff, validate, apply, discard, compact, install-cron, status — all implemented
+- **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
+- **Run ledger + DREAMS.md diary** for auditability
+- **Hermes-native plugin** — install once, use everywhere
+- **Recent-session reader** with fallback chain (SessionDB → SQLite → pointer-log)
+- **Cron installer** for nightly dry-run review
+- **45 tests passed**, wheel builds clean
 
 ## Install
 
@@ -55,11 +58,31 @@ python -m pip install -e .[llm]
 ## CLI
 
 ```bash
+# Create an artifact from sources
 dreaming create --live-root ./live --artifact-root ./artifacts --source ./sources
+
+# Review: create and validate without applying
+dreaming review --live-root ./live --artifact-root ./artifacts --source ./sources
+
+# Inspect an artifact
 dreaming diff ./artifacts/<artifact-id>
+
+# Validate a staged artifact
 dreaming validate ./artifacts/<artifact-id> --live-root ./live
+
+# Apply approved changes (explicit approval required)
 dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
+
+# Discard a staged artifact
 dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
+
+# Compact terminal (applied/discarded) artifacts to an archive
+dreaming compact --artifact-root ./artifacts --archive-root ./archive
+
+# Install a nightly review-only cron job
+dreaming install-cron --schedule "0 3 * * *"
+
+# Show artifact status
 dreaming status --artifact-root ./artifacts
 ```
 
