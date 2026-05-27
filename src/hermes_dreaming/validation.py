@@ -50,6 +50,19 @@ def _proposal_errors(proposal: DreamProposal) -> list[str]:
     return errors
 
 
+def validate_proposals(proposals: Iterable[DreamProposal]) -> list[str]:
+    errors: list[str] = []
+    seen_targets: dict[str, str] = {}
+    for proposal in proposals:
+        errors.extend(_proposal_errors(proposal))
+        existing = seen_targets.get(proposal.target_path)
+        if existing is not None and existing != proposal.proposed_text:
+            errors.append(f"conflicting proposals target the same path {proposal.target_path!r}")
+        else:
+            seen_targets[proposal.target_path] = proposal.proposed_text
+    return errors
+
+
 def validate_artifact(artifact: DreamArtifact, *, live_root: Path | str) -> list[str]:
     errors: list[str] = []
     live_root = Path(live_root)
