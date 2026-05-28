@@ -141,4 +141,4 @@ Discard is intentionally boring too:
 
 ## Release note
 
-The repo is implemented and QA'd, but it is not released yet. Use `docs/release-checklist.md` before any tag, publish, or public handoff.
+The MVP shipped as `v0.1.1` after the release checklist and explicit Tony approval. Use `docs/release-checklist.md` before any future tag, publish, or public handoff.

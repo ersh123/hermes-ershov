@@ -1,6 +1,6 @@
-# Hermes Dreaming v0.1.1 Release Notes (Draft)
+# Hermes Dreaming v0.1.1 Release Notes
 
-Status: release candidate review only, not published.
+Status: approved for release by Tony and shipped as `v0.1.1`.
 
 ## What changed since v0.1.0
 
@@ -25,16 +25,16 @@ Commands executed during release prep:
 
 - `git diff --check`
 - `python -m pytest -q`
-- `python -m build --wheel`
+- `python -m build`
+- fresh GitHub install smoke from `main`
 
 Results:
 
 - `git diff --check` passed cleanly
 - `pytest` passed: 60 tests
-- wheel build passed: `hermes_dreaming-0.1.1-py3-none-any.whl`
+- source distribution and wheel build passed
+- GitHub install smoke passed
 
-## Release readiness verdict
+## Release verdict
 
-Technically ready for tagging and publishing from a build/test/docs standpoint.
-
-Operational gate still applies: do not tag or publish until Tony explicitly approves the release.
+`v0.1.1` is the first usable release candidate for external users who want a staged, reviewable Dreaming loop instead of silent memory mutation.
