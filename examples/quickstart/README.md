@@ -11,4 +11,5 @@ The offline-marker provider reads those markers directly, so the fixture works w
 If the `dreaming` entrypoint is not installed yet, use `python -m hermes_dreaming` with the same arguments.
 The walkthrough sets `HERMES_DREAMING_STATE_ROOT` to a temp directory so the demo does not touch your normal Dreaming run ledger.
 
-For the exact review -> diff -> validate -> apply -> status walkthrough, see `docs/quickstart.md`.
+For the exact review -> summarize -> approve/reject -> diff -> validate -> apply -> status walkthrough, see `docs/quickstart.md`.
+For install/update, onboarding, personas, and safety, see `docs/onboarding.md`.

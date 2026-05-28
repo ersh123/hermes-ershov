@@ -12,6 +12,8 @@ authoritative source of threshold values that:
 from dataclasses import dataclass
 from typing import Literal
 
+from .policy import policy_thresholds_markdown
+
 # ---------------------------------------------------------------------------
 # Per-operation score thresholds
 # ---------------------------------------------------------------------------
@@ -114,4 +116,6 @@ def thresholds_for_prompt() -> str:
 Run-level hard limits:
 - max_changes_per_run: {DEFAULT_MAX_CHANGES_PER_RUN}
 - max_adds_per_run: {DEFAULT_MAX_ADDS_PER_RUN}
-- max_new_chars_per_run: {DEFAULT_MAX_NEW_CHARS_PER_RUN}"""
+- max_new_chars_per_run: {DEFAULT_MAX_NEW_CHARS_PER_RUN}
+
+{policy_thresholds_markdown()}"""

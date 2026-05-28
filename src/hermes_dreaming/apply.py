@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path, PurePosixPath
 
-from .artifact import DreamArtifact, DreamProposal, load_artifact, write_artifact
+from .artifact import DreamArtifact, DreamProposal, DreamArtifactStateError, load_artifact, record_proposal_transition, write_artifact
 from .validation import validate_artifact
 
 
@@ -183,12 +183,38 @@ def apply_artifact(
 
     artifact.validation_errors = []
 
+    approval_targets: list[DreamProposal] = []
     selected_ids = set(approve_ids or [])
-    selected: list[DreamProposal] = []
-    for proposal in artifact.proposals:
-        approved = approve_all or proposal.approved or proposal.id in selected_ids
-        if approved:
-            selected.append(proposal)
+    if approve_all:
+        approval_targets = list(artifact.proposals)
+    elif selected_ids:
+        proposal_index = {proposal.id: proposal for proposal in artifact.proposals}
+        missing_ids = sorted(selected_ids - set(proposal_index))
+        if missing_ids:
+            message = f"unknown proposal id(s): {', '.join(missing_ids)}"
+            artifact.apply_errors = [message]
+            artifact.apply_finished_at = _now_iso()
+            write_artifact(artifact, artifact_dir)
+            raise DreamApplyError(message)
+        approval_targets = [proposal_index[proposal_id] for proposal_id in selected_ids]
+
+    try:
+        for proposal in approval_targets:
+            record_proposal_transition(artifact, proposal, to_state="approved", command="apply")
+    except DreamArtifactStateError as exc:
+        artifact.apply_errors = [str(exc)]
+        artifact.apply_finished_at = _now_iso()
+        write_artifact(artifact, artifact_dir)
+        raise DreamApplyError(str(exc)) from exc
+
+    if approval_targets:
+        write_artifact(artifact, artifact_dir)
+
+    selected: list[DreamProposal] = [
+        proposal
+        for proposal in artifact.proposals
+        if proposal.approved and not proposal.rejected and not proposal.applied
+    ]
 
     if not selected:
         message = "no approved proposals selected for apply"
@@ -221,7 +247,7 @@ def apply_artifact(
 
     finished_at = _now_iso()
     for plan in plans:
-        plan.proposal.applied = True
+        record_proposal_transition(artifact, plan.proposal, to_state="applied", command="apply")
 
     artifact.status = "applied"
     artifact.validation_errors = []

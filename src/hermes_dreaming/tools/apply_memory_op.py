@@ -15,6 +15,7 @@ from typing import Any, Iterable
 
 from .. import memory_io as mio
 from .. import state as state_module
+from ..policy import evaluate_live_op
 from ..scoring import ProposedOp, thresholds_for_prompt, validate_op
 from ..validation import validate_memory_op
 
@@ -247,7 +248,15 @@ def handler(params: dict[str, Any], **kwargs: Any) -> dict[str, Any]:
         supersession_confidence=supersession_confidence,
     )
 
-    op_hash = _op_hash(op_str, target, old_text, new_text)
+    live_policy = evaluate_live_op(
+        op=op_str,
+        target=target,
+        old_text=old_text,
+        new_text=new_text,
+        reason=reason,
+        sources=sources,
+    )
+    op_hash = live_policy.idempotence_key or _op_hash(op_str, target, old_text, new_text)
     if dry_run:
         return {
             "applied": False,

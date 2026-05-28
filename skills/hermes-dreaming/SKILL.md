@@ -23,9 +23,13 @@ Hermes-dreaming scans explicit source inputs, stages proposed changes in an arti
 ```bash
 dreaming create --live-root ./live --artifact-root ./artifacts --source ./sources
 dreaming review --live-root ./live --artifact-root ./artifacts --source ./sources
+dreaming review --open ./artifacts/<artifact-id>
+dreaming summarize ./artifacts/<artifact-id>
+dreaming approve ./artifacts/<artifact-id> all
+dreaming reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
 dreaming diff ./artifacts/<artifact-id> --live-root ./live
 dreaming validate ./artifacts/<artifact-id> --live-root ./live
-dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
 dreaming compact --artifact-root ./artifacts --archive-root ./archive
 dreaming install-cron --schedule "0 3 * * *"
@@ -37,9 +41,10 @@ dreaming update
 
 1. Keep the live root small and explicit.
 2. Put generated artifacts in a separate artifact root.
-3. Use `diff` and `validate` before `apply`.
-4. Use `apply` only after human approval.
-5. Use `discard` when the staged proposal is wrong or stale.
+3. Use `review --open` or `summarize` to understand the current decision state.
+4. Use `approve` or `reject` to record human decisions without mutating live roots.
+5. Use `diff` and `validate` before `apply`.
+6. Use `discard` when the staged proposal is wrong or stale.
 
 ## Fast path
 

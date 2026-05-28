@@ -164,6 +164,60 @@ def test_apply_requires_approval(tmp_path: Path) -> None:
         apply_artifact(artifact_dir, live_root=live_root, backup_root=tmp_path / "backups", approve_all=False)
 
 
+def test_apply_honors_persisted_approval_state(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    memory = live_root / "memory.md"
+    memory.write_text("# MEMORY\n\n- Existing note\n", encoding="utf-8")
+
+    approved = DreamProposal(
+        id="proposal-memory",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="append memory note",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- Keep updates short and concrete.",
+        approved=True,
+    )
+    pending = DreamProposal(
+        id="proposal-user",
+        target_kind="user",
+        target_path="user.md",
+        mode="append_text",
+        summary="append user note",
+        provenance=["sessions/1.md:2"],
+        proposed_text="- Prefer concise status updates.",
+        approved=False,
+    )
+    artifact = DreamArtifact(
+        artifact_id="artifact-approval-state",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="validated",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[approved, pending],
+    )
+    artifact_dir = tmp_path / "artifact-approval-state"
+    write_artifact(artifact, artifact_dir)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(artifact_dir, live_root=live_root, backup_root=backup_root, approve_all=False)
+
+    assert result.status == "applied"
+    assert result.applied_proposal_ids == [approved.id]
+    assert memory.read_text(encoding="utf-8").strip().endswith("- Keep updates short and concrete.")
+    assert not (live_root / "user.md").exists()
+
+    loaded = load_artifact(artifact_dir)
+    assert loaded.proposals[0].applied is True
+    assert loaded.proposals[1].applied is False
+    assert any(event["action"] == "applied" for event in loaded.audit_events)
+
+
 def test_discard_moves_artifact_to_archive_without_live_mutation(tmp_path: Path) -> None:
     live_root = tmp_path / "live"
     live_root.mkdir()

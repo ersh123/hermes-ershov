@@ -8,10 +8,20 @@ import urllib.request
 from pathlib import Path
 from typing import Protocol
 
-from .artifact import DreamProposal, SourceSnapshot
+from .artifact import DreamProposal, SourceSnapshot, text_sha256
 from .validation import validate_proposals
 
 MARKER_RE = re.compile(r"^\s*(?:-\s*)?DREAM:\s*(memory|user|skill|fact)\s*:\s*(.+?)\s*$", re.IGNORECASE)
+
+
+class ProviderOutputError(RuntimeError):
+    def __init__(self, provider: str, message: str, *, payload_hash: str | None = None) -> None:
+        self.provider = provider
+        self.payload_hash = payload_hash
+        detail = f"{provider} provider output invalid: {message}"
+        if payload_hash:
+            detail = f"{detail} [payload_sha256={payload_hash}]"
+        super().__init__(detail)
 
 
 @dataclass(slots=True)
@@ -49,6 +59,10 @@ class OfflineMarkerProvider:
                     proposals.append(proposal)
 
         proposals.sort(key=lambda item: (item.target_kind, item.target_path, item.id))
+        proposals = self._dedupe_proposals(proposals, payload_hash=text_sha256("\n".join(source.sha256 for source in sources)))
+        validation_errors = validate_proposals(proposals)
+        if validation_errors:
+            raise ProviderOutputError(self.name, "; ".join(validation_errors), payload_hash=text_sha256("\n".join(source.sha256 for source in sources)))
         if not proposals:
             notes.append("No DREAM markers were found in the supplied sources.")
         report = self._build_report(sources, proposals, context, notes)
@@ -56,6 +70,7 @@ class OfflineMarkerProvider:
 
     def _build_proposal(self, kind: str, payload: str, source: SourceSnapshot, line_number: int) -> DreamProposal | None:
         provenance = [f"{source.path}:{line_number}"]
+        snippet = f"{source.path}:{line_number}"
         if kind in {"memory", "user"}:
             text = payload if payload.startswith("-") else f"- {payload}"
             return DreamProposal(
@@ -67,6 +82,8 @@ class OfflineMarkerProvider:
                 provenance=provenance,
                 proposed_text=text,
                 approved=False,
+                confidence=1.0,
+                snippet=snippet,
             )
 
         if kind == "fact":
@@ -82,6 +99,8 @@ class OfflineMarkerProvider:
                 provenance=provenance,
                 proposed_text=json.dumps(parsed, sort_keys=True, ensure_ascii=False),
                 approved=False,
+                confidence=1.0,
+                snippet=snippet,
             )
 
         if kind == "skill":
@@ -99,9 +118,58 @@ class OfflineMarkerProvider:
                 provenance=provenance,
                 proposed_text=text,
                 approved=False,
+                confidence=1.0,
+                snippet=snippet,
             )
 
         return None
+
+
+    def _dedupe_proposals(self, proposals: list[DreamProposal], *, payload_hash: str) -> list[DreamProposal]:
+        deduped: list[DreamProposal] = []
+        by_target: dict[str, DreamProposal] = {}
+        for proposal in proposals:
+            existing = by_target.get(proposal.target_path)
+            if existing is None:
+                by_target[proposal.target_path] = proposal
+                deduped.append(proposal)
+                continue
+
+            same_content = (
+                existing.target_kind == proposal.target_kind
+                and existing.mode == proposal.mode
+                and existing.proposed_text == proposal.proposed_text
+            )
+            if not same_content:
+                raise ProviderOutputError(
+                    self.name,
+                    f"conflicting proposals target the same path {proposal.target_path!r}",
+                    payload_hash=payload_hash,
+                )
+
+            existing.provenance = self._unique_strings(existing.provenance + proposal.provenance)
+            if proposal.confidence > existing.confidence or (
+                proposal.confidence == existing.confidence and proposal.id < existing.id
+            ):
+                existing.summary = proposal.summary
+                existing.snippet = proposal.snippet
+                existing.confidence = proposal.confidence
+                existing.notes = proposal.notes
+            elif not existing.notes and proposal.notes:
+                existing.notes = proposal.notes
+        return deduped
+
+    @staticmethod
+    def _unique_strings(values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for value in values:
+            item = value.strip()
+            if not item or item in seen:
+                continue
+            seen.add(item)
+            ordered.append(item)
+        return ordered
 
     def _parse_skill_payload(self, payload: str) -> tuple[str | None, str]:
         if "|" not in payload:
@@ -151,6 +219,8 @@ class OfflineMarkerProvider:
             for proposal in proposals:
                 lines.append(f"- `{proposal.id}` -> `{proposal.target_path}` ({proposal.mode})")
                 lines.append(f"  - {proposal.summary}")
+                lines.append(f"  - Confidence: {proposal.confidence:.2f}")
+                lines.append(f"  - Snippet: {proposal.snippet}")
                 lines.append(f"  - Provenance: {', '.join(proposal.provenance)}")
         else:
             lines.append("- None")
@@ -178,10 +248,7 @@ class OpenAICompatibleProvider:
         if not text:
             raise RuntimeError("provider returned no text")
         payload = self._parse_payload(text)
-        report = str(payload.get("report", "# Hermes Dreaming Report\n\nNo report provided.\n"))
-        proposals = self._normalize_proposals(payload.get("proposals", []), sources)
-        notes = self._normalize_notes(payload.get("notes", []))
-        return report, proposals, notes
+        return self._finalize_payload(payload, sources, payload_hash=text_sha256(text))
 
     def _parse_payload(self, text: str) -> dict[str, object]:
         try:
@@ -201,6 +268,31 @@ class OpenAICompatibleProvider:
         except json.JSONDecodeError as exc:
             raise RuntimeError("provider returned malformed fenced JSON") from exc
 
+    def _finalize_payload(
+        self,
+        payload: dict[str, object],
+        sources: list[SourceSnapshot],
+        *,
+        payload_hash: str,
+    ) -> tuple[str, list[DreamProposal], list[str]]:
+        report = str(payload.get("report", "# Hermes Dreaming Report\n\nNo report provided.\n"))
+        proposals_value = payload.get("proposals", [])
+        if proposals_value is None:
+            proposals_value = []
+        if not isinstance(proposals_value, list):
+            raise ProviderOutputError(self.name, "proposals must be a list", payload_hash=payload_hash)
+        source_refs = self._source_refs(sources)
+        proposals = [
+            self._normalize_proposal(item, source_refs=source_refs, payload_hash=payload_hash)
+            for item in proposals_value
+        ]
+        proposals = self._dedupe_proposals(proposals, payload_hash=payload_hash)
+        validation_errors = validate_proposals(proposals)
+        if validation_errors:
+            raise ProviderOutputError(self.name, "; ".join(validation_errors), payload_hash=payload_hash)
+        notes = self._normalize_notes(payload.get("notes", []))
+        return report, proposals, notes
+
     def _normalize_notes(self, value: object) -> list[str]:
         if value is None:
             return []
@@ -208,58 +300,152 @@ class OpenAICompatibleProvider:
             return [str(item) for item in value if item is not None]
         return [str(value)]
 
-    def _normalize_proposals(self, value: object, sources: list[SourceSnapshot]) -> list[DreamProposal]:
-        if not isinstance(value, list):
-            return []
-        proposals: list[DreamProposal] = []
-        default_provenance = [source.path for source in sources]
-        for item in value:
-            proposal = self._normalize_proposal(item, default_provenance)
-            if proposal is None:
-                continue
-            if validate_proposals([proposal]):
-                continue
-            proposals.append(proposal)
-        return proposals
+    @staticmethod
+    def _source_refs(sources: list[SourceSnapshot]) -> set[str]:
+        refs: set[str] = set()
+        for source in sources:
+            for line_number in range(1, source.line_count + 1):
+                refs.add(f"{source.path}:{line_number}")
+        return refs
 
-    def _normalize_proposal(self, value: object, default_provenance: list[str]) -> DreamProposal | None:
+    def _normalize_proposal(self, value: object, *, source_refs: set[str], payload_hash: str) -> DreamProposal:
         if not isinstance(value, dict):
-            return None
-        required = ["id", "target_kind", "target_path", "mode", "summary", "proposed_text"]
-        if any(key not in value for key in required):
-            return None
-        proposed_text = str(value.get("proposed_text", "")).strip()
-        if not proposed_text:
-            return None
+            raise ProviderOutputError(self.name, "each proposal must be a JSON object", payload_hash=payload_hash)
+
+        required = ["id", "target_kind", "target_path", "mode", "summary", "proposed_text", "confidence", "snippet", "provenance"]
+        missing = [key for key in required if key not in value]
+        if missing:
+            raise ProviderOutputError(
+                self.name,
+                f"proposal is missing required field(s): {', '.join(sorted(missing))}",
+                payload_hash=payload_hash,
+            )
+
+        def require_string(key: str) -> str:
+            raw = value.get(key)
+            if not isinstance(raw, str):
+                raise ProviderOutputError(
+                    self.name,
+                    f"proposal {key} must be a string",
+                    payload_hash=payload_hash,
+                )
+            text = raw.strip()
+            if not text:
+                raise ProviderOutputError(
+                    self.name,
+                    f"proposal {key} must be non-empty",
+                    payload_hash=payload_hash,
+                )
+            return text
+
+        proposed_text = require_string("proposed_text")
+
+        confidence_value = value.get("confidence")
+        if not isinstance(confidence_value, (int, float)):
+            raise ProviderOutputError(self.name, "proposal confidence must be numeric", payload_hash=payload_hash)
+        confidence = float(confidence_value)
+        if confidence < 0.0 or confidence > 1.0:
+            raise ProviderOutputError(
+                self.name,
+                f"proposal confidence {confidence!r} is outside 0.0-1.0",
+                payload_hash=payload_hash,
+            )
+
+        snippet = require_string("snippet")
+
         provenance_value = value.get("provenance")
         if isinstance(provenance_value, str):
-            provenance = [provenance_value]
+            provenance = [provenance_value.strip()] if provenance_value.strip() else []
         elif isinstance(provenance_value, list):
-            provenance = [str(item) for item in provenance_value if item is not None and str(item).strip()]
+            provenance = []
+            for item in provenance_value:
+                if not isinstance(item, str):
+                    raise ProviderOutputError(self.name, "proposal provenance entries must be strings", payload_hash=payload_hash)
+                entry = item.strip()
+                if entry:
+                    provenance.append(entry)
         else:
-            provenance = default_provenance
+            provenance = []
         if not provenance:
-            return None
+            raise ProviderOutputError(self.name, "proposal provenance must be non-empty", payload_hash=payload_hash)
+        invalid_refs = sorted(ref for ref in provenance if ref not in source_refs)
+        if invalid_refs:
+            raise ProviderOutputError(
+                self.name,
+                f"proposal provenance must reference the source bundle: {', '.join(invalid_refs)}",
+                payload_hash=payload_hash,
+            )
+
         return DreamProposal.from_dict(
             {
-                "id": str(value["id"]),
-                "target_kind": str(value["target_kind"]),
-                "target_path": str(value["target_path"]),
-                "mode": str(value["mode"]),
-                "summary": str(value["summary"]),
+                "id": require_string("id"),
+                "target_kind": require_string("target_kind"),
+                "target_path": require_string("target_path"),
+                "mode": require_string("mode"),
+                "summary": require_string("summary"),
                 "provenance": provenance,
                 "proposed_text": proposed_text,
                 "approved": False,
+                "confidence": confidence,
+                "snippet": snippet,
                 "notes": value.get("notes"),
             }
         )
+
+    def _dedupe_proposals(self, proposals: list[DreamProposal], *, payload_hash: str) -> list[DreamProposal]:
+        deduped: list[DreamProposal] = []
+        by_target: dict[str, DreamProposal] = {}
+        for proposal in sorted(proposals, key=lambda item: (item.target_kind, item.target_path, item.mode, item.id)):
+            existing = by_target.get(proposal.target_path)
+            if existing is None:
+                by_target[proposal.target_path] = proposal
+                deduped.append(proposal)
+                continue
+
+            same_content = (
+                existing.target_kind == proposal.target_kind
+                and existing.mode == proposal.mode
+                and existing.proposed_text == proposal.proposed_text
+            )
+            if not same_content:
+                raise ProviderOutputError(
+                    self.name,
+                    f"conflicting proposals target the same path {proposal.target_path!r}",
+                    payload_hash=payload_hash,
+                )
+
+            existing.provenance = self._unique_strings(existing.provenance + proposal.provenance)
+            if proposal.confidence > existing.confidence or (
+                proposal.confidence == existing.confidence and proposal.id < existing.id
+            ):
+                existing.summary = proposal.summary
+                existing.snippet = proposal.snippet
+                existing.confidence = proposal.confidence
+                existing.notes = proposal.notes
+            elif not existing.notes and proposal.notes:
+                existing.notes = proposal.notes
+        return deduped
+
+    @staticmethod
+    def _unique_strings(values: list[str]) -> list[str]:
+        seen: set[str] = set()
+        ordered: list[str] = []
+        for value in values:
+            item = value.strip()
+            if not item or item in seen:
+                continue
+            seen.add(item)
+            ordered.append(item)
+        return ordered
 
     def _build_prompt(self, sources: list[SourceSnapshot], context: DreamContext) -> str:
         source_block = "\n\n".join(f"### {source.path}\n{source.content}" for source in sources)
         return (
             "You are Hermes Dreaming, a staged self-improvement engine.\n"
             "Return JSON only with keys: report, proposals, notes.\n"
-            "Each proposal must include id, target_kind, target_path, mode, summary, provenance, proposed_text, approved.\n"
+            "Each proposal must include id, target_kind, target_path, mode, summary, provenance, confidence, snippet, proposed_text, approved.\n"
+            "Confidence must be a number between 0.0 and 1.0. Snippet must be the source quote or line that justifies the proposal.\n"
+            "Provenance must be one or more source refs such as path:line.\n"
             "Allowed target_kind values: memory, user, skill, fact. Never use source filenames as target_kind.\n"
             "Allowed mode values: append_text, jsonl_append. Never use edit/update/replace.\n"
             "Allowed target_path values: memory.md for memory, user.md for user, facts.jsonl for fact, or skills/<name>.md for skill. Never target source files or absolute paths.\n"
@@ -311,10 +497,7 @@ class OllamaProvider(OpenAICompatibleProvider):
         if not text:
             raise RuntimeError("ollama returned no text")
         payload = self._parse_payload(text)
-        report = str(payload.get("report", "# Hermes Dreaming Report\n\nNo report provided.\n"))
-        proposals = self._normalize_proposals(payload.get("proposals", []), sources)
-        notes = self._normalize_notes(payload.get("notes", []))
-        return report, proposals, notes
+        return self._finalize_payload(payload, sources, payload_hash=text_sha256(text))
 
 
 def build_provider(name: str, *, model: str | None = None, api_key: str | None = None, base_url: str | None = None) -> DreamProvider:

@@ -14,6 +14,7 @@ This demo is offline. It uses the default `offline-marker` provider, so no API k
 Run this from the repository root.
 
 If the `dreaming` entrypoint is not installed yet, replace it with `python -m hermes_dreaming` in the commands below.
+If you are inside Hermes with the plugin enabled, `hermes dreaming review` uses the same flow.
 
 ```bash
 export DEMO_ROOT="$(pwd)/examples/quickstart"
@@ -33,9 +34,14 @@ dreaming review \
 
 ARTIFACT_DIR="$(awk -F': ' '/^artifact: / {print $2; exit}' "$REVIEW_LOG")"
 
+dreaming review --open "$ARTIFACT_DIR"
+dreaming summarize "$ARTIFACT_DIR"
+dreaming approve "$ARTIFACT_DIR" all
+# Optional example, uncomment to record a rejected proposal instead of approving it:
+# dreaming reject "$ARTIFACT_DIR" <proposal-id> --reason "too broad"
 dreaming diff "$ARTIFACT_DIR" --live-root "$LIVE_ROOT"
 dreaming validate "$ARTIFACT_DIR" --live-root "$LIVE_ROOT"
-dreaming apply "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --approve all
+dreaming apply "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT"
 dreaming status --artifact-root "$ARTIFACT_ROOT"
 ```
 
@@ -51,6 +57,8 @@ mode: dry-run
 validation: valid
 ```
 
+`dreaming review --open` should print the artifact path and the next commands.
+`dreaming summarize` should show the decision counts plus recent audit entries after approvals or rejections.
 `dreaming diff` should start with `# Hermes Dreaming Diff` and then show one `## Proposal ...` block for each of these targets:
 
 - `fact -> facts.jsonl`

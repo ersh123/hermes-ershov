@@ -99,7 +99,7 @@ def register(ctx) -> None:
             "Route Hermes Dreaming artifact commands through the chat surface "
             "without mutating live state until apply time."
         ),
-        args_hint="create|review|diff|validate|apply|discard|compact|install-cron|status|update",
+        args_hint="create|review|summarize|approve|reject|diff|validate|apply|discard|compact|install-cron|status|update",
     )
 
     skill_md = _skill_path()

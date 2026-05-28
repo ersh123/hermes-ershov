@@ -14,6 +14,8 @@ def _legacy_review_output(artifact: DreamArtifact) -> str:
         for proposal in artifact.proposals:
             lines.append(f"- {proposal.id}: {proposal.target_kind} -> {proposal.target_path} [{proposal.mode}]")
             lines.append(f"  {proposal.summary}")
+            lines.append(f"  confidence: {proposal.confidence:.2f}")
+            lines.append(f"  snippet: {proposal.snippet}")
     return "\n".join(lines).rstrip() + "\n"
 
 
@@ -68,6 +70,8 @@ def render_artifact_diff(artifact: DreamArtifact, *, live_root: Path | None = No
                 f"- target: {proposal.target_kind} -> {proposal.target_path}",
                 f"- mode: {proposal.mode}",
                 f"- summary: {proposal.summary}",
+                f"- confidence: {proposal.confidence:.2f}",
+                f"- snippet: {proposal.snippet}",
                 f"- provenance: {provenance}",
                 f"- live target: `{target}`",
             ]

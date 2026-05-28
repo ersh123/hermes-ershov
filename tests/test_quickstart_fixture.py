@@ -29,6 +29,8 @@ def test_quickstart_fixture_runs_offline_without_api_key(tmp_path: Path) -> None
     assert (result.artifact_dir / "sources.jsonl").exists()
     assert (result.artifact_dir / "proposals.jsonl").exists()
     assert {proposal.target_kind for proposal in result.artifact.proposals} == {"fact", "memory", "skill", "user"}
+    assert all(proposal.confidence == 1.0 for proposal in result.artifact.proposals)
+    assert all(proposal.snippet.strip() for proposal in result.artifact.proposals)
 
     docs_and_fixture_files = [
         repo_root / "README.md",

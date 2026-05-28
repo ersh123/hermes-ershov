@@ -39,9 +39,17 @@ Use `hermes dreaming update --check` if you only want the status check.
 
 The plugin also bundles a Hermes skill named `dreaming`. Load that bare name inside Hermes if you want the guided staged workflow.
 
+## Onboarding docs
+
+- `docs/onboarding.md` is the shortest path from "what is this" to the full loop.
+- `docs/install-update.md` covers plugin install and safe fast-forward updates.
+- `docs/quickstart.md` is the copy/paste offline demo.
+- `docs/personas.md` shows how different operators use the same loop.
+- `docs/safety.md` spells out what Dreaming can and cannot mutate.
+
 ## Current status
 
-- **Full feature set:** create, review, diff, validate, apply, discard, compact, install-cron, status, update, all implemented
+- **Full feature set:** create, review/open, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
 - **Run ledger + DREAMS.md diary** for auditability
 - **Hermes-native plugin:** install once, use everywhere
@@ -51,7 +59,7 @@ The plugin also bundles a Hermes skill named `dreaming`. Load that bare name ins
 
 ## Install
 
-For local development:
+For end-user installs, use the plugin path in `docs/install-update.md`. For local development:
 
 ```bash
 python -m pip install -e .[dev]
@@ -67,33 +75,55 @@ python -m pip install -e .[llm]
 
 ```bash
 # Create an artifact from sources
+
 dreaming create --live-root ./live --artifact-root ./artifacts --source ./sources
 
 # Review: create and validate without applying
+
 dreaming review --live-root ./live --artifact-root ./artifacts --source ./sources
 
+# Open an existing artifact and print next steps
+
+dreaming review --open ./artifacts/<artifact-id>
+
+dreaming summarize ./artifacts/<artifact-id>
+dreaming approve ./artifacts/<artifact-id> all
+dreaming reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
+
 # Inspect an artifact
+
 dreaming diff ./artifacts/<artifact-id> --live-root ./live
 
 # Validate a staged artifact
+
 dreaming validate ./artifacts/<artifact-id> --live-root ./live
 
-# Apply approved changes (explicit approval required)
-dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
+# Apply approved changes
+
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 
 # Discard a staged artifact
+
 dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
 
 # Compact terminal (applied/discarded) artifacts to an archive
+
 dreaming compact --artifact-root ./artifacts --archive-root ./archive
 
 # Install a nightly review-only cron job
+
 dreaming install-cron --schedule "0 3 * * *"
 
+# Render a local operator digest
+
+dreaming digest ./artifacts/<artifact-id> --weekly
+
 # Show artifact status
+
 dreaming status --artifact-root ./artifacts
 
 # Safely update the installed checkout
+
 dreaming update
 dreaming update --check
 ```
@@ -104,13 +134,22 @@ If you want the shortest path to "oh, I get it," use `examples/quickstart/`. It 
 If the `dreaming` entrypoint is not installed yet, swap in `python -m hermes_dreaming` for the same commands.
 
 - Fixture notes: `examples/quickstart/README.md`
+- Onboarding path: `docs/onboarding.md`
+- Install and update: `docs/install-update.md`
 - Runnable walkthrough: `docs/quickstart.md`
+- Persona examples: `docs/personas.md`
+- Safety boundaries: `docs/safety.md`
 
 ### Command notes
 
-- `create` and `review` accept repeatable `--source` plus optional `--provider`, `--model`, `--api-key`, and `--base-url`.
+- `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`.
+- `digest` renders a local operator brief to stdout only. It can include `--weekly` rollups, but it does not send anything to Telegram. If you want delivery later, wrap the command in a separate transport layer that consumes stdout.
+- `create` and `review` accept repeatable `--source` plus optional `--provider`, `--model`, `--api-key`, and `--base-url`. `review --open` prints the artifact path and the next commands.
+- OpenAI-compatible and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
+- `summarize` prints a concise decision brief for an existing artifact.
+- `approve` and `reject` update artifact metadata only, they do not touch live roots.
 - `diff` accepts optional `--live-root` and renders unified diffs when the live target root is available.
-- `apply` accepts repeatable `--approve` values, including `all`.
+- `apply` applies already approved proposals. `--approve` still works as a compatibility shortcut for recording approvals before apply.
 - `update` supports `--remote`, `--branch`, `--check`, and `--no-verify`.
 
 ## Dream markers
@@ -132,6 +171,7 @@ Each run writes a staged artifact directory containing:
 - `REPORT.md`
 - `sources.jsonl`
 - `proposals.jsonl`
+- `audit.jsonl`
 
 The artifact is intentionally simple, deterministic, and easy to review on disk or in git.
 

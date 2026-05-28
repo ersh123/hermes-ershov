@@ -4,6 +4,8 @@ import sys
 import types
 from pathlib import Path
 
+import pytest
+
 from hermes_dreaming.artifact import SourceSnapshot
 from hermes_dreaming.providers import DreamContext, OllamaProvider, OpenAICompatibleProvider, build_provider
 
@@ -57,12 +59,14 @@ def test_openai_compatible_provider_accepts_fenced_json_and_forces_unapproved(mo
   "report": "Report body",
   "proposals": [
     {
-      "id": 1,
+      "id": "1",
       "target_kind": "user",
       "target_path": "user.md",
       "mode": "append_text",
       "summary": "User prefers two strong options.",
       "provenance": "sources/session.md:1",
+      "confidence": 0.92,
+      "snippet": "User: Prefer two strong options over six weak ones.",
       "proposed_text": "- Restaurant design drafts should offer two strong options, not six weak ones.",
       "approved": true
     }
@@ -82,21 +86,24 @@ def test_openai_compatible_provider_accepts_fenced_json_and_forces_unapproved(mo
     assert proposals[0].id == "1"
     assert proposals[0].provenance == ["sources/session.md:1"]
     assert proposals[0].approved is False
+    assert proposals[0].confidence == 0.92
+    assert proposals[0].snippet == "User: Prefer two strong options over six weak ones."
 
 
-def test_openai_compatible_provider_drops_invalid_model_proposals(monkeypatch, tmp_path: Path) -> None:
+def test_openai_compatible_provider_rejects_invalid_model_proposals(monkeypatch, tmp_path: Path) -> None:
     _install_fake_openai(
         monkeypatch,
         """{
   "report": "Report body",
   "proposals": [
     {
-      "id": "missing-text",
+      "id": "missing-fields",
       "target_kind": "user",
       "target_path": "user.md",
       "mode": "append_text",
       "summary": "No text should be staged.",
-      "provenance": "sources/session.md:1",
+      "provenance": ["sources/session.md:1"],
+      "proposed_text": "- Never write this.",
       "approved": true
     },
     {
@@ -107,6 +114,8 @@ def test_openai_compatible_provider_drops_invalid_model_proposals(monkeypatch, t
       "summary": "Keep concise.",
       "provenance": ["sources/session.md:1"],
       "proposed_text": "- Keep concise.",
+      "confidence": 0.8,
+      "snippet": "User: Prefer two strong options over six weak ones.",
       "approved": false
     }
   ],
@@ -114,15 +123,11 @@ def test_openai_compatible_provider_drops_invalid_model_proposals(monkeypatch, t
 }""",
     )
 
-    _report, proposals, notes = OpenAICompatibleProvider(model="qwen2.5:3b", api_key="ollama").generate(
-        [_source()], _context(tmp_path)
-    )
-
-    assert [proposal.id for proposal in proposals] == ["valid"]
-    assert notes == []
+    with pytest.raises(RuntimeError, match="missing required field"):
+        OpenAICompatibleProvider(model="qwen2.5:3b", api_key="ollama").generate([_source()], _context(tmp_path))
 
 
-def test_openai_compatible_provider_defaults_missing_provenance_to_sources(monkeypatch, tmp_path: Path) -> None:
+def test_openai_compatible_provider_rejects_fabricated_provenance(monkeypatch, tmp_path: Path) -> None:
     _install_fake_openai(
         monkeypatch,
         """{
@@ -134,7 +139,10 @@ def test_openai_compatible_provider_defaults_missing_provenance_to_sources(monke
       "target_path": "user.md",
       "mode": "append_text",
       "summary": "User prefers two strong options.",
+      "provenance": ["made-up:1"],
       "proposed_text": "- Prefer two strong options over six weak ones.",
+      "confidence": 0.92,
+      "snippet": "User: Prefer two strong options over six weak ones.",
       "approved": true
     }
   ],
@@ -142,13 +150,35 @@ def test_openai_compatible_provider_defaults_missing_provenance_to_sources(monke
 }""",
     )
 
-    _report, proposals, _notes = OpenAICompatibleProvider(model="qwen2.5:3b", api_key="ollama").generate(
-        [_source()], _context(tmp_path)
+    with pytest.raises(RuntimeError, match="source bundle"):
+        OpenAICompatibleProvider(model="qwen2.5:3b", api_key="ollama").generate([_source()], _context(tmp_path))
+
+
+def test_openai_compatible_provider_rejects_structured_proposed_text(monkeypatch, tmp_path: Path) -> None:
+    _install_fake_openai(
+        monkeypatch,
+        """{
+  "report": "Report body",
+  "proposals": [
+    {
+      "id": "valid",
+      "target_kind": "user",
+      "target_path": "user.md",
+      "mode": "append_text",
+      "summary": "User prefers two strong options.",
+      "provenance": ["sources/session.md:1"],
+      "proposed_text": {"blob": [1, 2, 3]},
+      "confidence": 0.92,
+      "snippet": "User: Prefer two strong options over six weak ones.",
+      "approved": true
+    }
+  ],
+  "notes": []
+}""",
     )
 
-    assert len(proposals) == 1
-    assert proposals[0].provenance == ["sources/session.md"]
-    assert proposals[0].approved is False
+    with pytest.raises(RuntimeError, match="proposed_text must be a string"):
+        OpenAICompatibleProvider(model="qwen2.5:3b", api_key="ollama").generate([_source()], _context(tmp_path))
 
 
 def test_ollama_provider_uses_native_json_chat(monkeypatch, tmp_path: Path) -> None:
@@ -162,7 +192,7 @@ def test_ollama_provider_uses_native_json_chat(monkeypatch, tmp_path: Path) -> N
             return None
 
         def read(self) -> bytes:
-            return b'{"message":{"content":"{\\"report\\":\\"Report body\\",\\"proposals\\":[{\\"id\\":\\"p1\\",\\"target_kind\\":\\"user\\",\\"target_path\\":\\"user.md\\",\\"mode\\":\\"append_text\\",\\"summary\\":\\"Keep concise.\\",\\"provenance\\":\\"sources/session.md:1\\",\\"proposed_text\\":\\"- Keep concise.\\",\\"approved\\":true}],\\"notes\\":[]}"}}'
+            return b'{"message":{"content":"{\\"report\\":\\"Report body\\",\\"proposals\\":[{\\"id\\":\\"p1\\",\\"target_kind\\":\\"user\\",\\"target_path\\":\\"user.md\\",\\"mode\\":\\"append_text\\",\\"summary\\":\\"Keep concise.\\",\\"provenance\\":\\"sources/session.md:1\\",\\"proposed_text\\":\\"- Keep concise.\\",\\"confidence\\":0.92,\\"snippet\\":\\"User: Prefer two strong options over six weak ones.\\",\\"approved\\":true}],\\"notes\\":[]}"}}'
 
     def _fake_urlopen(request, timeout):
         captured["url"] = request.full_url
@@ -183,6 +213,8 @@ def test_ollama_provider_uses_native_json_chat(monkeypatch, tmp_path: Path) -> N
     assert notes == []
     assert len(proposals) == 1
     assert proposals[0].approved is False
+    assert proposals[0].confidence == 0.92
+    assert proposals[0].snippet == "User: Prefer two strong options over six weak ones."
     assert proposals[0].provenance == ["sources/session.md:1"]
 
 

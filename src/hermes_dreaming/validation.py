@@ -6,6 +6,7 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 from .artifact import DreamArtifact, DreamProposal, VALID_MODES, VALID_TARGET_KINDS
+from .policy import evaluate_live_op, evaluate_proposal
 
 SECRET_PATTERNS = [
     re.compile(r"\b(sk-[A-Za-z0-9]{12,}|ghp_[A-Za-z0-9]{8,}|xox[baprs]-[A-Za-z0-9-]{8,}|AIza[0-9A-Za-z_-]{10,})\b"),
@@ -37,7 +38,9 @@ def _proposal_errors(proposal: DreamProposal) -> list[str]:
         errors.append(f"proposal {proposal.id} is missing provenance")
     if not proposal.target_path.strip() or not _safe_relative_path(proposal.target_path):
         errors.append(f"proposal {proposal.id} has an unsafe target path {proposal.target_path!r}")
-    if _secret_like(proposal.summary) or _secret_like(proposal.proposed_text):
+    if proposal.confidence < 0.0 or proposal.confidence > 1.0:
+        errors.append(f"proposal {proposal.id} has invalid confidence {proposal.confidence!r}")
+    if _secret_like(proposal.summary) or _secret_like(proposal.proposed_text) or _secret_like(proposal.snippet):
         errors.append(f"proposal {proposal.id} contains secret-like content")
     if proposal.mode == "jsonl_append":
         try:
@@ -53,13 +56,26 @@ def _proposal_errors(proposal: DreamProposal) -> list[str]:
 def validate_proposals(proposals: Iterable[DreamProposal]) -> list[str]:
     errors: list[str] = []
     seen_targets: dict[str, str] = {}
+    seen_keys: dict[str, str] = {}
     for proposal in proposals:
         errors.extend(_proposal_errors(proposal))
+        decision = evaluate_proposal(proposal)
+        if not decision.ok:
+            errors.append(f"proposal {proposal.id}: {decision.error}")
+            continue
+
         existing = seen_targets.get(proposal.target_path)
-        if existing is not None and existing != proposal.proposed_text:
+        if existing is not None and existing != decision.normalized_text:
             errors.append(f"conflicting proposals target the same path {proposal.target_path!r}")
         else:
-            seen_targets[proposal.target_path] = proposal.proposed_text
+            seen_targets[proposal.target_path] = decision.normalized_text
+
+        if proposal.idempotence_key:
+            existing_key = seen_keys.get(proposal.idempotence_key)
+            if existing_key is not None and existing_key != decision.normalized_text:
+                errors.append(f"conflicting payloads share the same idempotence key for {proposal.idempotence_key!r}")
+            else:
+                seen_keys[proposal.idempotence_key] = decision.normalized_text
     return errors
 
 
@@ -70,18 +86,11 @@ def validate_artifact(artifact: DreamArtifact, *, live_root: Path | str) -> list
     if not artifact.proposals:
         errors.append("artifact contains no proposals")
 
-    seen_targets: dict[str, str] = {}
     for source in artifact.sources:
         if _secret_like(source.content):
             errors.append(f"source {source.path} contains secret-like content")
 
-    for proposal in artifact.proposals:
-        errors.extend(_proposal_errors(proposal))
-        existing = seen_targets.get(proposal.target_path)
-        if existing is not None and existing != proposal.proposed_text:
-            errors.append(f"conflicting proposals target the same path {proposal.target_path!r}")
-        else:
-            seen_targets[proposal.target_path] = proposal.proposed_text
+    errors.extend(validate_proposals(artifact.proposals))
 
     if not live_root.exists():
         errors.append(f"live root does not exist: {live_root}")
@@ -135,5 +144,16 @@ def validate_memory_op(
 
     if score < 0.0 or score > 1.0:
         errors.append(f"score must be between 0.0 and 1.0, got {score!r}")
+
+    live_decision = evaluate_live_op(
+        op=op,
+        target=target,
+        old_text=old_text,
+        new_text=new_text,
+        reason=reason,
+        sources=sources_list,
+    )
+    if not live_decision.ok:
+        errors.append(live_decision.error)
 
     return errors

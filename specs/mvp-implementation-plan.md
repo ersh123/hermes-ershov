@@ -10,7 +10,7 @@ The repo has one job: read explicit local inputs, stage reviewable proposals, an
 
 The current MVP includes:
 
-- `dreaming create`, `diff`, `validate`, `apply`, `discard`, and `status`
+- `dreaming create`, `diff`, `validate`, `apply`, `discard`, `report-card`, and `status`
 - a directory-based artifact format with `manifest.json`, `REPORT.md`, `sources.jsonl`, and `proposals.jsonl`
 - deterministic offline proposal extraction from explicit `DREAM:` markers
 - an optional OpenAI-compatible provider behind the `llm` extra
@@ -69,14 +69,29 @@ Defaults:
 - `--artifact-root` defaults to `./.dreaming/artifacts`
 - `--provider` defaults to `offline-marker`
 
+### `dreaming review`
+Creates a staged artifact from one or more `--source` roots, or opens an existing artifact with `--open` to print the artifact path and next commands.
+
+### `dreaming summarize`
+Prints a concise decision brief for an existing artifact, including proposal state counts and recent audit entries.
+
+### `dreaming approve`
+Records approvals in artifact metadata without applying anything to live state.
+
+### `dreaming reject`
+Records rejected proposals and a reason in artifact metadata without applying anything to live state.
+
 ### `dreaming diff`
 Prints live-target unified diffs for each proposal when a live root is available, otherwise falls back to the staged report and proposal summary.
+
+### `dreaming report-card`
+Prints a redacted shareable summary for an existing artifact, with an optional JSON companion.
 
 ### `dreaming validate`
 Runs the validation gate without mutating live state.
 
 ### `dreaming apply`
-Applies approved proposals, writes backups first, and updates the artifact status.
+Applies approved proposals, writes backups first, and updates the artifact status. `--approve` remains as a compatibility shortcut that records approvals before apply.
 
 ### `dreaming discard`
 Marks the artifact discarded and moves it into the archive root without touching live files.
@@ -92,6 +107,7 @@ Canonical artifact directory contents:
 - `REPORT.md` stores the human-readable summary
 - `sources.jsonl` stores source snapshots and provenance
 - `proposals.jsonl` stores the staged proposal records
+- `audit.jsonl` stores the proposal decision audit trail
 
 Required proposal fields:
 - `id`
@@ -102,6 +118,9 @@ Required proposal fields:
 - `provenance`
 - `proposed_text`
 - `approved`
+- `rejected`
+- `rejection_reason`
+- `applied`
 
 Current supported proposal modes:
 - `append_text`
@@ -113,6 +132,7 @@ The validation layer rejects or flags:
 
 - target paths that escape the live root
 - duplicate targets with conflicting payloads
+- provider output that fails schema validation before artifact write
 - missing provenance
 - secret-like content in source or proposal text
 - malformed JSON payloads for JSONL append proposals

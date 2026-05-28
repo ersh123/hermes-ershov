@@ -116,4 +116,5 @@ def test_cli_update_wires_through_parser(monkeypatch, tmp_path: Path) -> None:
     assert captured["branch"] == "dev"
     assert captured["check"] is True
     assert captured["verify"] is False
-    assert captured["repo_root"].name == "hermes-dreaming"
+    assert captured["repo_root"].is_dir()
+    assert (captured["repo_root"] / "src" / "hermes_dreaming").exists()
