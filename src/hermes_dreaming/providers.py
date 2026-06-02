@@ -70,7 +70,8 @@ class OfflineMarkerProvider:
 
     def _build_proposal(self, kind: str, payload: str, source: SourceSnapshot, line_number: int) -> DreamProposal | None:
         provenance = [f"{source.path}:{line_number}"]
-        snippet = f"{source.path}:{line_number}"
+        source_quote = source.content.splitlines()[line_number - 1].strip() if line_number <= source.line_count else f"{source.path}:{line_number}"
+        snippet = source_quote
         if kind in {"memory", "user"}:
             text = payload if payload.startswith("-") else f"- {payload}"
             return DreamProposal(
@@ -84,6 +85,11 @@ class OfflineMarkerProvider:
                 approved=False,
                 confidence=1.0,
                 snippet=snippet,
+                risk="medium" if kind == "user" else "low",
+                priority="normal",
+                reason=f"explicit DREAM marker requested a {kind} update",
+                source_quote=source_quote,
+                policy_flags=["safe_append", "profile_preference" if kind == "user" else "memory_update"],
             )
 
         if kind == "fact":
@@ -101,6 +107,11 @@ class OfflineMarkerProvider:
                 approved=False,
                 confidence=1.0,
                 snippet=snippet,
+                risk="low",
+                priority="normal",
+                reason="explicit DREAM marker requested a fact update",
+                source_quote=source_quote,
+                policy_flags=["fact_update", "safe_append"],
             )
 
         if kind == "skill":
@@ -120,6 +131,11 @@ class OfflineMarkerProvider:
                 approved=False,
                 confidence=1.0,
                 snippet=snippet,
+                risk="medium",
+                priority="normal",
+                reason="explicit DREAM marker requested a skill note",
+                source_quote=source_quote,
+                policy_flags=["skill_update", "safe_append"],
             )
 
         return None
@@ -312,7 +328,22 @@ class OpenAICompatibleProvider:
         if not isinstance(value, dict):
             raise ProviderOutputError(self.name, "each proposal must be a JSON object", payload_hash=payload_hash)
 
-        required = ["id", "target_kind", "target_path", "mode", "summary", "proposed_text", "confidence", "snippet", "provenance"]
+        required = [
+            "id",
+            "target_kind",
+            "target_path",
+            "mode",
+            "summary",
+            "proposed_text",
+            "confidence",
+            "snippet",
+            "provenance",
+            "risk",
+            "priority",
+            "reason",
+            "source_quote",
+            "policy_flags",
+        ]
         missing = [key for key in required if key not in value]
         if missing:
             raise ProviderOutputError(
@@ -351,8 +382,6 @@ class OpenAICompatibleProvider:
                 payload_hash=payload_hash,
             )
 
-        snippet = require_string("snippet")
-
         provenance_value = value.get("provenance")
         if isinstance(provenance_value, str):
             provenance = [provenance_value.strip()] if provenance_value.strip() else []
@@ -376,6 +405,18 @@ class OpenAICompatibleProvider:
                 payload_hash=payload_hash,
             )
 
+        snippet = require_string("snippet")
+        risk = require_string("risk").lower()
+        if risk not in {"low", "medium", "high"}:
+            raise ProviderOutputError(self.name, f"proposal risk {risk!r} is unsupported", payload_hash=payload_hash)
+        priority = require_string("priority").lower()
+        if priority not in {"low", "normal", "high"}:
+            raise ProviderOutputError(self.name, f"proposal priority {priority!r} is unsupported", payload_hash=payload_hash)
+        policy_flags_value = value.get("policy_flags")
+        if not isinstance(policy_flags_value, list) or not all(isinstance(item, str) and item.strip() for item in policy_flags_value):
+            raise ProviderOutputError(self.name, "proposal policy_flags must be a non-empty string list", payload_hash=payload_hash)
+        policy_flags = [item.strip() for item in policy_flags_value]
+
         return DreamProposal.from_dict(
             {
                 "id": require_string("id"),
@@ -388,6 +429,11 @@ class OpenAICompatibleProvider:
                 "approved": False,
                 "confidence": confidence,
                 "snippet": snippet,
+                "risk": risk,
+                "priority": priority,
+                "reason": require_string("reason"),
+                "source_quote": require_string("source_quote"),
+                "policy_flags": policy_flags,
                 "notes": value.get("notes"),
             }
         )
@@ -443,7 +489,9 @@ class OpenAICompatibleProvider:
         return (
             "You are Hermes Dreaming, a staged self-improvement engine.\n"
             "Return JSON only with keys: report, proposals, notes.\n"
-            "Each proposal must include id, target_kind, target_path, mode, summary, provenance, confidence, snippet, proposed_text, approved.\n"
+            "Each proposal must include id, target_kind, target_path, mode, summary, provenance, confidence, snippet, proposed_text, approved, risk, priority, reason, source_quote, policy_flags.\n"
+            "Risk must be one of low, medium, high. Priority must be one of low, normal, high.\n"
+            "Reason must explain why the proposal exists. Source_quote must be a short quote from the source. Policy_flags must be a string list.\n"
             "Confidence must be a number between 0.0 and 1.0. Snippet must be the source quote or line that justifies the proposal.\n"
             "Provenance must be one or more source refs such as path:line.\n"
             "Allowed target_kind values: memory, user, skill, fact. Never use source filenames as target_kind.\n"

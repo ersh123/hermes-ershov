@@ -51,6 +51,11 @@ def _proposal(
     applied: bool = False,
     provenance: list[str] | None = None,
     proposed_text: str = "- Example text",
+    risk: str = "low",
+    priority: str = "normal",
+    reason: str = "",
+    source_quote: str = "",
+    policy_flags: list[str] | None = None,
 ) -> DreamProposal:
     return DreamProposal(
         id=proposal_id,
@@ -62,6 +67,11 @@ def _proposal(
         proposed_text=proposed_text,
         approved=approved,
         confidence=confidence,
+        risk=risk,
+        priority=priority,
+        reason=reason,
+        source_quote=source_quote,
+        policy_flags=policy_flags or [],
         rejected=rejected,
         rejection_reason=rejection_reason,
         applied=applied,
@@ -247,3 +257,94 @@ def test_digest_renders_local_priorities_deltas_and_weekly_rollup(tmp_path: Path
     assert "Recurring themes:" in output
     assert "Next-week watchlist:" in output
     assert "no Telegram send by default" in output
+
+
+def test_digest_inbox_mode_renders_attention_blocks_and_counts(tmp_path: Path, capsys) -> None:
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+
+    shared_workspace = tmp_path / "live"
+    shared_workspace.mkdir()
+
+    _make_artifact(
+        artifact_root,
+        artifact_id="artifact-older",
+        created_at="2026-05-26T12:00:00Z",
+        status="staged",
+        workspace_root=shared_workspace,
+        proposals=[
+            _proposal(
+                "p-safe",
+                target_kind="memory",
+                target_path="memory.md",
+                summary="safe proposal",
+                confidence=0.61,
+                approved=True,
+                risk="low",
+                priority="normal",
+                reason="routine note",
+                source_quote="safe quote",
+            )
+        ],
+    )
+    _make_artifact(
+        artifact_root,
+        artifact_id="artifact-newer",
+        created_at="2026-05-27T12:00:00Z",
+        status="staged",
+        workspace_root=shared_workspace,
+        proposals=[
+            _proposal(
+                "p-high",
+                target_kind="skill",
+                target_path="skills/digest.md",
+                summary="high-priority fix",
+                confidence=0.92,
+                approved=True,
+                risk="high",
+                priority="high",
+                reason="needs Tony now",
+                source_quote="this is the line Tony needs",
+                policy_flags=["manual-review"],
+            ),
+            _proposal(
+                "p-pending",
+                target_kind="fact",
+                target_path="facts.jsonl",
+                summary="follow-up note",
+                confidence=0.55,
+                approved=False,
+                risk="low",
+                priority="normal",
+                reason="follow up later",
+                source_quote="pending quote",
+            ),
+        ],
+    )
+
+    assert (
+        main([
+            "digest",
+            "--inbox",
+            "--artifact-root",
+            str(artifact_root),
+            "--limit",
+            "10",
+        ])
+        == 0
+    )
+    output = capsys.readouterr().out
+
+    assert "Hermes Dreaming inbox digest" in output
+    assert "- Total artifacts: `2`" in output
+    assert "- Active artifacts: `2`" in output
+    assert "- High risk count: `1`" in output
+    assert "- High priority count: `1`" in output
+    assert "- Newest artifact: `artifact-newer`" in output
+    assert "- Top reason: needs Tony now" in output
+    assert "## Needs Tony" in output
+    assert "artifact-newer" in output
+    assert "manual-review" in output
+    assert "## Safe to ignore" in output
+    assert "artifact-older" in output
+    assert "Delivery: local only, no Telegram send by default." in output

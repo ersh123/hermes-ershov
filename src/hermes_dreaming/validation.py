@@ -5,8 +5,8 @@ import re
 from pathlib import Path, PurePosixPath
 from typing import Iterable
 
-from .artifact import DreamArtifact, DreamProposal, VALID_MODES, VALID_TARGET_KINDS
-from .policy import evaluate_live_op, evaluate_proposal
+from .artifact import DreamArtifact, DreamProposal, SourceSnapshot, VALID_MODES, VALID_PRIORITY_LEVELS, VALID_RISK_LEVELS, VALID_TARGET_KINDS
+from .policy import evaluate_live_op, evaluate_proposal, target_path_is_allowed
 
 SECRET_PATTERNS = [
     re.compile(r"\b(sk-[A-Za-z0-9]{12,}|ghp_[A-Za-z0-9]{8,}|xox[baprs]-[A-Za-z0-9-]{8,}|AIza[0-9A-Za-z_-]{10,})\b"),
@@ -38,9 +38,19 @@ def _proposal_errors(proposal: DreamProposal) -> list[str]:
         errors.append(f"proposal {proposal.id} is missing provenance")
     if not proposal.target_path.strip() or not _safe_relative_path(proposal.target_path):
         errors.append(f"proposal {proposal.id} has an unsafe target path {proposal.target_path!r}")
+    elif not target_path_is_allowed(proposal.target_kind, proposal.target_path):
+        errors.append(
+            f"proposal {proposal.id} target path {proposal.target_path!r} is not allowed for {proposal.target_kind!r}"
+        )
     if proposal.confidence < 0.0 or proposal.confidence > 1.0:
         errors.append(f"proposal {proposal.id} has invalid confidence {proposal.confidence!r}")
-    if _secret_like(proposal.summary) or _secret_like(proposal.proposed_text) or _secret_like(proposal.snippet):
+    if proposal.risk not in VALID_RISK_LEVELS:
+        errors.append(f"proposal {proposal.id} has invalid risk {proposal.risk!r}")
+    if proposal.priority not in VALID_PRIORITY_LEVELS:
+        errors.append(f"proposal {proposal.id} has invalid priority {proposal.priority!r}")
+    if any(not str(flag).strip() for flag in proposal.policy_flags):
+        errors.append(f"proposal {proposal.id} has an empty policy flag")
+    if _secret_like(proposal.summary) or _secret_like(proposal.proposed_text) or _secret_like(proposal.snippet) or _secret_like(proposal.reason) or _secret_like(proposal.source_quote):
         errors.append(f"proposal {proposal.id} contains secret-like content")
     if proposal.mode == "jsonl_append":
         try:
@@ -79,6 +89,14 @@ def validate_proposals(proposals: Iterable[DreamProposal]) -> list[str]:
     return errors
 
 
+def validate_source_snapshots(sources: Iterable[SourceSnapshot]) -> list[str]:
+    errors: list[str] = []
+    for source in sources:
+        if _secret_like(source.content):
+            errors.append(f"source {source.path} contains secret-like content")
+    return errors
+
+
 def validate_artifact(artifact: DreamArtifact, *, live_root: Path | str) -> list[str]:
     errors: list[str] = []
     live_root = Path(live_root)
@@ -86,10 +104,7 @@ def validate_artifact(artifact: DreamArtifact, *, live_root: Path | str) -> list
     if not artifact.proposals:
         errors.append("artifact contains no proposals")
 
-    for source in artifact.sources:
-        if _secret_like(source.content):
-            errors.append(f"source {source.path} contains secret-like content")
-
+    errors.extend(validate_source_snapshots(artifact.sources))
     errors.extend(validate_proposals(artifact.proposals))
 
     if not live_root.exists():

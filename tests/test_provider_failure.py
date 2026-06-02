@@ -80,5 +80,52 @@ def test_create_dream_artifact_writes_failure_artifact_for_invalid_provider_outp
     assert (result.artifact_dir / "proposals.jsonl").read_text(encoding="utf-8") == ""
     assert (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8").startswith("# Hermes Dreaming Report")
     report = (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8")
-    assert "Provider failure" in report
+    assert "Provider/preflight failure" in report
     assert "Payload hash" in report
+
+
+def test_create_dream_artifact_preflights_secret_sources_before_provider_call(
+    monkeypatch, tmp_path: Path
+) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    (live_root / "memory.md").write_text("# MEMORY\n", encoding="utf-8")
+    source_root = tmp_path / "sources"
+    source_root.mkdir()
+    (source_root / "session.md").write_text(
+        "DREAM: memory: api_key = 'ghp_1234567890abcdef'\n",
+        encoding="utf-8",
+    )
+    artifact_root = tmp_path / "artifacts"
+    calls = {"count": 0}
+
+    class CountingResponses:
+        def create(self, **_kwargs):
+            calls["count"] += 1
+            raise AssertionError("provider should not be called for secret-like source content")
+
+    class CountingOpenAI:
+        def __init__(self, **_kwargs) -> None:
+            self.responses = CountingResponses()
+
+    monkeypatch.setitem(sys.modules, "openai", types.SimpleNamespace(OpenAI=CountingOpenAI))
+
+    result = create_dream_artifact(
+        DreamRunConfig(
+            live_root=live_root,
+            artifact_root=artifact_root,
+            source_paths=[source_root],
+            provider_name="openai-compatible",
+        )
+    )
+
+    assert calls["count"] == 0
+    assert result.artifact.status == "invalid"
+    assert result.artifact.sources == []
+    assert result.artifact.proposals == []
+    assert result.validation_errors
+    assert "secret-like content" in result.validation_errors[0]
+    report = (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8")
+    assert "source preflight blocked provider call" in report
+    sources_file = (result.artifact_dir / "sources.jsonl").read_text(encoding="utf-8")
+    assert "ghp_" not in sources_file

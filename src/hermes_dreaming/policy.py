@@ -22,7 +22,7 @@ from typing import Any, Iterable
 
 from .artifact import DreamProposal, VALID_TARGET_KINDS
 
-POLICY_VERSION = "2026-05-27"
+POLICY_VERSION = "2026-06-02"
 
 TARGET_POLICY: dict[str, dict[str, int]] = {
     "memory": {"max_chars": 240, "max_lines": 4, "total_chars": 4000},
@@ -132,19 +132,27 @@ def _canonical_json_text(text: str) -> tuple[str, dict[str, Any]] | tuple[None, 
     return json.dumps(parsed, sort_keys=True, ensure_ascii=False), parsed
 
 
-def _target_path_is_safe(target_kind: str, target_path: str) -> bool:
+_SKILL_TARGET_RE = re.compile(r"^skills/[a-z0-9][a-z0-9_-]{0,63}\.md$")
+
+
+def target_path_is_allowed(target_kind: str, target_path: str) -> bool:
     path = PurePosixPath(target_path.replace("\\", "/"))
+    path_text = path.as_posix()
     if path.is_absolute() or any(part in {"..", ""} for part in path.parts):
         return False
     if target_kind == "memory":
-        return path.as_posix() == "memory.md"
+        return path_text == "memory.md"
     if target_kind == "user":
-        return path.as_posix() == "user.md"
+        return path_text == "user.md"
     if target_kind == "fact":
-        return path.as_posix().endswith(".jsonl")
+        return path_text == "facts.jsonl"
     if target_kind == "skill":
-        return path.as_posix().endswith(".md")
+        return bool(_SKILL_TARGET_RE.fullmatch(path_text))
     return False
+
+
+def _target_path_is_safe(target_kind: str, target_path: str) -> bool:
+    return target_path_is_allowed(target_kind, target_path)
 
 
 def _entry_too_sloppy(target_kind: str, text: str) -> str:

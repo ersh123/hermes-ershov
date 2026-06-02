@@ -35,7 +35,17 @@ def safe_relative_path(path_text: str) -> Path:
 
 
 def resolve_live_target_path(live_root: Path, proposal: DreamProposal) -> Path:
-    return Path(live_root) / safe_relative_path(proposal.target_path)
+    live_root = Path(live_root)
+    relative = safe_relative_path(proposal.target_path)
+    if proposal.target_kind in {"memory", "user"}:
+        lower = live_root / relative
+        upper = live_root / relative.with_name(f"{relative.stem.upper()}{relative.suffix}")
+        if upper.exists():
+            return upper
+        if lower.exists():
+            return lower
+        return lower
+    return live_root / relative
 
 
 def preview_proposal_content(current_text: str, proposal: DreamProposal) -> str:

@@ -63,6 +63,64 @@ def test_apply_appends_memory_and_writes_backup(tmp_path: Path) -> None:
     assert loaded.proposals[0].applied is True
 
 
+def test_apply_prefers_existing_uppercase_memory_file(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    memory = live_root / "MEMORY.md"
+    memory.write_text("# MEMORY\n\n- Existing uppercase note\n", encoding="utf-8")
+
+    proposal = DreamProposal(
+        id="proposal-memory",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="append memory note",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- Keep uppercase installs on the existing file.",
+        approved=True,
+    )
+    artifact_dir, _artifact_result = _artifact(tmp_path, proposal)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(artifact_dir, live_root=live_root, backup_root=backup_root, approve_all=True)
+
+    assert result.status == "applied"
+    assert memory.read_text(encoding="utf-8").strip().endswith("- Keep uppercase installs on the existing file.")
+    assert not (live_root / "memory.md").exists()
+    assert (backup_root / "MEMORY.md").exists()
+
+
+def test_apply_prefers_uppercase_memory_when_both_cases_exist(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    upper_memory = live_root / "MEMORY.md"
+    lower_memory = live_root / "memory.md"
+    upper_memory.write_text("# MEMORY\n\n- Canonical uppercase note\n", encoding="utf-8")
+    lower_memory.write_text("# memory\n\n- stale lowercase duplicate\n", encoding="utf-8")
+
+    proposal = DreamProposal(
+        id="proposal-memory",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="append memory note",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- Keep mixed-case installs on the canonical uppercase file.",
+        approved=True,
+    )
+    artifact_dir, _artifact_result = _artifact(tmp_path, proposal)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(artifact_dir, live_root=live_root, backup_root=backup_root, approve_all=True)
+
+    assert result.status == "applied"
+    assert upper_memory.read_text(encoding="utf-8").strip().endswith(
+        "- Keep mixed-case installs on the canonical uppercase file."
+    )
+    assert lower_memory.read_text(encoding="utf-8") == "# memory\n\n- stale lowercase duplicate\n"
+    assert (backup_root / "MEMORY.md").exists()
+
+
 def test_apply_rolls_back_and_records_audit_when_later_write_fails(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -86,7 +144,7 @@ def test_apply_rolls_back_and_records_audit_when_later_write_fails(
     second = DreamProposal(
         id="proposal-notes",
         target_kind="skill",
-        target_path="notes.md",
+        target_path="skills/notes.md",
         mode="append_text",
         summary="create notes file",
         provenance=["sessions/1.md:2"],

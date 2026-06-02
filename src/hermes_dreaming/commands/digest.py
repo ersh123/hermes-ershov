@@ -6,11 +6,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import re
 import shlex
-from typing import Iterable
+from typing import Any, Iterable
 
 from .. import state as state_module
 from ..analyze import list_artifacts
 from ..artifact import DreamArtifact, DreamProposal, load_artifact, proposal_state
+from .inbox import build_inbox, render_inbox
+from ..triage import PRIORITY_ORDER, RISK_ORDER, proposal_detail_lines, sorted_proposals
 
 
 TARGET_KIND_WEIGHT = {
@@ -70,6 +72,12 @@ class DigestProposalView:
     target_path: str
     summary: str
     confidence: float
+    risk: str
+    priority: str
+    reason: str
+    source_quote: str
+    policy_flags: list[str]
+    provenance: list[str]
     score: int
     approve_command: str
     reject_command: str
@@ -339,6 +347,12 @@ def _build_proposal_views(artifact: DreamArtifact, artifact_dir: Path, previous_
                 target_path=proposal.target_path,
                 summary=proposal.summary,
                 confidence=proposal.confidence,
+                risk=proposal.risk,
+                priority=proposal.priority,
+                reason=proposal.reason,
+                source_quote=proposal.source_quote or proposal.snippet,
+                policy_flags=list(proposal.policy_flags),
+                provenance=list(proposal.provenance),
                 score=score,
                 approve_command=f"dreaming approve {artifact_text} {proposal.id}",
                 reject_command=f'dreaming reject {artifact_text} {proposal.id} --reason "..."',
@@ -412,10 +426,17 @@ def _proposal_descriptor(proposal: DreamProposal, *, score: int, artifact_dir: P
         f"- `{proposal.id}` [{proposal_state(proposal)}] `{proposal.target_kind}` -> `{proposal.target_path}`",
         f"  - summary: {proposal.summary}",
         f"  - confidence: `{proposal.confidence:.2f}`",
+        f"  - risk/priority: `{proposal.risk}` / `{proposal.priority}`",
         f"  - score: `{score}`",
         f"  - approve: `{approve_cmd}`",
         f"  - reject: `{reject_cmd}`",
     ]
+    if proposal.reason:
+        lines.append(f"  - reason: {proposal.reason}")
+    if proposal.source_quote:
+        lines.append(f"  - source quote: {proposal.source_quote}")
+    if proposal.policy_flags:
+        lines.append(f"  - policy flags: {', '.join(proposal.policy_flags)}")
     if proposal.rejection_reason:
         lines.append(f"  - rejection reason: {proposal.rejection_reason}")
     if proposal.provenance:
@@ -711,6 +732,115 @@ def render_digest(result: DigestResult) -> str:
             lines.append(f"  - {item}")
         lines.append("")
 
+    lines.append("Delivery: local only, no Telegram send by default.")
+    lines.append("Wire delivery later by wrapping this command in a separate transport layer that consumes stdout.")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+@dataclass(slots=True)
+class InboxDigestResult:
+    artifact_root: str
+    total_artifacts: int
+    active_artifacts: int
+    high_risk_count: int
+    high_priority_count: int
+    newest_artifact_id: str | None
+    top_reason: str
+    needs_tony_rows: list[Any]
+    safe_to_ignore_rows: list[Any]
+
+
+def _inbox_attention_key(row: object) -> tuple[int, int, str]:
+    priority = str(getattr(row, "highest_priority", "normal") or "normal").lower()
+    risk = str(getattr(row, "highest_risk", "low") or "low").lower()
+    created_at = str(getattr(row, "created_at", ""))
+    return (
+        -PRIORITY_ORDER.get(priority, 0),
+        -RISK_ORDER.get(risk, 0),
+        created_at,
+    )
+
+
+def build_inbox_digest(
+    artifact_root: Path,
+    *,
+    state_filter: set[str] | None = None,
+    priority_filter: set[str] | None = None,
+    state_root: Path | None = None,
+    limit: int | None = None,
+) -> InboxDigestResult:
+    inbox = build_inbox(
+        artifact_root,
+        state_filter=state_filter,
+        priority_filter=priority_filter,
+        limit=limit,
+    )
+    rows = list(inbox.rows)
+    active_rows = [row for row in rows if row.inbox_state in {"staged", "mixed", "approved", "invalid", "pending"}]
+    high_risk_count = sum(1 for row in rows if row.highest_risk == "high")
+    high_priority_count = sum(1 for row in rows if row.highest_priority == "high")
+    newest_artifact_id = max(rows, key=lambda row: row.created_at).artifact_id if rows else None
+    top_reason = next((row.top_reason for row in rows if row.top_reason != "none"), "none")
+    needs_tony_rows = sorted(
+        [
+            row
+            for row in rows
+            if row.highest_priority == "high" or row.highest_risk == "high" or row.inbox_state in {"mixed", "invalid", "staged"}
+        ],
+        key=_inbox_attention_key,
+    )
+    if not needs_tony_rows and rows:
+        needs_tony_rows = rows[: min(3, len(rows))]
+    safe_to_ignore_rows = sorted([row for row in rows if row not in needs_tony_rows], key=_inbox_attention_key)
+    return InboxDigestResult(
+        artifact_root=str(artifact_root),
+        total_artifacts=inbox.total_artifacts,
+        active_artifacts=len(active_rows),
+        high_risk_count=high_risk_count,
+        high_priority_count=high_priority_count,
+        newest_artifact_id=newest_artifact_id,
+        top_reason=top_reason,
+        needs_tony_rows=needs_tony_rows,
+        safe_to_ignore_rows=safe_to_ignore_rows,
+    )
+
+
+def _render_inbox_digest_rows(rows: list[Any]) -> list[str]:
+    lines: list[str] = []
+    for row in rows:
+        flags = ", ".join(getattr(row, "policy_flags", []) or []) or "none"
+        lines.append(
+            f"- `{getattr(row, 'artifact_id', 'unknown')}` [{getattr(row, 'inbox_state', 'unknown')}] "
+            f"risk `{getattr(row, 'highest_risk', 'low')}` / priority `{getattr(row, 'highest_priority', 'normal')}`"
+        )
+        lines.append(f"  - age: {getattr(row, 'age', 'unknown age')}")
+        lines.append(f"  - reason: {getattr(row, 'top_reason', 'none')}")
+        lines.append(f"  - policy flags: {flags}")
+        lines.append(f"  - next: `{getattr(row, 'next_command', 'dreaming summarize <artifact>')}`")
+    if not lines:
+        lines.append("- none")
+    return lines
+
+
+def render_inbox_digest(result: InboxDigestResult) -> str:
+    lines = [
+        "# Hermes Dreaming inbox digest",
+        "",
+        f"- Artifact root: `{result.artifact_root}`",
+        f"- Total artifacts: `{result.total_artifacts}`",
+        f"- Active artifacts: `{result.active_artifacts}`",
+        f"- High risk count: `{result.high_risk_count}`",
+        f"- High priority count: `{result.high_priority_count}`",
+        f"- Newest artifact: `{result.newest_artifact_id}`" if result.newest_artifact_id else "- Newest artifact: none",
+        f"- Top reason: {result.top_reason}",
+        "",
+        "## Needs Tony",
+        "",
+    ]
+    lines.extend(_render_inbox_digest_rows(result.needs_tony_rows))
+    lines.extend(["", "## Safe to ignore", ""])
+    lines.extend(_render_inbox_digest_rows(result.safe_to_ignore_rows))
+    lines.append("")
     lines.append("Delivery: local only, no Telegram send by default.")
     lines.append("Wire delivery later by wrapping this command in a separate transport layer that consumes stdout.")
     return "\n".join(lines).rstrip() + "\n"

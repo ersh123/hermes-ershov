@@ -15,6 +15,8 @@ PROPOSALS_FILE = 'proposals.jsonl'
 AUDIT_FILE = 'audit.jsonl'
 VALID_TARGET_KINDS = {'memory', 'user', 'skill', 'fact'}
 VALID_MODES = {'append_text', 'jsonl_append'}
+VALID_RISK_LEVELS = {'low', 'medium', 'high'}
+VALID_PRIORITY_LEVELS = {'low', 'normal', 'high'}
 
 
 class DreamArtifactStateError(RuntimeError):
@@ -62,6 +64,11 @@ class DreamProposal:
     policy_version: str | None = None
     confidence: float = 0.0
     snippet: str = ""
+    risk: str = "low"
+    priority: str = "normal"
+    reason: str = ""
+    source_quote: str = ""
+    policy_flags: list[str] = field(default_factory=list)
     rejected: bool = False
     rejection_reason: str | None = None
     applied: bool = False
@@ -82,6 +89,11 @@ class DreamProposal:
             policy_version=data.get('policy_version'),
             confidence=float(data.get('confidence', 0.0) or 0.0),
             snippet=str(data.get('snippet', '') or ''),
+            risk=str(data.get('risk', 'low') or 'low'),
+            priority=str(data.get('priority', 'normal') or 'normal'),
+            reason=str(data.get('reason', '') or ''),
+            source_quote=str(data.get('source_quote', data.get('snippet', '')) or ''),
+            policy_flags=[str(item) for item in data.get('policy_flags', []) or []],
             rejected=bool(data.get('rejected', False)),
             rejection_reason=data.get('rejection_reason'),
             applied=bool(data.get('applied', False)),

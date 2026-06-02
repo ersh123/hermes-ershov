@@ -68,6 +68,11 @@ def test_openai_compatible_provider_accepts_fenced_json_and_forces_unapproved(mo
       "confidence": 0.92,
       "snippet": "User: Prefer two strong options over six weak ones.",
       "proposed_text": "- Restaurant design drafts should offer two strong options, not six weak ones.",
+      "risk": "medium",
+      "priority": "high",
+      "reason": "user preference is explicit and actionable",
+      "source_quote": "User: Prefer two strong options over six weak ones.",
+      "policy_flags": ["profile_preference", "safe_append"],
       "approved": true
     }
   ],
@@ -143,6 +148,11 @@ def test_openai_compatible_provider_rejects_fabricated_provenance(monkeypatch, t
       "proposed_text": "- Prefer two strong options over six weak ones.",
       "confidence": 0.92,
       "snippet": "User: Prefer two strong options over six weak ones.",
+      "risk": "medium",
+      "priority": "high",
+      "reason": "user preference is explicit and actionable",
+      "source_quote": "User: Prefer two strong options over six weak ones.",
+      "policy_flags": ["profile_preference", "safe_append"],
       "approved": true
     }
   ],
@@ -170,6 +180,11 @@ def test_openai_compatible_provider_rejects_structured_proposed_text(monkeypatch
       "proposed_text": {"blob": [1, 2, 3]},
       "confidence": 0.92,
       "snippet": "User: Prefer two strong options over six weak ones.",
+      "risk": "medium",
+      "priority": "high",
+      "reason": "user preference is explicit and actionable",
+      "source_quote": "User: Prefer two strong options over six weak ones.",
+      "policy_flags": ["profile_preference", "safe_append"],
       "approved": true
     }
   ],
@@ -192,7 +207,7 @@ def test_ollama_provider_uses_native_json_chat(monkeypatch, tmp_path: Path) -> N
             return None
 
         def read(self) -> bytes:
-            return b'{"message":{"content":"{\\"report\\":\\"Report body\\",\\"proposals\\":[{\\"id\\":\\"p1\\",\\"target_kind\\":\\"user\\",\\"target_path\\":\\"user.md\\",\\"mode\\":\\"append_text\\",\\"summary\\":\\"Keep concise.\\",\\"provenance\\":\\"sources/session.md:1\\",\\"proposed_text\\":\\"- Keep concise.\\",\\"confidence\\":0.92,\\"snippet\\":\\"User: Prefer two strong options over six weak ones.\\",\\"approved\\":true}],\\"notes\\":[]}"}}'
+            return b'{"message":{"content":"{\\"report\\":\\"Report body\\",\\"proposals\\":[{\\"id\\":\\"p1\\",\\"target_kind\\":\\"user\\",\\"target_path\\":\\"user.md\\",\\"mode\\":\\"append_text\\",\\"summary\\":\\"Keep concise.\\",\\"provenance\\":\\"sources/session.md:1\\",\\"proposed_text\\":\\"- Keep concise.\\",\\"confidence\\":0.92,\\"snippet\\":\\"User: Prefer two strong options over six weak ones.\\",\\"risk\\":\\"medium\\",\\"priority\\":\\"high\\",\\"reason\\":\\"user preference is explicit and actionable\\",\\"source_quote\\":\\"User: Prefer two strong options over six weak ones.\\",\\"policy_flags\\":[\\"profile_preference\\",\\"safe_append\\"],\\"approved\\":true}],\\"notes\\":[]}"}}'
 
     def _fake_urlopen(request, timeout):
         captured["url"] = request.full_url

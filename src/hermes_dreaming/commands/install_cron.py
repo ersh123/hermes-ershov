@@ -13,6 +13,7 @@ JOB_NAME = "hermes-dreaming"
 DEFAULT_SCHEDULE = "0 3 * * *"
 SCRIPT_NAME = "hermes_dreaming_status_digest.py"
 _PROMPT = "Hermes Dreaming daily digest"
+_INBOX_PROMPT = "Hermes Dreaming inbox digest"
 
 
 _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
@@ -183,6 +184,32 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
 ).lstrip()
 
 
+_INBOX_DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
+    '''
+    #!/usr/bin/env python3
+    from __future__ import annotations
+
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    REPO_ROOT = Path(__REPO_ROOT__)
+
+    def main() -> int:
+        cmd = [sys.executable, "-m", "hermes_dreaming", "digest", "--inbox", "--artifact-root", str(REPO_ROOT / ".dreaming" / "artifacts")]
+        result = subprocess.run(cmd, cwd=str(REPO_ROOT), text=True, capture_output=True, check=False)
+        if result.stdout:
+            print(result.stdout.rstrip())
+        if result.returncode != 0 and result.stderr:
+            print(result.stderr.rstrip())
+        return result.returncode
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+    '''
+).lstrip()
+
+
 def _repo_root() -> Path:
     """Best-effort repo root lookup for the installed plugin checkout."""
 
@@ -197,11 +224,12 @@ def _script_path() -> Path:
     return Path(get_hermes_home()) / "scripts" / SCRIPT_NAME
 
 
-def _ensure_digest_script() -> Path:
+def _ensure_digest_script(*, mode: str = "status-digest") -> Path:
     script_path = _script_path()
     script_path.parent.mkdir(parents=True, exist_ok=True)
     current = script_path.read_text(encoding="utf-8") if script_path.exists() else None
-    script_text = _DIGEST_SCRIPT_TEMPLATE.replace("__REPO_ROOT__", repr(str(_repo_root())))
+    template = _INBOX_DIGEST_SCRIPT_TEMPLATE if mode == "inbox-digest" else _DIGEST_SCRIPT_TEMPLATE
+    script_text = template.replace("__REPO_ROOT__", repr(str(_repo_root())))
     if current != script_text:
         script_path.write_text(script_text, encoding="utf-8")
         try:
@@ -221,9 +249,9 @@ def _find_existing(list_jobs_fn) -> dict | None:
     return None
 
 
-def _desired_job_fields(schedule: str) -> dict:
+def _desired_job_fields(schedule: str, *, mode: str = "status-digest") -> dict:
     return {
-        "prompt": _PROMPT,
+        "prompt": _INBOX_PROMPT if mode == "inbox-digest" else _PROMPT,
         "schedule": schedule,
         "name": JOB_NAME,
         "deliver": "local",
@@ -252,7 +280,7 @@ def _render_job_block(header: str, job: dict, schedule_display: str) -> str:
     )
 
 
-def handle(schedule: str | None = None) -> str:
+def handle(schedule: str | None = None, *, mode: str = "status-digest") -> str:
     """Register or refresh the nightly Hermes Dreaming digest cron job."""
 
     try:
@@ -265,8 +293,10 @@ def handle(schedule: str | None = None) -> str:
         )
 
     schedule = (schedule or DEFAULT_SCHEDULE).strip()
-    _ensure_digest_script()
-    desired = _desired_job_fields(schedule)
+    if mode not in {"status-digest", "inbox-digest"}:
+        return "## hermes dreaming install-cron\n\n**Error:** unsupported mode."
+    _ensure_digest_script(mode=mode)
+    desired = _desired_job_fields(schedule, mode=mode)
 
     existing = _find_existing(list_jobs)
     if existing:

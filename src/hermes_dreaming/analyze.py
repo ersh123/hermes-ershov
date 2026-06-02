@@ -4,14 +4,17 @@ from collections import Counter
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 import json
+import re
 from pathlib import Path
 from uuid import uuid4
 
 from .artifact import DreamArtifact, write_artifact
 from .collect import collect_sources
+from .commands.harvest import build_recent_source_snapshot
 from .policy import stamp_proposal
 from .providers import DreamContext, build_provider
-from .validation import validate_artifact
+from .triage import ProposalView, aggregate_policy_flags, proposal_view, sorted_proposals
+from .validation import validate_artifact, validate_source_snapshots
 
 
 @dataclass(slots=True)
@@ -26,6 +29,7 @@ class DreamRunConfig:
     live_root: Path
     artifact_root: Path
     source_paths: list[Path]
+    recent_limit: int | None = None
     provider_name: str = "offline-marker"
     model: str | None = None
     api_key: str | None = None
@@ -49,6 +53,12 @@ class DreamReportCard:
     theme_labels: list[str]
     applied_proposal_ids: list[str]
     backup_count: int
+    policy_flags: list[str]
+    proposal_views: list[ProposalView]
+
+
+def _redact_shareable_text(text: str) -> str:
+    return re.sub(r"(?i)\b[\w-]*secret[\w-]*\b", "[REDACTED]", text)
 
 
 def _now_iso() -> str:
@@ -82,6 +92,13 @@ def build_report(artifact: DreamArtifact) -> str:
             lines.append(f"- `{proposal.id}` -> `{proposal.target_path}` ({proposal.mode})")
             lines.append(f"  - {proposal.summary}")
             lines.append(f"  - Confidence: `{proposal.confidence:.2f}`")
+            lines.append(f"  - Risk/Priority: `{proposal.risk}` / `{proposal.priority}`")
+            if proposal.reason:
+                lines.append(f"  - Reason: {proposal.reason}")
+            if proposal.source_quote:
+                lines.append(f"  - Source quote: {proposal.source_quote}")
+            if proposal.policy_flags:
+                lines.append(f"  - Policy flags: {', '.join(proposal.policy_flags)}")
             lines.append(f"  - Snippet: {proposal.snippet}")
             lines.append(f"  - Provenance: {', '.join(proposal.provenance)}")
     else:
@@ -107,7 +124,7 @@ def _build_failure_report(
         f"- Sources scanned: `{source_count}`",
         "- Proposals staged: `0`",
         "",
-        "## Provider failure",
+        "## Provider/preflight failure",
         "",
         f"- Error: {error_message}",
     ]
@@ -133,6 +150,25 @@ def build_report_card(artifact: DreamArtifact) -> DreamReportCard:
     validation_state = "invalid" if validation_errors or artifact.status == "invalid" else "valid"
     apply_state = "applied" if artifact.applied_at or artifact.status == "applied" else "not applied"
     discard_state = "discarded" if artifact.discarded_at or artifact.status == "discarded" else "not discarded"
+    proposal_views = []
+    for proposal in sorted_proposals(artifact.proposals):
+        view = proposal_view(proposal)
+        proposal_views.append(
+            ProposalView(
+                id=view.id,
+                state=view.state,
+                target_kind=view.target_kind,
+                target_path=view.target_path,
+                summary=_redact_shareable_text(view.summary),
+                confidence=view.confidence,
+                risk=view.risk,
+                priority=view.priority,
+                reason=_redact_shareable_text(view.reason),
+                source_quote=_redact_shareable_text(view.source_quote),
+                policy_flags=list(view.policy_flags),
+                provenance=list(view.provenance),
+            )
+        )
 
     return DreamReportCard(
         artifact_id=artifact.artifact_id,
@@ -150,6 +186,8 @@ def build_report_card(artifact: DreamArtifact) -> DreamReportCard:
         theme_labels=theme_labels,
         applied_proposal_ids=list(artifact.applied_proposal_ids),
         backup_count=len(artifact.backup_paths),
+        policy_flags=aggregate_policy_flags(artifact.proposals),
+        proposal_views=proposal_views,
     )
 
 
@@ -189,6 +227,33 @@ def render_report_card_markdown(card: DreamReportCard) -> str:
 
     lines.extend([
         "",
+        "## Proposal triage",
+        "",
+        f"- Policy flags: {', '.join(card.policy_flags) if card.policy_flags else 'none'}",
+    ])
+    if card.proposal_views:
+        for proposal in card.proposal_views:
+            lines.append(
+                f"- `{proposal.id}` [{proposal.state}] `{proposal.target_kind}` -> `{proposal.target_path}`"
+            )
+            lines.append(f"  - summary: {proposal.summary}")
+            lines.append(f"  - risk/priority: `{proposal.risk}` / `{proposal.priority}`")
+            lines.append(f"  - confidence: `{proposal.confidence:.2f}`")
+            if proposal.reason:
+                lines.append(f"  - reason: {proposal.reason}")
+            if proposal.source_quote:
+                lines.append(f"  - source quote: {proposal.source_quote}")
+            if proposal.policy_flags:
+                lines.append(f"  - policy flags: {', '.join(proposal.policy_flags)}")
+            if proposal.provenance:
+                lines.append(f"  - provenance: {', '.join(proposal.provenance)}")
+            else:
+                lines.append("  - provenance: none")
+    else:
+        lines.append("- none")
+
+    lines.extend([
+        "",
         "## Apply details",
         "",
         f"- Applied proposal ids: {', '.join(f'`{proposal_id}`' for proposal_id in card.applied_proposal_ids) if card.applied_proposal_ids else 'none'}",
@@ -217,10 +282,40 @@ def create_dream_artifact(config: DreamRunConfig) -> DreamCreationResult:
     source_paths = [Path(path) for path in config.source_paths]
 
     source_snapshots = collect_sources(source_paths)
+    if config.recent_limit is not None:
+        recent_snapshot, _sessions, _redactions = build_recent_source_snapshot(recent=config.recent_limit)
+        source_snapshots.append(recent_snapshot)
     artifact_id = generate_artifact_id()
     artifact_dir = artifact_root / artifact_id
 
     provider = build_provider(config.provider_name, model=config.model, api_key=config.api_key, base_url=config.base_url)
+    source_validation_errors = validate_source_snapshots(source_snapshots)
+    if source_validation_errors:
+        report_body = _build_failure_report(
+            artifact_id,
+            provider_name=provider.name,
+            error_message="source preflight blocked provider call: " + "; ".join(source_validation_errors),
+            source_count=len(source_snapshots),
+        )
+        artifact = DreamArtifact(
+            artifact_id=artifact_id,
+            created_at=_now_iso(),
+            provider=provider.name,
+            status="invalid",
+            workspace_root=str(live_root),
+            source_roots=[str(path) for path in source_paths],
+            report=report_body.rstrip() + "\n",
+            sources=[],
+            proposals=[],
+            validation_errors=source_validation_errors,
+        )
+        write_artifact(artifact, artifact_dir)
+        return DreamCreationResult(
+            artifact=artifact,
+            artifact_dir=artifact_dir,
+            validation_errors=source_validation_errors,
+        )
+
     context = DreamContext(
         workspace_root=live_root,
         live_root=live_root,

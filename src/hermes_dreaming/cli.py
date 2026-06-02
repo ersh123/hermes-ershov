@@ -9,7 +9,9 @@ from .artifact import load_artifact
 from .apply import DreamApplyError, apply_artifact, discard_artifact
 from .commands.compact import handle as compact_artifacts
 from .commands.install_cron import handle as install_cron_command
-from .commands.digest import build_digest, render_digest
+from .commands.harvest import harvest_recent
+from .commands.inbox import build_inbox, parse_filter, render_inbox, render_inbox_json
+from .commands.digest import build_digest, build_inbox_digest, render_digest, render_inbox_digest
 from .commands.report_card import handle as report_card_command
 from .commands.review import (
     ReviewError,
@@ -48,7 +50,9 @@ def _add_creation_arguments(parser: argparse.ArgumentParser, *, required_source:
         default=Path.cwd() / ".dreaming" / "artifacts",
         help="Where artifacts are stored",
     )
-    parser.add_argument("--source", action="append", required=required_source, type=Path, help="Source file or directory to scan")
+    parser.add_argument("--source", action="append", required=False, type=Path, help="Source file or directory to scan")
+    parser.add_argument("--recent", type=int, default=None, help="Harvest N recent local Hermes sessions into a source bundle before staging")
+    parser.add_argument("--harvest-out", type=Path, default=None, help="Optional output path for the --recent source bundle")
     parser.add_argument("--provider", default="offline-marker", help="Analysis provider to use")
     parser.add_argument("--model", default=None, help="Optional provider model name")
     parser.add_argument("--api-key", default=None, help="Optional provider API key")
@@ -61,6 +65,20 @@ def build_parser() -> argparse.ArgumentParser:
 
     create = sub.add_parser("create", help="Create a staged dream artifact")
     _add_creation_arguments(create)
+
+    harvest = sub.add_parser("harvest", help="Harvest recent local Hermes sessions into a bounded source bundle")
+    harvest.add_argument("--recent", type=int, default=10, help="Number of recent sessions to harvest")
+    harvest.add_argument("--out", type=Path, default=None, help="Output path for the harvested source bundle")
+    harvest.add_argument("--db-path", type=Path, default=None, help="Optional Hermes session DB path for tests or alternate homes")
+    harvest.add_argument("--state-path", type=Path, default=None, help="Optional Dreaming state path for pointer-log fallback")
+    harvest.add_argument("--max-chars", type=int, default=8000, help="Maximum characters in the harvested bundle")
+
+    inbox = sub.add_parser("inbox", help="Show the staged artifact review queue")
+    inbox.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".dreaming" / "artifacts", help="Where artifacts are stored")
+    inbox.add_argument("--state", default=None, help="Comma-separated inbox states to include")
+    inbox.add_argument("--priority", default=None, help="Comma-separated priority values to include")
+    inbox.add_argument("--limit", type=int, default=None, help="Maximum inbox rows to show")
+    inbox.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
 
     review = sub.add_parser("review", help="Create a staged artifact or open an existing one")
     review.add_argument(
@@ -128,12 +146,17 @@ def build_parser() -> argparse.ArgumentParser:
 
     install_cron = sub.add_parser("install-cron", help="Register the nightly review-only cron job")
     install_cron.add_argument("--schedule", default=None, help="Cron schedule, defaults to nightly at 03:00 UTC")
+    install_cron.add_argument("--mode", choices=["status-digest", "inbox-digest"], default="status-digest", help="Cron script mode")
 
-    digest = sub.add_parser("digest", help="Render a local operator digest for an artifact")
-    digest.add_argument("artifact", type=Path, help="Artifact directory")
+    digest = sub.add_parser("digest", help="Render a local operator digest for an artifact or inbox")
+    digest.add_argument("artifact", nargs="?", type=Path, help="Artifact directory")
     digest.add_argument("--artifact-root", type=Path, default=None, help="Root containing related artifact runs")
     digest.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl and DREAMS.md")
     digest.add_argument("--weekly", action="store_true", help="Include the weekly rollup section")
+    digest.add_argument("--inbox", action="store_true", help="Render a queue-level digest instead of a single-artifact digest")
+    digest.add_argument("--state", default=None, help="Comma-separated inbox states when --inbox is used")
+    digest.add_argument("--priority", default=None, help="Comma-separated priorities when --inbox is used")
+    digest.add_argument("--limit", type=int, default=20, help="Maximum inbox rows when --inbox is used")
 
     status = sub.add_parser("status", help="List known artifacts")
     status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".dreaming" / "artifacts", help="Where artifacts are stored")
@@ -188,13 +211,62 @@ def _record_cli_run(
     record_run(record)
 
 
-def _run_creation_like(command: str, args: argparse.Namespace, *, dry_run: bool) -> int:
+def _resolve_creation_sources(args: argparse.Namespace, parser: argparse.ArgumentParser, *, command: str) -> list[Path]:
+    sources = list(getattr(args, "source", None) or [])
+    recent = getattr(args, "recent", None)
+    if recent is not None:
+        if recent <= 0:
+            parser.error(f"{command} --recent must be greater than 0")
+        harvest_out = getattr(args, "harvest_out", None)
+        if harvest_out is None:
+            harvest_out = Path(args.artifact_root) / "_sources" / "recent-sessions.md"
+        result = harvest_recent(recent=recent, output_path=harvest_out)
+        sources.append(result.output_path)
+    if not sources:
+        parser.error(f"{command} requires --source or --recent")
+    return sources
+
+
+def _render_inbox_digest(result) -> str:
+    high_priority = [row for row in result.rows if row.highest_priority == "high"]
+    high_risk = [row for row in result.rows if row.highest_risk == "high"]
+    lines = [
+        "# Hermes Dreaming inbox digest",
+        "",
+        f"- Artifact root: `{result.artifact_root}`",
+        f"- Active rows shown: `{len(result.rows)}`",
+        f"- High-priority rows: `{len(high_priority)}`",
+        f"- High-risk rows: `{len(high_risk)}`",
+        "",
+        "## Needs Tony",
+        "",
+    ]
+    needs_tony = [row for row in result.rows if row.highest_priority == "high" or row.highest_risk == "high" or row.inbox_state in {"staged", "mixed", "approved"}]
+    if needs_tony:
+        for row in needs_tony[:10]:
+            lines.append(f"- `{row.artifact_id}` [{row.inbox_state}] {row.highest_risk}/{row.highest_priority}: {row.top_reason}")
+            lines.append(f"  - next: `{row.next_command}`")
+    else:
+        lines.append("- Nothing needs action.")
+    safe = [row for row in result.rows if row not in needs_tony]
+    lines.extend(["", "## Safe to ignore", ""])
+    if safe:
+        for row in safe[:10]:
+            lines.append(f"- `{row.artifact_id}` [{row.inbox_state}] {row.top_reason}")
+    else:
+        lines.append("- none")
+    lines.extend(["", "Transport: stdout only. Delivery belongs to the caller/cron wrapper."])
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def _run_creation_like(command: str, args: argparse.Namespace, *, dry_run: bool, parser: argparse.ArgumentParser | None = None) -> int:
+    source_paths = _resolve_creation_sources(args, parser or argparse.ArgumentParser(prog="dreaming"), command=command)
     result = (
         review_artifact(
             DreamRunConfig(
                 live_root=args.live_root,
                 artifact_root=args.artifact_root,
-                source_paths=list(args.source),
+                source_paths=source_paths,
                 provider_name=args.provider,
                 model=args.model,
                 api_key=args.api_key,
@@ -206,7 +278,7 @@ def _run_creation_like(command: str, args: argparse.Namespace, *, dry_run: bool)
             DreamRunConfig(
                 live_root=args.live_root,
                 artifact_root=args.artifact_root,
-                source_paths=list(args.source),
+                source_paths=source_paths,
                 provider_name=args.provider,
                 model=args.model,
                 api_key=args.api_key,
@@ -255,7 +327,30 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "create":
-        return _run_creation_like("create", args, dry_run=False)
+        return _run_creation_like("create", args, dry_run=False, parser=parser)
+
+    if args.command == "harvest":
+        result = harvest_recent(
+            recent=args.recent,
+            output_path=args.out,
+            db_path=args.db_path,
+            state_path=args.state_path,
+            max_chars=args.max_chars,
+        )
+        print(f"harvest: {result.output_path}")
+        print(f"sessions: {len(result.sessions)}")
+        print(f"redactions: {result.redaction_count}")
+        return 0
+
+    if args.command == "inbox":
+        result = build_inbox(
+            args.artifact_root,
+            state_filter=parse_filter(args.state),
+            priority_filter=parse_filter(args.priority),
+            limit=args.limit,
+        )
+        print((render_inbox_json(result) if args.json else render_inbox(result)).rstrip())
+        return 0
 
     if args.command == "review":
         if args.open_artifact is not None:
@@ -272,9 +367,9 @@ def main(argv: list[str] | None = None) -> int:
                 summary=f"opened artifact {artifact.artifact_id}",
             )
             return 0
-        if not getattr(args, "source", None):
-            parser.error("review requires --source unless --open is set")
-        return _run_creation_like("review", args, dry_run=True)
+        if not getattr(args, "source", None) and getattr(args, "recent", None) is None:
+            parser.error("review requires --source or --recent unless --open is set")
+        return _run_creation_like("review", args, dry_run=True, parser=parser)
 
     if args.command == "summarize":
         artifact = load_artifact(args.artifact)
@@ -463,7 +558,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "install-cron":
-        message = install_cron_command(schedule=args.schedule)
+        message = install_cron_command(schedule=args.schedule, mode=args.mode)
         print(message.rstrip())
         _record_cli_run(
             "install-cron",
@@ -473,6 +568,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0 if "error" not in message.lower() else 1
 
     if args.command == "digest":
+        if args.inbox:
+            artifact_root = args.artifact_root or (Path.cwd() / ".dreaming" / "artifacts")
+            inbox_digest = build_inbox_digest(
+                artifact_root,
+                state_filter=parse_filter(args.state),
+                priority_filter=parse_filter(args.priority),
+                limit=args.limit,
+            )
+            print(render_inbox_digest(inbox_digest).rstrip())
+            _record_cli_run(
+                "digest",
+                success=True,
+                artifact_root=artifact_root,
+                summary=f"rendered inbox digest with {inbox_digest.active_artifacts} active artifact(s)",
+            )
+            return 0
+        if args.artifact is None:
+            parser.error("digest requires an artifact unless --inbox is set")
         digest = build_digest(
             args.artifact,
             artifact_root=args.artifact_root,

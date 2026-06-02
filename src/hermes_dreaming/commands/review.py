@@ -7,6 +7,7 @@ import shlex
 
 from ..analyze import DreamCreationResult, DreamRunConfig, create_dream_artifact
 from ..artifact import DreamArtifact, DreamArtifactStateError, DreamProposal, load_artifact, proposal_state, record_proposal_transition, write_artifact
+from ..triage import proposal_detail_lines, sorted_proposals
 
 
 class ReviewError(RuntimeError):
@@ -130,12 +131,8 @@ def render_summary(artifact_dir: Path) -> str:
         "",
     ]
     if artifact.proposals:
-        for proposal in artifact.proposals:
-            state = proposal_state(proposal)
-            line = f"- `{proposal.id}` [{state}] `{proposal.target_path}` - {proposal.summary}"
-            if proposal.rejected and proposal.rejection_reason:
-                line += f" (reason: {proposal.rejection_reason})"
-            lines.append(line)
+        for proposal in sorted_proposals(artifact.proposals):
+            lines.extend(proposal_detail_lines(proposal))
     else:
         lines.append("- None")
 
@@ -151,7 +148,6 @@ def render_summary(artifact_dir: Path) -> str:
                 line += f", reason: {reason}"
             lines.append(line)
 
-    live_root_text = shlex.quote(str(Path(artifact.workspace_root)))
     lines.extend(
         [
             "",

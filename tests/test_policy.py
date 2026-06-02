@@ -42,7 +42,7 @@ def test_validate_proposals_accepts_skill_and_fact_targets() -> None:
         DreamProposal(
             id="skill-note",
             target_kind="skill",
-            target_path="notes.md",
+            target_path="skills/notes.md",
             mode="append_text",
             summary="Stage a skill note",
             provenance=["sessions/1.md:2"],
@@ -80,3 +80,60 @@ def test_evaluate_proposal_marks_stale_fact_payloads() -> None:
 
     assert decision.ok is True
     assert decision.lifecycle == "stale"
+
+
+def test_validate_proposals_rejects_kind_escape_paths() -> None:
+    def proposal(kind: str, target_path: str, *, mode: str = "append_text", proposed_text: str = "- Probe note.") -> DreamProposal:
+        return DreamProposal(
+            id=f"{kind}-{target_path.replace('/', '-')}",
+            target_kind=kind,
+            target_path=target_path,
+            mode=mode,
+            summary="Probe unsafe target path handling",
+            provenance=["sessions/1.md:9"],
+            proposed_text=proposed_text,
+            approved=False,
+        )
+
+    cases = [
+        proposal("skill", "README.md"),
+        proposal("skill", "skills/nested/review.md"),
+        proposal("skill", "skills/.hidden.md"),
+        proposal("fact", "docs/notes.jsonl", mode="jsonl_append", proposed_text='{"key":"tone"}'),
+        proposal("fact", "other-facts.jsonl", mode="jsonl_append", proposed_text='{"key":"tone"}'),
+    ]
+
+    for item in cases:
+        errors = validate_proposals([item])
+        assert errors, item.target_path
+        assert any("not allowed" in error or "unsafe target path" in error for error in errors)
+
+
+def test_evaluate_proposal_rejects_kind_escape_paths() -> None:
+    bad_skill = DreamProposal(
+        id="skill-readme",
+        target_kind="skill",
+        target_path="README.md",
+        mode="append_text",
+        summary="Probe unsafe skill target",
+        provenance=["sessions/1.md:10"],
+        proposed_text="## Unsafe note\n\n- Do not allow this.\n",
+        approved=False,
+    )
+    bad_fact = DreamProposal(
+        id="fact-docs",
+        target_kind="fact",
+        target_path="docs/notes.jsonl",
+        mode="jsonl_append",
+        summary="Probe unsafe fact target",
+        provenance=["sessions/1.md:11"],
+        proposed_text='{"key":"tone"}',
+        approved=False,
+    )
+
+    skill_decision = evaluate_proposal(bad_skill)
+    fact_decision = evaluate_proposal(bad_fact)
+    assert skill_decision.ok is False
+    assert "unsafe target path" in skill_decision.error
+    assert fact_decision.ok is False
+    assert "unsafe target path" in fact_decision.error

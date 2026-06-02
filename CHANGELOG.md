@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - 2026-06-02
+
+- Added the Dream Inbox command with JSON and text output so staged artifacts can be reviewed as a queue instead of only one at a time.
+- Added `dreaming harvest --recent` and wired `create`/`review` to the local session-reader fallback path.
+- Surfaced proposal `risk`, `priority`, `reason`, `source_quote`, and `policy_flags` across summarize, digest, report-card, and inbox views.
+- Added `digest --inbox` plus the inbox-digest cron mode for stdout-only operator reporting.
+- Tightened writeback path policy so staged proposals fail closed unless they target the approved paths for their kind.
+- Added source preflight secret checks so external-compatible providers are not called when source bundles contain secret-like content.
+- Preserved existing uppercase `MEMORY.md`/`USER.md` files during apply instead of creating duplicate lowercase files.
+- Bumped the plugin to `0.3.0` and refreshed the release docs/tests.
+
 ## 0.2.0 - 2026-05-28
 
 - Added the review decision loop: `summarize`, `approve`, `reject`, and `review --open`.

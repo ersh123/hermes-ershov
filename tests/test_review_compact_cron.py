@@ -163,6 +163,36 @@ def test_install_cron_registers_digest_job_and_writes_script(tmp_path: Path, mon
     assert "Hermes Dreaming daily digest" in script_path.read_text(encoding="utf-8")
 
 
+def test_install_cron_registers_inbox_digest_job_and_writes_inbox_script(tmp_path: Path, monkeypatch) -> None:
+    home = _patch_hermes_home(monkeypatch, tmp_path)
+    mock_cron = MagicMock()
+    mock_cron.list_jobs.return_value = []
+    mock_cron.create_job.return_value = {
+        "id": "job-456",
+        "name": JOB_NAME,
+        "schedule_display": "At 03:00 every day",
+        "next_run_at": "2099-01-02T03:00:00+00:00",
+    }
+
+    with patch.dict("sys.modules", {"cron.jobs": mock_cron}):
+        result = install_cron_handle(mode="inbox-digest")
+
+    assert "registered" in result.lower()
+    call_kwargs = mock_cron.create_job.call_args.kwargs
+    assert call_kwargs["prompt"] == "Hermes Dreaming inbox digest"
+    assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
+    assert call_kwargs["name"] == JOB_NAME
+    assert call_kwargs["deliver"] == "local"
+    assert call_kwargs["script"] == SCRIPT_NAME
+    assert call_kwargs["no_agent"] is True
+    assert call_kwargs["workdir"] == str(install_cron_module._repo_root())
+
+    script_path = home / "scripts" / SCRIPT_NAME
+    script_text = script_path.read_text(encoding="utf-8")
+    assert script_path.exists()
+    assert "--inbox" in script_text
+
+
 def test_install_cron_reuses_existing_job_when_config_matches(tmp_path: Path, monkeypatch) -> None:
     _patch_hermes_home(monkeypatch, tmp_path)
     mock_cron = MagicMock()
