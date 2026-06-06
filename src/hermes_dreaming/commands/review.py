@@ -82,9 +82,9 @@ def approve_artifact(artifact_dir: Path, proposal_ref: str) -> ReviewMutationRes
     return _mutate_review_state(artifact_dir, proposal_ref=proposal_ref, to_state="approved")
 
 
-def reject_artifact(artifact_dir: Path, proposal_ref: str, *, reason: str) -> ReviewMutationResult:
-    if not reason.strip():
-        raise ReviewError("reject requires a non-empty reason")
+def reject_artifact(artifact_dir: Path, proposal_ref: str, *, reason: str | None) -> ReviewMutationResult:
+    if reason is None or not reason.strip():
+        raise ReviewError("A non-empty reason is required to reject an artifact")
     return _mutate_review_state(artifact_dir, proposal_ref=proposal_ref, to_state="rejected", reason=reason.strip())
 
 

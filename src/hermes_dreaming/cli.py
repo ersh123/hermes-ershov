@@ -100,7 +100,7 @@ def build_parser() -> argparse.ArgumentParser:
     reject = sub.add_parser("reject", help="Record a rejected proposal in artifact metadata without applying")
     reject.add_argument("artifact", type=Path, help="Artifact directory")
     reject.add_argument("proposal", help="Proposal id to reject")
-    reject.add_argument("--reason", required=True, help="Reason for the rejection")
+    reject.add_argument("--reason", help="Reason for the rejection (enforced in commands/review.py)")
 
     diff = sub.add_parser("diff", help="Show a staged artifact")
     diff.add_argument("artifact", type=Path, help="Artifact directory")
