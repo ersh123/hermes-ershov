@@ -1,0 +1,71 @@
+# Hermes Dreaming v0.4.0 — Release Notes
+
+**Headline:** *The trust loop and the friction-killer.*
+
+v0.4.0 makes Dreaming safe to use in anger (revert, dry-run, selective apply) and removes the harvest-to-create two-step (one command, real sessions, redacted).
+
+## What's new
+
+### Trust loop
+
+- **`dreaming revert <artifact>`** restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state. Requires the artifact to be in `applied` status; anything else fails loud.
+  - Drift detection: if the live file changed after apply, a `drift_detected` audit event is recorded, but the restore still runs from backup.
+  - On a missing backup file, revert aborts, leaves live state untouched, and records a `revert_failed` audit event.
+  - Writes a `REVERT.md` next to the artifact summarizing what was restored, what was rolled back, what drifted, and what failed.
+  - Non-interactive callers (cron, pipe) must pass `--yes`. The CLI exits with code 2 when a confirmation prompt is needed, so scripts can distinguish "needs confirmation" from a real failure.
+- **`dreaming apply --dry-run`** previews the apply path without writing live state or creating backups. The result includes a structured `dry_run_report` (would-apply / would-skip / would-backup lists, and per-filter exclusions).
+- **`dreaming apply --priority {low,normal,high}`** and **`--target-kind {memory,user,skill,fact}`** filter which approved proposals land. Filters compose. Filtered-out proposals stay `approved` so a later apply with a different filter can still land them.
+
+### Friction-killer
+
+- **`dreaming create --from-sessions N`** auto-harvests N recent local Hermes sessions from the SessionDB, feeds the resulting redacted bundle as a source, and stages the artifact in one step. Always prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging.
+- **`dreaming create --from-since 7d`** (also `12h`, `2w`) is a time-window alternative. The count is derived from the window and capped at 50 sessions.
+- **`--recent N`** is preserved as a back-compat alias for `--from-sessions N`.
+- **`--no-llm`** is a shorthand for `--provider offline-marker` on `create` and `review`. Useful for cron jobs that should never reach an external LLM by accident.
+
+### Discovery and inbox
+
+- **`dreaming providers list`** prints a table with `NAME`, `KIND`, `STATUS` (always | optional | missing), and `NOTES` for the three built-in providers. No external services are pinged.
+- **`dreaming inbox --apply-ready`** filters to artifacts where every non-rejected proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. Composes with `--state` and `--priority`.
+- The **inbox digest** (`dreaming digest --inbox`) now surfaces a "Ready to apply" section and an `Apply-ready count` field at the top.
+
+### Hardening
+
+- **`reject --reason`** is enforced at the command layer (`commands/review.py:reject_artifact()`), not just the CLI parser. Any caller (CLI, library, plugin) is constrained by the same rule. `ReviewError` is raised on missing, empty, or whitespace-only reasons.
+
+## Data model
+
+Two additive fields on `DreamArtifact`:
+
+- `reverted_at: str | None` — ISO timestamp of the last revert, if any
+- `revert_audit_events: list[dict]` — the revert audit trail (drift events, restore summary, partial-failure summary)
+
+A third field, `dry_run_report`, is attached in-memory only during a single apply dry-run call and excluded from `manifest.json` so the on-disk contract stays stable across the dry-run feature.
+
+## Migration / compatibility
+
+- The `recent` flag is unchanged in behavior; `--from-sessions` is the new preferred name. Both work.
+- The `reject` enforcement is stricter than v0.3.0. Library callers that previously passed `reason=None` to `reject_artifact` will now raise `ReviewError`.
+- `apply` gained three optional flags (`--dry-run`, `--priority`, `--target-kind`). Existing invocations are unchanged.
+
+## Verification
+
+- `pytest -q` passes (112 tests across 25 files, +31 from v0.3.0).
+- `python -m build --wheel` succeeds.
+- `git diff --check` clean.
+- Smoke-tested on temp fixtures for: `revert` (roundtrip, drift, missing backup, partial failure), `apply --dry-run` (preview without writes), `apply --priority` and `--target-kind` (filters), `inbox --apply-ready`, `providers list`, `--from-sessions` with redaction stats, and `--no-llm` translation.
+
+## Known limitations
+
+- Revert does not re-run validation. It is a restore from backup, not a re-apply. If a reverted proposal is reapplied, validation runs normally as part of the apply path.
+- Drift detection compares the live file's pre-restore content to the recorded backup snapshot, but does not currently track per-write post-apply shas. Adding a per-write post-apply sha is a v0.5.0 candidate.
+- The `--from-since` window-to-count heuristic is conservative (4 sessions per day, capped at 50). If you want a more aggressive count, use `--from-sessions N` directly.
+
+## Bottom line
+
+This release delivers the two things that turn Dreaming from "demo-able" to "operator's default nightly loop":
+
+1. **You can undo an apply.** Revert is the trust headline.
+2. **You can stage from real sessions in one command.** `--from-sessions` is the friction-killer.
+
+Direction A (operator trust) and Direction B (friction-killer) from the brainstorm — both shipped, both tested, both documented.

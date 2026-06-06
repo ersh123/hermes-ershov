@@ -11,6 +11,9 @@ through an explicit apply step after a staged proposal is reviewed.
 - Allow explicit apply/discard
 - Apply approved changes to live memory, user, skills, and fact-store targets
 - Verify the resulting state after writeback
+- Allow explicit revert: restore live state from the recorded backups and roll the artifact back to a `reverted` state with full audit
+- Allow dry-run and selective apply: preview an apply without writing, and apply only a subset of approved proposals by priority or target_kind
+- Surface apply-ready artifacts through the inbox so the operator can see what is unblocked at a glance
 
 ## Non-goals for v1
 - Silent live mutation during analysis

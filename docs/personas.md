@@ -110,6 +110,43 @@ What to reject:
 - unsupported claims about flags, install steps, or provider behavior
 - review notes that say "should" without proving the thing exists in the repo
 
+## Nightly operator
+
+Use Dreaming as the queue that closes the loop every morning. The nightly cron posts an inbox digest; you skim it, decide, and act.
+
+Good inputs:
+
+- the inbox digest from last night (`dreaming digest --inbox` in the cron mode)
+- one source of truth for what changed (recent sessions, weekly notes)
+- a small, low-risk change you can stage without much review
+
+Good output:
+
+- nothing (most days, and that's the point)
+- a single approved artifact with one or two high-confidence memory or user notes
+- a clear answer to "is there anything apply-ready?"
+
+Example flow:
+
+```bash
+# After reading the inbox digest, filter to the rows that are actually apply-ready
+dreaming inbox --apply-ready
+# If something is there, preview the apply first
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
+# If the dry-run looks right, apply it
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
+# If you applied something that turned out wrong, undo it
+dreaming revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
+# If you only want high-priority memory/user updates today, filter the apply
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
+```
+
+What to reject:
+
+- anything that needs explanation to a teammate
+- "I should also fix this while I'm in there" — keep the nightly loop small
+- silent network calls: pass `--no-llm` if you do not want the offline-marker provider swapped for an external LLM by accident
+
 ## Rule of thumb
 
 If the source bundle would embarrass you in a code review, tighten it first. Dreaming is for durable, source-grounded updates, not for turning vague advice into fake certainty.

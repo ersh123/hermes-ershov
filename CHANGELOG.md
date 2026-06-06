@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.0 - 2026-06-06
+
+- Added the **trust loop**: `dreaming revert` restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state, with drift detection (`drift_detected` audit event), `REVERT.md` summary, and `--yes` for non-interactive callers.
+- Added the **friction-killer**: `dreaming create --from-sessions N` (and `--from-since 7d`, with `--recent N` as a back-compat alias) auto-harvests local sessions in one step and prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging.
+- Added `dreaming apply --dry-run`, `--priority {low,normal,high}`, and `--target-kind {memory,user,skill,fact}` for preview-only and selective applies. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
+- Added `dreaming inbox --apply-ready` to surface artifacts where every proposal is approved (or already applied). The inbox digest also renders a "Ready to apply" section.
+- Added `dreaming providers list` to introspect the three built-in providers without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create` and `review`.
+- Tightened the `reject` reason enforcement: the non-empty reason check is now in `commands/review.py:reject_artifact()`, so any caller (CLI, library, plugin) is constrained by the same rule.
+- Bumped the `DreamArtifact` model with `reverted_at` and `revert_audit_events`. The `dry_run_report` is attached in-memory only and excluded from `manifest.json` so the on-disk contract stays stable.
+
 ## 0.3.0 - 2026-06-02
 
 - Added the Dream Inbox command with JSON and text output so staged artifacts can be reviewed as a queue instead of only one at a time.

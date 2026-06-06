@@ -19,6 +19,28 @@ Hermes Dreaming is a staged self-improvement loop. It scans explicit source inpu
 - Persona examples, `docs/personas.md`
 - Safety boundaries, `docs/safety.md`
 
+## First run (new)
+
+The shortest path from "what is this" to a usable artifact is now one command. `dreaming create --from-sessions 5` harvests the last 5 local Hermes sessions, prints redaction stats to stdout, and stages an artifact in one step. No manual `harvest` + `create --source` two-step required.
+
+```bash
+dreaming create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
+```
+
+For a no-network run, add `--no-llm` to skip any external provider:
+
+```bash
+dreaming create --from-sessions 5 --no-llm --live-root ./live --artifact-root ./artifacts
+```
+
+If you want a more targeted window, use `--from-since 7d` (or `12h` / `2w`):
+
+```bash
+dreaming create --from-since 7d --no-llm --live-root ./live --artifact-root ./artifacts
+```
+
+After staging, the rest of the loop is unchanged: `summarize`, `approve`/`reject`, `validate`, `apply`. To preview the apply without touching live state, add `--dry-run`. To undo a real apply, run `dreaming revert <artifact> --yes`.
+
 ## What to expect
 
 - The offline demo works without API keys or external model access.

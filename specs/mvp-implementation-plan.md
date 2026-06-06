@@ -7,16 +7,22 @@ Hermes Dreaming is a standalone, artifact-first self-improvement engine for stag
 The repo has one job: read explicit local inputs, stage reviewable proposals, and apply only approved changes through a guarded write path.
 
 ## What shipped
-
+## What shipped
 The current MVP includes:
 
-- `dreaming create`, `diff`, `validate`, `apply`, `discard`, `report-card`, and `status`
-- a directory-based artifact format with `manifest.json`, `REPORT.md`, `sources.jsonl`, and `proposals.jsonl`
+- `dreaming create`, `diff`, `validate`, `apply`, `discard`, `report-card`, `status`, `revert`, `providers list`
+- `apply --dry-run`, `apply --priority`, `apply --target-kind` for selective and preview-only applies
+- `inbox --apply-ready` to surface artifacts that are unblocked
+- `create --from-sessions N` / `--from-since 7d` (and the `--recent` alias) for friction-killer session harvesting with redacted bundle output
+- `--no-llm` shorthand for `--provider offline-marker` on `create` and `review`
+- a directory-based artifact format with `manifest.json`, `REPORT.md`, `sources.jsonl`, `proposals.jsonl`, `audit.jsonl`, and `REVERT.md` (after revert)
 - deterministic offline proposal extraction from explicit `DREAM:` markers
 - an optional OpenAI-compatible provider behind the `llm` extra
+- an optional Ollama provider that targets a local server
 - validation for path safety, duplicate targets, provenance, and secret-like content
 - backups before apply, plus explicit discard/archive behavior
-- unit and integration tests for the data model, validation, CLI flow, and apply/discard semantics
+- reject reason enforcement at the command layer (not just the CLI)
+- unit and integration tests for the data model, validation, CLI flow, apply/discard semantics, revert roundtrip, apply filters, and provider discovery
 
 ## Scope and non-goals
 
@@ -62,12 +68,21 @@ src/hermes_dreaming/
 ## Command surface
 
 ### `dreaming create`
-Creates a staged artifact from one or more `--source` roots.
+Creates a staged artifact from one or more `--source` roots, or from local sessions via `--from-sessions N` / `--from-since 7d` (with `--recent N` as a back-compat alias). Always prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging when harvest ran. `--no-llm` is a shorthand for `--provider offline-marker`.
 
 Defaults:
 - `--live-root` defaults to the current directory
 - `--artifact-root` defaults to `./.dreaming/artifacts`
 - `--provider` defaults to `offline-marker`
+
+### `dreaming apply`
+Applies approved proposals, writes backups first, and updates the artifact status. `--approve` remains as a compatibility shortcut that records approvals before apply. New flags:
+- `--dry-run` previews the apply without writing live state or creating backups. Returns a structured report.
+- `--priority low,normal,high` filters which approved proposals land by priority.
+- `--target-kind memory,user,skill,fact` filters by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
+
+### `dreaming revert`
+Restores live files from the recorded backups and rolls the artifact back to a `reverted` state. Requires the artifact to be in `applied` status. Drift detection records a `drift_detected` audit event when the live file changed after apply, but the restore still runs from backup. Writes `REVERT.md` next to the artifact with a summary. Non-interactive callers must pass `--yes`.
 
 ### `dreaming review`
 Creates a staged artifact from one or more `--source` roots, or opens an existing artifact with `--open` to print the artifact path and next commands.
@@ -98,6 +113,9 @@ Marks the artifact discarded and moves it into the archive root without touching
 
 ### `dreaming status`
 Lists known artifacts in the artifact root.
+
+### `dreaming providers list`
+Prints a table of the three built-in providers (`offline-marker`, `openai-compatible`, `ollama`) with their `STATUS` (always, optional, missing) and `NOTES`. Does not ping external services.
 
 ## Artifact format
 

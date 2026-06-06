@@ -101,8 +101,20 @@ dreaming validate ./artifacts/<artifact-id> --live-root ./live
 # Apply approved changes
 
 dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
-
+# Preview the apply without writing live state or creating backups
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
+# Apply only high-priority memory and user updates, skip skills and facts
+dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
+# Undo an apply: restore live files from the recorded backups
+dreaming revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
 # Discard a staged artifact
+dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
+# Show artifacts that are approved and ready to apply
+dreaming inbox --artifact-root ./artifacts --apply-ready
+# List available analysis providers
+dreaming providers list
+# Stage from the last 5 local sessions in one step (replaces manual harvest + create)
+dreaming create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
 
 dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
 
@@ -141,13 +153,16 @@ If the `dreaming` entrypoint is not installed yet, swap in `python -m hermes_dre
 - Safety boundaries: `docs/safety.md`
 
 ### Command notes
-
 - `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`.
 - `digest` renders a local operator brief to stdout only. It can include `--weekly` rollups, but it does not send anything to Telegram. If you want delivery later, wrap the command in a separate transport layer that consumes stdout.
-- `create` and `review` accept repeatable `--source` plus optional `--provider`, `--model`, `--api-key`, and `--base-url`. `review --open` prints the artifact path and the next commands.
+- `create` and `review` accept repeatable `--source`, `--from-sessions N` (or `--recent N` alias), `--from-since 7d`, and `--no-llm` (shorthand for `--provider offline-marker`). Harvest stats (`sessions`, `redactions`) print to stdout before staging. `review --open` prints the artifact path and the next commands.
+- `apply` accepts `--dry-run` for previews, `--priority low,normal,high` to filter proposals, and `--target-kind memory,user,skill,fact` to filter by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
+- `revert` restores live files from the recorded backups and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Drift detection records an audit event when the live file changed after apply, but the restore still runs.
+- `inbox` supports `--apply-ready` to show only artifacts where every proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. The inbox digest also surfaces a "Ready to apply" section.
+- `providers list` introspects the three built-in providers (offline-marker, openai-compatible, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create` and `review`.
 - OpenAI-compatible and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
 - `summarize` prints a concise decision brief for an existing artifact.
-- `approve` and `reject` update artifact metadata only, they do not touch live roots.
+- `approve` and `reject` update artifact metadata only, they do not touch live roots. `reject` requires a non-empty `--reason` at the command layer; any code path (CLI, library, plugin) is constrained by the same rule.
 - `diff` accepts optional `--live-root` and renders unified diffs when the live target root is available.
 - `apply` applies already approved proposals. `--approve` still works as a compatibility shortcut for recording approvals before apply.
 - `update` supports `--remote`, `--branch`, `--check`, and `--no-verify`.
