@@ -238,3 +238,40 @@ def test_build_provider_supports_ollama() -> None:
 
     assert isinstance(provider, OllamaProvider)
     assert provider.model == "qwen2.5:3b"
+
+
+def test_list_providers_returns_all_three_with_status() -> None:
+    from hermes_dreaming.providers import list_providers
+
+    rows = list_providers()
+    names = [row.name for row in rows]
+    assert "offline-marker" in names
+    assert "openai-compatible" in names
+    assert "ollama" in names
+    offline = next(row for row in rows if row.name == "offline-marker")
+    assert offline.status == "always"
+    assert offline.kind == "offline"
+    openai_row = next(row for row in rows if row.name == "openai-compatible")
+    assert openai_row.status in {"optional", "missing"}
+    assert openai_row.kind == "openai_compat"
+    ollama_row = next(row for row in rows if row.name == "ollama")
+    # We never ping external services; ollama status is "optional" by import-only design.
+    assert ollama_row.status == "optional"
+    assert ollama_row.kind == "ollama"
+
+
+def test_render_providers_table_emits_table_with_header_and_separator() -> None:
+    from hermes_dreaming.providers import ProviderInfo, list_providers, render_providers_table
+
+    rows = list_providers()
+    rendered = render_providers_table(rows)
+    assert "NAME" in rendered
+    assert "KIND" in rendered
+    assert "STATUS" in rendered
+    assert "NOTES" in rendered
+    assert "----" in rendered
+    assert "offline-marker" in rendered
+    assert "always" in rendered
+    # Sanity: also works for arbitrary rows.
+    custom = [ProviderInfo(name="x", kind="k", status="always", notes="n")]
+    assert "x" in render_providers_table(custom)

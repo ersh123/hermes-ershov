@@ -301,3 +301,305 @@ def test_discard_moves_artifact_to_archive_without_live_mutation(tmp_path: Path)
     assert not artifact_dir.exists()
     assert memory.read_text(encoding="utf-8") == "# MEMORY\n"
     assert load_artifact(discarded_path).status == "discarded"
+
+
+def test_apply_dry_run_writes_nothing_to_live_state_and_creates_no_backup(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    memory = live_root / "memory.md"
+    original_text = "# MEMORY\n\n- Existing note\n"
+    memory.write_text(original_text, encoding="utf-8")
+
+    proposal = DreamProposal(
+        id="proposal-memory",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="append memory note",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- Keep updates short and concrete.",
+        approved=True,
+    )
+    artifact_dir, _artifact_result = _artifact(tmp_path, proposal)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(
+        artifact_dir,
+        live_root=live_root,
+        backup_root=backup_root,
+        approve_all=True,
+        dry_run=True,
+    )
+
+    # Live state untouched.
+    assert memory.read_text(encoding="utf-8") == original_text
+    # No backups were created.
+    assert not (backup_root / "memory.md").exists()
+    # Artifact status was NOT changed to applied.
+    loaded = load_artifact(artifact_dir)
+    assert loaded.status != "applied"
+    # Report is attached on the returned artifact.
+    assert result.dry_run_report is not None
+    assert result.dry_run_report.would_apply_proposal_ids == [proposal.id]
+    assert result.dry_run_report.would_write_targets == [str(memory)]
+    assert result.dry_run_report.would_backup_paths == [str(backup_root / "memory.md")]
+    # Report is ephemeral — not serialized into manifest.
+    assert "dry_run_report" not in loaded.to_dict()
+
+
+def test_apply_dry_run_reports_would_skip_proposals_when_filter_excludes_them(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    (live_root / "memory.md").write_text("# MEMORY\n", encoding="utf-8")
+
+    high_memory = DreamProposal(
+        id="proposal-memory-high",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="high priority memory",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- High memory",
+        approved=True,
+        priority="high",
+    )
+    low_user = DreamProposal(
+        id="proposal-user-low",
+        target_kind="user",
+        target_path="user.md",
+        mode="append_text",
+        summary="low priority user",
+        provenance=["sessions/1.md:2"],
+        proposed_text="- Low user",
+        approved=True,
+        priority="low",
+    )
+    artifact = DreamArtifact(
+        artifact_id="artifact-filter-dry-run",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="validated",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[high_memory, low_user],
+    )
+    artifact_dir = tmp_path / "artifact-filter-dry-run"
+    write_artifact(artifact, artifact_dir)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(
+        artifact_dir,
+        live_root=live_root,
+        backup_root=backup_root,
+        approve_all=True,
+        dry_run=True,
+        priority_filter={"high"},
+        target_kind_filter={"memory"},
+    )
+
+    report = result.dry_run_report
+    assert report is not None
+    assert report.would_apply_proposal_ids == [high_memory.id]
+    # Both filters excluded the user proposal, but the priority filter caught it first.
+    assert "proposal-user-low" in report.filtered_out_priority or "proposal-user-low" in report.filtered_out_target_kind
+    # Live state untouched.
+    assert (live_root / "memory.md").read_text(encoding="utf-8") == "# MEMORY\n"
+    assert not (live_root / "user.md").exists()
+
+
+def test_apply_priority_filter_includes_only_matching_proposals(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    (live_root / "memory.md").write_text("# MEMORY\n", encoding="utf-8")
+    (live_root / "user.md").write_text("# USER\n", encoding="utf-8")
+
+    high = DreamProposal(
+        id="proposal-high",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="high memory",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- High note",
+        approved=True,
+        priority="high",
+    )
+    low = DreamProposal(
+        id="proposal-low",
+        target_kind="user",
+        target_path="user.md",
+        mode="append_text",
+        summary="low user",
+        provenance=["sessions/1.md:2"],
+        proposed_text="- Low note",
+        approved=True,
+        priority="low",
+    )
+    artifact = DreamArtifact(
+        artifact_id="artifact-priority-filter",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="validated",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[high, low],
+    )
+    artifact_dir = tmp_path / "artifact-priority-filter"
+    write_artifact(artifact, artifact_dir)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(
+        artifact_dir,
+        live_root=live_root,
+        backup_root=backup_root,
+        approve_all=True,
+        priority_filter={"high"},
+    )
+
+    assert result.status == "applied"
+    assert result.applied_proposal_ids == [high.id]
+    memory_text = (live_root / "memory.md").read_text(encoding="utf-8")
+    assert "- High note" in memory_text
+    # Low-priority proposal was filtered out and stays approved.
+    user_text = (live_root / "user.md").read_text(encoding="utf-8")
+    assert user_text == "# USER\n"
+    loaded = load_artifact(artifact_dir)
+    assert loaded.proposals[1].approved is True
+    assert loaded.proposals[1].applied is False
+
+
+def test_apply_target_kind_filter_includes_only_matching_proposals(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    (live_root / "memory.md").write_text("# MEMORY\n", encoding="utf-8")
+    (live_root / "user.md").write_text("# USER\n", encoding="utf-8")
+
+    memory = DreamProposal(
+        id="proposal-memory",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="memory",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- Memory note",
+        approved=True,
+    )
+    user = DreamProposal(
+        id="proposal-user",
+        target_kind="user",
+        target_path="user.md",
+        mode="append_text",
+        summary="user",
+        provenance=["sessions/1.md:2"],
+        proposed_text="- User note",
+        approved=True,
+    )
+    artifact = DreamArtifact(
+        artifact_id="artifact-target-kind-filter",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="validated",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[memory, user],
+    )
+    artifact_dir = tmp_path / "artifact-target-kind-filter"
+    write_artifact(artifact, artifact_dir)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(
+        artifact_dir,
+        live_root=live_root,
+        backup_root=backup_root,
+        approve_all=True,
+        target_kind_filter={"memory"},
+    )
+
+    assert result.status == "applied"
+    assert result.applied_proposal_ids == [memory.id]
+    assert "- Memory note" in (live_root / "memory.md").read_text(encoding="utf-8")
+    assert (live_root / "user.md").read_text(encoding="utf-8") == "# USER\n"
+
+
+def test_apply_filters_compose_with_dry_run(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    (live_root / "memory.md").write_text("# MEMORY\n", encoding="utf-8")
+    (live_root / "user.md").write_text("# USER\n", encoding="utf-8")
+    (live_root / "skills").mkdir()
+    (live_root / "skills" / "review.md").write_text("# Review\n", encoding="utf-8")
+
+    high_memory = DreamProposal(
+        id="proposal-high-memory",
+        target_kind="memory",
+        target_path="memory.md",
+        mode="append_text",
+        summary="high memory",
+        provenance=["sessions/1.md:1"],
+        proposed_text="- High memory",
+        approved=True,
+        priority="high",
+    )
+    high_user = DreamProposal(
+        id="proposal-high-user",
+        target_kind="user",
+        target_path="user.md",
+        mode="append_text",
+        summary="high user",
+        provenance=["sessions/1.md:2"],
+        proposed_text="- High user",
+        approved=True,
+        priority="high",
+    )
+    low_skill = DreamProposal(
+        id="proposal-low-skill",
+        target_kind="skill",
+        target_path="skills/review.md",
+        mode="append_text",
+        summary="low skill",
+        provenance=["sessions/1.md:3"],
+        proposed_text="- Low skill",
+        approved=True,
+        priority="low",
+    )
+    artifact = DreamArtifact(
+        artifact_id="artifact-composed-filters",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="validated",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[high_memory, high_user, low_skill],
+    )
+    artifact_dir = tmp_path / "artifact-composed-filters"
+    write_artifact(artifact, artifact_dir)
+    backup_root = tmp_path / "backups"
+
+    result = apply_artifact(
+        artifact_dir,
+        live_root=live_root,
+        backup_root=backup_root,
+        approve_all=True,
+        dry_run=True,
+        priority_filter={"high"},
+        target_kind_filter={"memory"},
+    )
+
+    report = result.dry_run_report
+    assert report is not None
+    # Only high_memory matches both filters.
+    assert report.would_apply_proposal_ids == [high_memory.id]
+    # high_user is filtered by target_kind, low_skill by priority.
+    assert "proposal-high-user" in report.filtered_out_target_kind
+    assert "proposal-low-skill" in report.filtered_out_priority
+    # Live state untouched.
+    assert (live_root / "memory.md").read_text(encoding="utf-8") == "# MEMORY\n"
+    assert (live_root / "user.md").read_text(encoding="utf-8") == "# USER\n"

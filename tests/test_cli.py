@@ -1,11 +1,20 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
 from hermes_dreaming.artifact import DreamArtifact, DreamProposal, SourceSnapshot, load_artifact, write_artifact
 from hermes_dreaming.cli import main
+
+
+@dataclass(slots=True)
+class _FakeHarvestResult:
+    output_path: Path
+    sessions: list
+    content: str
+    redaction_count: int
 
 
 def _write_source_tree(root: Path) -> Path:
@@ -189,3 +198,209 @@ def test_discard_command_archives_artifact(tmp_path: Path, capsys) -> None:
     archived_dir = archive_root / artifact_dir.name
     assert archived_dir.exists()
     assert (live_root / "memory.md").read_text(encoding="utf-8") == "# MEMORY\n"
+
+
+def test_providers_list_prints_table_with_three_providers(tmp_path: Path, capsys) -> None:
+    exit_code = main(["providers", "list"])
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    assert "NAME" in output
+    assert "offline-marker" in output
+    assert "openai-compatible" in output
+    assert "ollama" in output
+
+
+def test_create_with_no_llm_shorthand_uses_offline_marker(tmp_path: Path, monkeypatch, capsys) -> None:
+    """`--no-llm` should set the provider to offline-marker regardless of --provider."""
+    from hermes_dreaming.analyze import DreamRunConfig
+
+    captured: dict[str, object] = {}
+
+    def fake_create(config: DreamRunConfig):  # type: ignore[no-untyped-def]
+        captured["provider_name"] = config.provider_name
+        # Return a minimal result-like object so the CLI can render.
+        from hermes_dreaming.artifact import DreamArtifact
+        from dataclasses import dataclass
+        from pathlib import Path
+
+        @dataclass(slots=True)
+        class _Result:
+            artifact: DreamArtifact
+            artifact_dir: Path
+            validation_errors: list[str]
+
+        artifact = DreamArtifact(
+            artifact_id="artifact-nollm",
+            created_at="2026-05-25T12:00:00Z",
+            provider=config.provider_name,
+            status="staged",
+            workspace_root=str(config.live_root),
+            source_roots=[str(p) for p in config.source_paths],
+            report="# Report",
+            sources=[],
+            proposals=[],
+        )
+        artifact_dir = Path(tmp_path) / "artifact-nollm"
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        from hermes_dreaming.artifact import write_artifact
+        write_artifact(artifact, artifact_dir)
+        return _Result(artifact=artifact, artifact_dir=artifact_dir, validation_errors=[])
+
+    monkeypatch.setattr("hermes_dreaming.cli.create_dream_artifact", fake_create)
+
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    sources = _write_source_tree(tmp_path)
+    artifact_root = tmp_path / "artifacts"
+
+    # Pass --provider openai-compatible but also --no-llm. The latter must win.
+    assert (
+        main(
+            [
+                "create",
+                "--live-root",
+                str(live_root),
+                "--artifact-root",
+                str(artifact_root),
+                "--source",
+                str(sources),
+                "--provider",
+                "openai-compatible",
+                "--no-llm",
+            ]
+        )
+        == 0
+    )
+    assert captured["provider_name"] == "offline-marker"
+
+
+def test_create_with_from_sessions_prints_redaction_count_and_sessions_count(tmp_path: Path, monkeypatch, capsys) -> None:
+    """`--from-sessions N` should print the harvest stats and feed the bundle as a source."""
+    from dataclasses import dataclass
+    from pathlib import Path
+
+    from hermes_dreaming.analyze import DreamRunConfig
+    from hermes_dreaming.artifact import DreamArtifact, write_artifact
+
+    @dataclass(slots=True)
+    class _Result:
+        artifact: DreamArtifact
+        artifact_dir: Path
+        validation_errors: list[str]
+
+    captured: dict[str, object] = {}
+
+    def fake_create(config: DreamRunConfig):  # type: ignore[no-untyped-def]
+        captured["provider_name"] = config.provider_name
+        captured["source_paths"] = [str(p) for p in config.source_paths]
+        artifact = DreamArtifact(
+            artifact_id="artifact-from-sessions",
+            created_at="2026-05-25T12:00:00Z",
+            provider=config.provider_name,
+            status="staged",
+            workspace_root=str(config.live_root),
+            source_roots=[str(p) for p in config.source_paths],
+            report="# Report",
+            sources=[],
+            proposals=[],
+        )
+        artifact_dir = Path(tmp_path) / "artifact-from-sessions"
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        write_artifact(artifact, artifact_dir)
+        return _Result(artifact=artifact, artifact_dir=artifact_dir, validation_errors=[])
+
+    monkeypatch.setattr("hermes_dreaming.cli.create_dream_artifact", fake_create)
+    monkeypatch.setattr(
+        "hermes_dreaming.cli.harvest_recent",
+        lambda *, recent, output_path, **_kwargs: _FakeHarvestResult(
+            output_path=Path(output_path),
+            sessions=[],
+            content="",
+            redaction_count=3,
+        ),
+    )
+
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    artifact_root = tmp_path / "artifacts"
+
+    exit_code = main(
+        [
+            "create",
+            "--live-root",
+            str(live_root),
+            "--artifact-root",
+            str(artifact_root),
+            "--from-sessions",
+            "5",
+        ]
+    )
+    output = capsys.readouterr().out
+    assert exit_code == 0
+    # Re-redaction and session stats printed.
+    assert "redactions: 3" in output
+    assert "sessions: 0" in output
+    # The harvested bundle was fed as a source.
+    assert len(captured["source_paths"]) == 1  # type: ignore[arg-type]
+
+
+def test_create_with_recent_alias_keeps_back_compat(tmp_path: Path, monkeypatch, capsys) -> None:
+    """`--recent N` is preserved as an alias for --from-sessions N."""
+    from dataclasses import dataclass
+    from pathlib import Path
+
+    from hermes_dreaming.analyze import DreamRunConfig
+    from hermes_dreaming.artifact import DreamArtifact, write_artifact
+
+    @dataclass(slots=True)
+    class _Result:
+        artifact: DreamArtifact
+        artifact_dir: Path
+        validation_errors: list[str]
+
+    def fake_create(config: DreamRunConfig):  # type: ignore[no-untyped-def]
+        artifact = DreamArtifact(
+            artifact_id="artifact-recent-alias",
+            created_at="2026-05-25T12:00:00Z",
+            provider=config.provider_name,
+            status="staged",
+            workspace_root=str(config.live_root),
+            source_roots=[str(p) for p in config.source_paths],
+            report="# Report",
+            sources=[],
+            proposals=[],
+        )
+        artifact_dir = Path(tmp_path) / "artifact-recent-alias"
+        artifact_dir.mkdir(parents=True, exist_ok=True)
+        write_artifact(artifact, artifact_dir)
+        return _Result(artifact=artifact, artifact_dir=artifact_dir, validation_errors=[])
+
+    monkeypatch.setattr("hermes_dreaming.cli.create_dream_artifact", fake_create)
+    monkeypatch.setattr(
+        "hermes_dreaming.cli.harvest_recent",
+        lambda *, recent, output_path, **_kwargs: _FakeHarvestResult(
+            output_path=Path(output_path),
+            sessions=[],
+            content="",
+            redaction_count=0,
+        ),
+    )
+
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    artifact_root = tmp_path / "artifacts"
+
+    assert (
+        main(
+            [
+                "create",
+                "--live-root",
+                str(live_root),
+                "--artifact-root",
+                str(artifact_root),
+                "--recent",
+                "3",
+            ]
+        )
+        == 0
+    )

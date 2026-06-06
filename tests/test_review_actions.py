@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import shlex
 
+import pytest
+
 from hermes_dreaming.artifact import DreamArtifact, DreamProposal, load_artifact, write_artifact
 from hermes_dreaming.cli import main
 
@@ -137,3 +139,91 @@ def test_summarize_uses_quoted_live_root_examples_for_spaced_paths(tmp_path: Pat
     quoted_live_root = shlex.quote(str(live_root))
     assert f"--live-root {quoted_live_root}" in summary_output
     assert f"dreaming apply {shlex.quote(str(artifact_dir))} --live-root {quoted_live_root}" in summary_output
+
+
+def test_reject_artifact_enforces_non_empty_reason_at_command_layer(tmp_path: Path) -> None:
+    from hermes_dreaming.artifact import load_artifact
+    from hermes_dreaming.commands.review import ReviewError, reject_artifact
+
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    artifact = DreamArtifact(
+        artifact_id="artifact-reject-enforce",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="staged",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[
+            DreamProposal(
+                id="proposal-memory",
+                target_kind="memory",
+                target_path="memory.md",
+                mode="append_text",
+                summary="append memory note",
+                provenance=["sessions/1.md:1"],
+                proposed_text="- Keep updates short and concrete.",
+                approved=False,
+            )
+        ],
+    )
+    artifact_dir = tmp_path / "artifact-reject-enforce"
+    write_artifact(artifact, artifact_dir)
+
+    # Missing reason at command layer raises ReviewError.
+    with pytest.raises(ReviewError, match="non-empty reason"):
+        reject_artifact(artifact_dir, "proposal-memory", reason=None)
+    # Empty reason raises the same.
+    with pytest.raises(ReviewError, match="non-empty reason"):
+        reject_artifact(artifact_dir, "proposal-memory", reason="")
+    # Whitespace-only reason raises the same.
+    with pytest.raises(ReviewError, match="non-empty reason"):
+        reject_artifact(artifact_dir, "proposal-memory", reason="   \n  ")
+
+    # No audit event was recorded for the failed attempts.
+    loaded = load_artifact(artifact_dir)
+    assert not any(event["action"] == "rejected" for event in loaded.audit_events)
+
+    # A non-empty reason succeeds and records the audit event with reason.
+    result = reject_artifact(artifact_dir, "proposal-memory", reason="too broad for v1")
+    assert result.changed == 1
+    loaded = load_artifact(artifact_dir)
+    reject_events = [event for event in loaded.audit_events if event["action"] == "rejected"]
+    assert len(reject_events) == 1
+    assert reject_events[0].get("reason") == "too broad for v1"
+
+
+def test_reject_command_cli_returns_error_on_missing_reason(tmp_path: Path, capsys) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    artifact = DreamArtifact(
+        artifact_id="artifact-cli-reject-enforce",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="staged",
+        workspace_root=str(live_root),
+        source_roots=[str(live_root / "sources")],
+        report="# Report",
+        sources=[],
+        proposals=[
+            DreamProposal(
+                id="proposal-memory",
+                target_kind="memory",
+                target_path="memory.md",
+                mode="append_text",
+                summary="append memory note",
+                provenance=["sessions/1.md:1"],
+                proposed_text="- Keep updates short and concrete.",
+                approved=False,
+            )
+        ],
+    )
+    artifact_dir = tmp_path / "artifact-cli-reject-enforce"
+    write_artifact(artifact, artifact_dir)
+
+    exit_code = main(["reject", str(artifact_dir), "proposal-memory"])
+    output = capsys.readouterr().out
+    assert exit_code == 1
+    assert "non-empty reason" in output.lower()
