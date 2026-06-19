@@ -3,6 +3,8 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import pytest
+
 from hermes_dreaming import register
 
 
@@ -76,3 +78,16 @@ def test_registered_handlers_route_to_dreaming_cli(monkeypatch) -> None:
     slash_output = slash_handler("status --artifact-root /tmp/artifacts")
     assert calls[-1] == ["status", "--artifact-root", "/tmp/artifacts"]
     assert slash_output == "Hermes Ershov finished."
+
+
+def test_registered_cli_handler_propagates_nonzero_exit(monkeypatch) -> None:
+    monkeypatch.setattr("hermes_dreaming.cli.main", lambda _argv: 7)
+
+    ctx = DummyCtx()
+    register(ctx)
+
+    with pytest.raises(SystemExit) as exc:
+        ctx.cli_commands["ershov"]["handler_fn"](argparse.Namespace(dreaming_args=["soak"]))
+
+    assert exc.value.code == 7
+    assert ctx.commands["ershov"]["handler"]("soak") == "Hermes Ershov exited with status 7."
