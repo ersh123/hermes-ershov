@@ -37,6 +37,7 @@ v0.4.0 makes Ershov much safer to trial in real operator loops (revert, dry-run,
 - **`ershov nightly`** records a failed run in `runs.jsonl` when the pipeline crashes before normal completion. `soak` can therefore catch recent unattended failures instead of silently trusting older success evidence.
 - **`HERMES_ERSHOV_SESSION_DB=/path/to/state.db`** forces harvest/nightly to use a specific SessionDB-compatible SQLite file before the live Hermes SessionDB. This makes installed-CLI smoke tests deterministic.
 - **`ershov soak`** is the read-only scheduled-run gate. It checks recent successful `nightly` runs in `runs.jsonl`, fails on recent nightly failures by default, can require the user systemd timer to be enabled, active, loaded, pointed at `hermes-ershov-nightly.service`, and scheduled for a next elapse, and can require a matching ledger source, code revision, and clean checkout such as `--require-source systemd --require-commit <sha> --require-clean`. `--strict-systemd` bundles the stable release gate, auto-detects the current checkout commit, and refuses a dirty current git checkout. For public stable promotion, use `--min-successful 3 --since-hours 96 --strict-systemd` to require several scheduled nights. Commit matching requires at least 7 git hash characters on both sides.
+- **`report-card` and `digest` backup details** now separate real backup file copies from rollback evidence records and created-file tombstones, so apply-created files do not look like missing backup coverage.
 - The root Hermes plugin wrapper now propagates non-zero CLI failures, so `hermes ershov ...` can be used as a real shell gate instead of only a human-readable wrapper.
 
 ## Data model
@@ -57,7 +58,7 @@ Three additive fields on `DreamArtifact`:
 
 ## Verification
 
-- `pytest -q` passes (189 tests).
+- `pytest -q` passes (191 tests).
 - `python scripts/hermes_plugin_smoke.py` passes and exercises the root Hermes plugin wrapper with a controlled SessionDB nightly run.
 - `python -m build` succeeds, and both wheel and source distribution installs are smoked against all public CLI aliases.
 - `git diff --check` clean.

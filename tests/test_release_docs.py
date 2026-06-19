@@ -121,7 +121,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "186 tests" not in text, path
         assert "187 tests" not in text, path
         assert "188 tests" not in text, path
-        assert "189 tests" in text, path
+        assert "189 tests" not in text, path
+        assert "190 tests" not in text, path
+        assert "191 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:

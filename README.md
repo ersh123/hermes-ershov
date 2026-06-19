@@ -200,7 +200,7 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 - Safety boundaries: `docs/safety.md`
 
 ### Command notes
-- `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`.
+- `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`. Applied summaries separate real backup file copies from rollback evidence records and created-file tombstones.
 - `digest` renders a local operator brief to stdout only. It can include `--weekly` rollups, but it does not send anything to Telegram. If you want delivery later, wrap the command in a separate transport layer that consumes stdout.
 - `create` and `review` accept repeatable `--source`, `--from-sessions N` (or `--recent N` alias), `--from-since 7d`, and `--no-llm` (shorthand for `--provider offline-marker`). Harvest stats (`sessions`, `redactions`) print to stdout before staging. `review --open` prints the artifact path and the next commands.
 - `nightly` runs the full local ershov loop: dialogue harvest, staged artifact creation, artifact `NIGHTLY.md`, latest inbox digest, terminal artifact compaction, and run-ledger / `ERSHOV.md` update. It takes a state-root lock so overlapping runs fail before writing sources/artifacts, and it never applies live memory automatically.

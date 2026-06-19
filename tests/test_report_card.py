@@ -75,6 +75,46 @@ def test_report_card_redacts_private_content_and_renders_json(tmp_path: Path) ->
     assert payload["target_kind_breakdown"] == {"memory": 1}
 
 
+def test_report_card_separates_backup_copies_from_rollback_evidence(tmp_path: Path) -> None:
+    artifact = DreamArtifact(
+        artifact_id="artifact-created-file",
+        created_at="2026-05-25T12:00:00Z",
+        provider="offline-marker",
+        status="applied",
+        workspace_root=str(tmp_path),
+        source_roots=[str(tmp_path / "sources")],
+        report="# report\n",
+        sources=[],
+        proposals=[],
+        validation_errors=[],
+        applied_at="2026-05-25T13:00:00Z",
+        backup_records=[
+            {
+                "proposal_id": "proposal-skill",
+                "target_relative": "skills/new.md",
+                "existed_before": False,
+            }
+        ],
+    )
+    artifact_dir = tmp_path / artifact.artifact_id
+    write_artifact(artifact, artifact_dir)
+
+    report_card = report_card_handle(artifact_dir)
+    markdown = render_report_card_markdown(report_card)
+    payload = json.loads(render_report_card_json(report_card))
+
+    assert report_card.backup_count == 0
+    assert report_card.rollback_evidence_count == 1
+    assert report_card.created_file_tombstone_count == 1
+    assert "- Backup file copies: `0`" in markdown
+    assert "- Rollback evidence records: `1`" in markdown
+    assert "- Created-file tombstones: `1`" in markdown
+    assert "Backup copies:" not in markdown
+    assert payload["backup_count"] == 0
+    assert payload["rollback_evidence_count"] == 1
+    assert payload["created_file_tombstone_count"] == 1
+
+
 @pytest.mark.parametrize(
     ("status", "applied_at", "discarded_at", "expected_apply_state", "expected_discard_state"),
     [

@@ -9,7 +9,12 @@ import shlex
 from typing import Any, Iterable
 
 from .. import state as state_module
-from ..analyze import list_artifacts
+from ..analyze import (
+    backup_file_copy_count,
+    created_file_tombstone_count,
+    list_artifacts,
+    rollback_evidence_count,
+)
 from ..artifact import DreamArtifact, DreamProposal, load_artifact, proposal_state
 from .inbox import build_inbox, render_inbox
 from ..triage import PRIORITY_ORDER, RISK_ORDER, proposal_detail_lines, sorted_proposals
@@ -655,7 +660,9 @@ def render_digest(result: DigestResult) -> str:
         f"- Target kinds: {', '.join(f'{kind}={count}' for kind, count in sorted(target_kind_breakdown.items())) if target_kind_breakdown else 'none'}",
         f"- Theme labels: {', '.join(f'`{label}`' for label in theme_labels) if theme_labels else 'none'}",
         f"- Applied proposal ids: {', '.join(f'`{proposal_id}`' for proposal_id in artifact.applied_proposal_ids) if artifact.applied_proposal_ids else 'none'}",
-        f"- Backup copies: `{len(artifact.backup_paths)}`",
+        f"- Backup file copies: `{backup_file_copy_count(artifact)}`",
+        f"- Rollback evidence records: `{rollback_evidence_count(artifact)}`",
+        f"- Created-file tombstones: `{created_file_tombstone_count(artifact)}`",
         "",
         "## Priority-ranked proposals",
         "",

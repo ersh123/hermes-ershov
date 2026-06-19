@@ -17,6 +17,8 @@ def _make_artifact(
     workspace_root: Path,
     proposals: list[DreamProposal],
     audit_events: list[dict[str, object]] | None = None,
+    backup_paths: list[str] | None = None,
+    backup_records: list[dict[str, object]] | None = None,
 ) -> Path:
     artifact = DreamArtifact(
         artifact_id=artifact_id,
@@ -30,6 +32,8 @@ def _make_artifact(
         proposals=proposals,
         audit_events=audit_events or [],
         applied_proposal_ids=[proposal.id for proposal in proposals if proposal.applied],
+        backup_paths=backup_paths or [],
+        backup_records=backup_records or [],
         applied_at=created_at if status == "applied" else None,
         discarded_at=created_at if status == "discarded" else None,
     )
@@ -257,6 +261,62 @@ def test_digest_renders_local_priorities_deltas_and_weekly_rollup(tmp_path: Path
     assert "Recurring themes:" in output
     assert "Next-week watchlist:" in output
     assert "no Telegram send by default" in output
+
+
+def test_digest_separates_backup_copies_from_rollback_evidence(tmp_path: Path, capsys) -> None:
+    artifact_root = tmp_path / "artifacts"
+    state_root = tmp_path / "state"
+    artifact_root.mkdir()
+    state_root.mkdir()
+
+    workspace_root = tmp_path / "live"
+    workspace_root.mkdir()
+
+    current_dir = _make_artifact(
+        artifact_root,
+        artifact_id="artifact-created-file",
+        created_at="2026-05-27T12:00:00Z",
+        status="applied",
+        workspace_root=workspace_root,
+        proposals=[
+            _proposal(
+                "p-skill",
+                target_kind="skill",
+                target_path="skills/new.md",
+                summary="create new skill note",
+                confidence=0.91,
+                approved=True,
+                applied=True,
+            )
+        ],
+        backup_records=[
+            {
+                "proposal_id": "p-skill",
+                "target_relative": "skills/new.md",
+                "existed_before": False,
+            }
+        ],
+    )
+
+    assert (
+        main(
+            [
+                "digest",
+                str(current_dir),
+                "--artifact-root",
+                str(artifact_root),
+                "--state-root",
+                str(state_root),
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().out
+
+    assert "- Backup file copies: `0`" in output
+    assert "- Rollback evidence records: `1`" in output
+    assert "- Created-file tombstones: `1`" in output
+    assert "Backup copies:" not in output
 
 
 def test_digest_inbox_mode_renders_attention_blocks_and_counts(tmp_path: Path, capsys) -> None:

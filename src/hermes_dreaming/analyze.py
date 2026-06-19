@@ -53,6 +53,8 @@ class DreamReportCard:
     theme_labels: list[str]
     applied_proposal_ids: list[str]
     backup_count: int
+    rollback_evidence_count: int
+    created_file_tombstone_count: int
     policy_flags: list[str]
     proposal_views: list[ProposalView]
 
@@ -160,6 +162,22 @@ def _theme_label_for_target_kind(target_kind: str) -> str:
     }.get(target_kind, f"{target_kind} updates")
 
 
+def backup_file_copy_count(artifact: DreamArtifact) -> int:
+    if artifact.backup_records:
+        return sum(1 for record in artifact.backup_records if record.get("backup_path"))
+    return len(artifact.backup_paths)
+
+
+def rollback_evidence_count(artifact: DreamArtifact) -> int:
+    if artifact.backup_records:
+        return len(artifact.backup_records)
+    return len(artifact.backup_paths)
+
+
+def created_file_tombstone_count(artifact: DreamArtifact) -> int:
+    return sum(1 for record in artifact.backup_records if record.get("existed_before") is False)
+
+
 def build_report_card(artifact: DreamArtifact) -> DreamReportCard:
     target_kind_breakdown = dict(sorted(Counter(proposal.target_kind for proposal in artifact.proposals).items()))
     theme_labels = [_theme_label_for_target_kind(target_kind) for target_kind in target_kind_breakdown]
@@ -202,7 +220,9 @@ def build_report_card(artifact: DreamArtifact) -> DreamReportCard:
         discard_state=discard_state,
         theme_labels=theme_labels,
         applied_proposal_ids=list(artifact.applied_proposal_ids),
-        backup_count=len(artifact.backup_paths),
+        backup_count=backup_file_copy_count(artifact),
+        rollback_evidence_count=rollback_evidence_count(artifact),
+        created_file_tombstone_count=created_file_tombstone_count(artifact),
         policy_flags=aggregate_policy_flags(artifact.proposals),
         proposal_views=proposal_views,
     )
@@ -274,7 +294,9 @@ def render_report_card_markdown(card: DreamReportCard) -> str:
         "## Apply details",
         "",
         f"- Applied proposal ids: {', '.join(f'`{proposal_id}`' for proposal_id in card.applied_proposal_ids) if card.applied_proposal_ids else 'none'}",
-        f"- Backup copies: `{card.backup_count}`",
+        f"- Backup file copies: `{card.backup_count}`",
+        f"- Rollback evidence records: `{card.rollback_evidence_count}`",
+        f"- Created-file tombstones: `{card.created_file_tombstone_count}`",
         "",
         "## Validation",
         "",

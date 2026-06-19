@@ -71,7 +71,9 @@ Use the existing artifact model fields directly:
 - target kind breakdown
 - theme labels
 - applied proposal ids
-- backup count
+- backup file copies
+- rollback evidence records
+- created-file tombstones
 
 Keep it to a few bullets, not a dump.
 
