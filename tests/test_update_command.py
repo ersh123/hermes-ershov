@@ -1,11 +1,16 @@
 from __future__ import annotations
 
 import subprocess
+from importlib import import_module
 from pathlib import Path
 import types
 
+import pytest
+
 from hermes_dreaming.commands.update import handle
 from hermes_dreaming.cli import main
+
+update_module = import_module("hermes_dreaming.commands.update")
 
 
 def _run_git(args: list[str], *, cwd: Path) -> str:
@@ -85,6 +90,16 @@ def test_update_refuses_dirty_tree(tmp_path: Path) -> None:
     assert result.success is False
     assert result.dirty is True
     assert "dirty" in result.message.lower()
+
+
+def test_update_git_commands_have_timeout(monkeypatch, tmp_path: Path) -> None:
+    def timeout_run(*_args, **_kwargs):  # type: ignore[no-untyped-def]
+        raise subprocess.TimeoutExpired(["git", "fetch"], timeout=60)
+
+    monkeypatch.setattr(update_module.subprocess, "run", timeout_run)
+
+    with pytest.raises(RuntimeError, match="timed out after 60s"):
+        update_module._run_git(["fetch", "--prune", "origin"], cwd=tmp_path)
 
 
 def test_cli_update_wires_through_parser(monkeypatch, tmp_path: Path) -> None:

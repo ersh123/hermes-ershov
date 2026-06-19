@@ -9,6 +9,7 @@ from pathlib import Path
 
 DEFAULT_REMOTE = "origin"
 DEFAULT_BRANCH = "main"
+DEFAULT_GIT_TIMEOUT_SECONDS = 60
 
 
 @dataclass(slots=True)
@@ -40,8 +41,17 @@ def _discover_repo_root(start: Path | None = None) -> Path:
     raise RuntimeError("Could not locate the Hermes Ershov repository root.")
 
 
-def _run_git(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
-    proc = subprocess.run(["git", *args], cwd=cwd, text=True, capture_output=True)
+def _run_git(
+    args: list[str],
+    *,
+    cwd: Path,
+    timeout_seconds: int = DEFAULT_GIT_TIMEOUT_SECONDS,
+) -> subprocess.CompletedProcess[str]:
+    command = ["git", *args]
+    try:
+        proc = subprocess.run(command, cwd=cwd, text=True, capture_output=True, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"{' '.join(command)} timed out after {timeout_seconds}s") from exc
     if proc.returncode != 0:
         details = proc.stderr.strip() or proc.stdout.strip() or f"git {' '.join(args)} failed"
         raise RuntimeError(details)
