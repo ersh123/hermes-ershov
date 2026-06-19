@@ -34,6 +34,7 @@ In the current offline fixture, the demo shows three target kinds:
 - `apply` validates before it writes
 - `apply --dry-run` previews the change without writing live state or creating a backup
 - `apply --priority` and `apply --target-kind` filter which approved proposals land; filtered-out proposals stay approved so a later apply with a different filter can still land them
+- Real `apply` records backup paths in the artifact manifest before live writes; `--dry-run` deliberately records no backups and writes no live files
 - `revert` restores live files from the recorded backups and rolls the artifact back to a `reverted` state. Drift detection records a `drift_detected` audit event when the live file changed after apply, but the restore still runs from backup
 - backups are taken before live writes
 - unsafe proposal paths are rejected instead of being normalized into something dangerous

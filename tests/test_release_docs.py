@@ -3,9 +3,11 @@ from __future__ import annotations
 from pathlib import Path
 import re
 
+from hermes_dreaming.providers import list_providers
+
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-PROVIDER_IDS = ("offline-marker", "openai-compatible", "deepseek", "openrouter", "ollama")
+PROVIDER_IDS = tuple(row.name for row in list_providers())
 
 
 def test_changelog_provider_list_matches_public_provider_surface() -> None:
@@ -74,3 +76,44 @@ def test_safety_doc_matches_current_quickstart_target_surface() -> None:
         "- `memory`",
         "- `user`",
     ]
+
+
+def test_quickstart_uses_temp_live_root_and_dry_run_before_apply() -> None:
+    text = (REPO_ROOT / "docs" / "quickstart.md").read_text(encoding="utf-8")
+
+    assert 'export DEMO_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/hermes-ershov-quickstart.XXXXXX")"' in text
+    assert 'cp -R "$FIXTURE_ROOT/live" "$LIVE_ROOT"' in text
+    assert 'export LIVE_ROOT="$(pwd)/examples/quickstart/live"' not in text
+
+    dry_run = 'ershov apply "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --dry-run'
+    real_apply = 'ershov apply "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT"'
+    lines = text.splitlines()
+    assert dry_run in lines
+    assert real_apply in lines
+    assert lines.index(dry_run) < lines.index(real_apply)
+    assert "`apply: dry-run`" in text
+    assert "`mode: dry-run`" not in text
+    assert "leave `$LIVE_ROOT` and `$BACKUP_ROOT` unchanged" in text
+    assert "records backup paths in `manifest.json`" in text
+    assert "/tmp/hermes-ershov-quickstart/artifacts" not in text
+    assert "/tmp/hermes-ershov-quickstart.<suffix>/artifacts" in text
+
+
+def test_readme_has_single_discard_example_and_trust_loop_notes() -> None:
+    text = (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+
+    assert text.count("ershov discard ./artifacts/<artifact-id> --archive-root ./archive") == 1
+    assert "`--dry-run` deliberately creates no backups and writes no live files" in text
+    assert "records backup paths in the artifact manifest before live writes" in text
+
+
+def test_release_docs_use_current_test_count() -> None:
+    docs = [
+        REPO_ROOT / "docs" / "release-notes-v0.4.0.md",
+        REPO_ROOT / "docs" / "release-handoff-v0.4.0.md",
+    ]
+    for path in docs:
+        text = path.read_text(encoding="utf-8")
+        assert "183 tests" not in text, path
+        assert "185 tests" not in text, path
+        assert "186 tests" in text, path

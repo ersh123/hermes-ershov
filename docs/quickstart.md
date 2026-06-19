@@ -4,10 +4,12 @@ This demo is offline. It uses the default `offline-marker` provider, so no API k
 
 ## Fixture paths
 
-- Live root: `examples/quickstart/live`
-- Source root: `examples/quickstart/sources`
-- Artifact root: `${TMPDIR:-/tmp}/hermes-ershov-quickstart/artifacts`
-- Backup root: `${TMPDIR:-/tmp}/hermes-ershov-quickstart/backups`
+- Fixture root: `examples/quickstart`
+- Demo root: a fresh `${TMPDIR:-/tmp}/hermes-ershov-quickstart.*` directory
+- Live root: `$DEMO_ROOT/live`
+- Source root: `$DEMO_ROOT/sources`
+- Artifact root: `$DEMO_ROOT/artifacts`
+- Backup root: `$DEMO_ROOT/backups`
 
 ## Copy/paste demo
 
@@ -17,14 +19,17 @@ If the `ershov` entrypoint is not installed yet, replace it with `python -m herm
 If you are inside Hermes with the plugin enabled, `hermes ershov review` uses the same flow.
 
 ```bash
-export DEMO_ROOT="$(pwd)/examples/quickstart"
+export FIXTURE_ROOT="$(pwd)/examples/quickstart"
+export DEMO_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/hermes-ershov-quickstart.XXXXXX")"
 export LIVE_ROOT="$DEMO_ROOT/live"
 export SOURCE_ROOT="$DEMO_ROOT/sources"
-export ARTIFACT_ROOT="${TMPDIR:-/tmp}/hermes-ershov-quickstart/artifacts"
-export BACKUP_ROOT="${TMPDIR:-/tmp}/hermes-ershov-quickstart/backups"
-export HERMES_ERSHOV_STATE_ROOT="${TMPDIR:-/tmp}/hermes-ershov-quickstart/state"
-export REVIEW_LOG="${TMPDIR:-/tmp}/hermes-ershov-quickstart-review.log"
+export ARTIFACT_ROOT="$DEMO_ROOT/artifacts"
+export BACKUP_ROOT="$DEMO_ROOT/backups"
+export HERMES_ERSHOV_STATE_ROOT="$DEMO_ROOT/state"
+export REVIEW_LOG="$DEMO_ROOT/review.log"
 
+cp -R "$FIXTURE_ROOT/live" "$LIVE_ROOT"
+cp -R "$FIXTURE_ROOT/sources" "$SOURCE_ROOT"
 mkdir -p "$ARTIFACT_ROOT" "$BACKUP_ROOT" "$HERMES_ERSHOV_STATE_ROOT"
 
 ershov review \
@@ -41,6 +46,7 @@ ershov approve "$ARTIFACT_DIR" all
 # ershov reject "$ARTIFACT_DIR" <proposal-id> --reason "too broad"
 ershov diff "$ARTIFACT_DIR" --live-root "$LIVE_ROOT"
 ershov validate "$ARTIFACT_DIR" --live-root "$LIVE_ROOT"
+ershov apply "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --dry-run
 ershov apply "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT"
 ershov status --artifact-root "$ARTIFACT_ROOT"
 ```
@@ -50,7 +56,7 @@ ershov status --artifact-root "$ARTIFACT_ROOT"
 `ershov review` should print something close to:
 
 ```text
-artifact: /tmp/hermes-ershov-quickstart/artifacts/2026...-<id>
+artifact: /tmp/hermes-ershov-quickstart.<suffix>/artifacts/2026...-<id>
 status: staged
 proposals: 3
 mode: dry-run
@@ -67,7 +73,10 @@ validation: valid
 
 `ershov validate` should print `artifact is valid`.
 
+`ershov apply --dry-run` should print `apply: dry-run`, list the proposals that would land, and leave `$LIVE_ROOT` and `$BACKUP_ROOT` unchanged.
+
 `ershov apply` should print `applied artifact: <id>` and `status: applied`.
+The real apply records backup paths in `manifest.json`, so `ershov revert "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --yes` can restore the temp live root during rollback testing.
 
 `ershov status` should finish with an `Artifact state: applied=1` line.
 

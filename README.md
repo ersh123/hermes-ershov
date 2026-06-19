@@ -153,8 +153,6 @@ ershov create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
 # Run the full nightly memory pipeline locally
 ershov nightly --live-root ./live --artifact-root ./artifacts --no-llm
 
-ershov discard ./artifacts/<artifact-id> --archive-root ./archive
-
 # Compact terminal (applied/discarded) artifacts to an archive
 
 ershov compact --artifact-root ./artifacts --archive-root ./archive
@@ -206,6 +204,7 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 - `install-systemd` writes a user-level systemd service/timer for nightly memory. This is the safer VPS path when the Hermes gateway itself may be down: the timer runs the no-agent `nightly` script outside the gateway process and does not restart Hermes.
 - Provider secrets are not written by `install-systemd`; put them in `~/.config/hermes-ershov/nightly.secrets.env` when the timer needs cloud model access.
 - `apply` accepts `--dry-run` for previews, `--priority low,normal,high` to filter proposals, and `--target-kind memory,user,skill,fact` to filter by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
+- `apply` records backup paths in the artifact manifest before live writes. `--dry-run` deliberately creates no backups and writes no live files, so it is safe as the first trust check.
 - `revert` restores live files from the recorded backups and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Drift detection records an audit event when the live file changed after apply, but the restore still runs.
 - `inbox` supports `--apply-ready` to show only artifacts where every proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. The inbox digest also surfaces a "Ready to apply" section.
 - `providers list` introspects the built-in providers (offline-marker, openai-compatible, deepseek, openrouter, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create`, `review`, and `nightly`.
