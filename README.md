@@ -69,6 +69,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 - **Nightly memory pipeline** for dialogue harvest, staged review artifacts, digests, inbox digest, compaction, and run-ledger audit
 - **Cron and user-systemd installers** for the full nightly memory pipeline
 - **Test suite, plugin smoke, CI, and CodeQL pass**
+- **Repo hygiene:** private security advisory path, issue/PR templates, CODEOWNERS, and weekly Dependabot checks for GitHub Actions and Python package metadata
 
 ## Install
 

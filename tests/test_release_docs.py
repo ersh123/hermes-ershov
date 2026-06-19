@@ -154,7 +154,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "241 tests" not in text, path
         assert "242 tests" not in text, path
         assert "244 tests" not in text, path
-        assert "248 tests" in text, path
+        assert "248 tests" not in text, path
+        assert "249 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -267,6 +268,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "docs guards",
         "local markdown link/image guards",
         "release workflow guards",
+        "Dependabot weekly version-update checks",
         "state-root scoped",
         "required-provider mismatch checks",
         "--fix-plan",
@@ -276,6 +278,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "https://hypothesis.readthedocs.io/en/latest/stateful.html",
         "https://docs.github.com/actions/guides/building-and-testing-python",
         "https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options",
+        "https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference",
     ):
         assert phrase in testing
     assert "docs/testing.md" in checklist

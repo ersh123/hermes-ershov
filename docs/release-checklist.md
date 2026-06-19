@@ -52,6 +52,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix
 - [ ] Confirm local markdown links/images pass the docs guard
 - [ ] Confirm the release workflow only uploads assets on a GitHub `release` event and does not publish to package indexes
+- [ ] Confirm Dependabot is enabled for GitHub Actions and Python package metadata
 
 ## 5. Release gate
 

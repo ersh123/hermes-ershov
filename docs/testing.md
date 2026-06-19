@@ -10,6 +10,7 @@ The matrix follows the current public docs for:
 - Hypothesis property-based and stateful testing: https://hypothesis.readthedocs.io/en/latest/stateful.html
 - GitHub Actions Python build/test workflows: https://docs.github.com/actions/guides/building-and-testing-python
 - GitHub CodeQL workflow configuration: https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options
+- GitHub Dependabot configuration: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
 
 ## Local gates
 
@@ -62,6 +63,7 @@ GitHub Actions runs the same release-shaped matrix:
 - installed wheel smoke for every public console and module alias
 - installed source distribution smoke for every public console and module alias
 - CodeQL on push, pull request, schedule, and manual dispatch
+- Dependabot weekly version-update checks for GitHub Actions and Python package metadata
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
 
 ## Coverage shape

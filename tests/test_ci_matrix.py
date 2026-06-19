@@ -46,6 +46,17 @@ def test_codeql_workflow_is_scheduled_and_pr_gated() -> None:
     assert "languages: python" in text
 
 
+def test_dependabot_monitors_actions_and_python_dependencies() -> None:
+    text = (REPO_ROOT / ".github" / "dependabot.yml").read_text(encoding="utf-8")
+
+    assert "version: 2" in text
+    for ecosystem in ('package-ecosystem: "github-actions"', 'package-ecosystem: "pip"'):
+        assert ecosystem in text
+    assert text.count('directory: "/"') == 2
+    assert text.count('interval: "weekly"') == 2
+    assert "open-pull-requests-limit: 5" in text
+
+
 def test_python_classifier_matches_ci_matrix() -> None:
     pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
     ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
