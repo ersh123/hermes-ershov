@@ -49,3 +49,14 @@ def test_quickstart_fixture_runs_offline_without_api_key(tmp_path: Path) -> None
 
     assert "no api key" in (repo_root / "docs" / "quickstart.md").read_text(encoding="utf-8").lower()
     assert "no api key" in (fixture_root / "README.md").read_text(encoding="utf-8").lower()
+
+
+def test_quickstart_fixture_readme_uses_ershov_public_names() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    fixture_readme = (repo_root / "examples" / "quickstart" / "README.md").read_text(encoding="utf-8")
+
+    assert "Hermes Ershov quickstart fixture" in fixture_readme
+    assert "python -m hermes_ershov" in fixture_readme
+    assert "HERMES_ERSHOV_STATE_ROOT" in fixture_readme
+    assert "Hermes Dreaming" not in fixture_readme
+    assert "HERMES_DREAMING_STATE_ROOT" not in fixture_readme
