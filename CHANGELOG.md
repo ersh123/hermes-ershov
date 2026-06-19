@@ -2,18 +2,18 @@
 
 ## 0.4.0 - 2026-06-06
 
-- Added the **trust loop**: `dreaming revert` restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state, with drift detection (`drift_detected` audit event), `REVERT.md` summary, and `--yes` for non-interactive callers.
-- Added the **friction-killer**: `dreaming create --from-sessions N` (and `--from-since 7d`, with `--recent N` as a back-compat alias) auto-harvests local sessions in one step and prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging.
-- Added `dreaming apply --dry-run`, `--priority {low,normal,high}`, and `--target-kind {memory,user,skill,fact}` for preview-only and selective applies. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
-- Added `dreaming inbox --apply-ready` to surface artifacts where every proposal is approved (or already applied). The inbox digest also renders a "Ready to apply" section.
-- Added `dreaming providers list` to introspect the three built-in providers without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create` and `review`.
+- Added the **trust loop**: `mnemos revert` restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state, with drift detection (`drift_detected` audit event), `REVERT.md` summary, and `--yes` for non-interactive callers.
+- Added the **friction-killer**: `mnemos create --from-sessions N` (and `--from-since 7d`, with `--recent N` as a back-compat alias) auto-harvests local sessions in one step and prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging.
+- Added `mnemos apply --dry-run`, `--priority {low,normal,high}`, and `--target-kind {memory,user,skill,fact}` for preview-only and selective applies. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
+- Added `mnemos inbox --apply-ready` to surface artifacts where every proposal is approved (or already applied). The inbox digest also renders a "Ready to apply" section.
+- Added `mnemos providers list` to introspect the three built-in providers without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create` and `review`.
 - Tightened the `reject` reason enforcement: the non-empty reason check is now in `commands/review.py:reject_artifact()`, so any caller (CLI, library, plugin) is constrained by the same rule.
 - Bumped the `DreamArtifact` model with `reverted_at` and `revert_audit_events`. The `dry_run_report` is attached in-memory only and excluded from `manifest.json` so the on-disk contract stays stable.
 
 ## 0.3.0 - 2026-06-02
 
-- Added the Dream Inbox command with JSON and text output so staged artifacts can be reviewed as a queue instead of only one at a time.
-- Added `dreaming harvest --recent` and wired `create`/`review` to the local session-reader fallback path.
+- Added the Mnemos Inbox command with JSON and text output so staged artifacts can be reviewed as a queue instead of only one at a time.
+- Added `mnemos harvest --recent` and wired `create`/`review` to the local session-reader fallback path.
 - Surfaced proposal `risk`, `priority`, `reason`, `source_quote`, and `policy_flags` across summarize, digest, report-card, and inbox views.
 - Added `digest --inbox` plus the inbox-digest cron mode for stdout-only operator reporting.
 - Tightened writeback path policy so staged proposals fail closed unless they target the approved paths for their kind.
@@ -26,27 +26,27 @@
 - Added the review decision loop: `summarize`, `approve`, `reject`, and `review --open`.
 - Hardened provider output validation so malformed proposals fail closed instead of sneaking into artifacts.
 - Added provenance checks so proposals must cite the source bundle instead of fabricated paths.
-- Added a deterministic local digest generator with priority scoring, change-since-last-dream summaries, and optional weekly rollups.
-- Added onboarding docs, install/update guidance, persona examples, and a safety page that spells out what Dreaming can and cannot mutate.
-- Added `dreaming report-card` as a redacted shareable phase-7 slice with JSON output support.
+- Added a deterministic local digest generator with priority scoring, change-since-last-memory-run summaries, and optional weekly rollups.
+- Added onboarding docs, install/update guidance, persona examples, and a safety page that spells out what Mnemos can and cannot mutate.
+- Added `mnemos report-card` as a redacted shareable phase-7 slice with JSON output support.
 - Added live-memory policy guardrails around idempotence and capacity.
 
 ## 0.1.1 - 2026-05-27
 
-- Added real `dreaming diff` output with unified diffs against `--live-root` or the artifact workspace root.
+- Added real `mnemos diff` output with unified diffs against `--live-root` or the artifact workspace root.
 - Added atomic artifact apply behavior with preflight checks, up-front file snapshots, rollback on write or verification failure, and persisted audit fields.
 - Added an offline quickstart fixture under `examples/quickstart/` plus copy/paste docs at `docs/quickstart.md`.
-- Added pytest isolation and a `HERMES_DREAMING_STATE_ROOT` override so tests and demos do not write to the real `~/.hermes/dreaming` run ledger.
-- Added a safe `dreaming update` command for fast-forward plugin updates with dirty-tree protection and optional pytest verification.
-- Added a proper Hermes plugin wrapper so the repo can install as `hermes-dreaming`.
+- Added pytest isolation and a `HERMES_MNEMOS_STATE_ROOT` override so tests and demos do not write to the real `~/.hermes/mnemos` run ledger.
+- Added a safe `mnemos update` command for fast-forward plugin updates with dirty-tree protection and optional pytest verification.
+- Added a proper Hermes plugin wrapper so the repo can install as `hermes-mnemos`.
 - Bundled a Hermes skill for the staged self-improvement workflow.
 - Added an install-time handoff note for the Hermes plugin path.
 
 ## 0.1.0 - 2026-05-25
 
-- Added the Hermes Dreaming artifact-first MVP.
+- Added the Hermes Mnemos artifact-first MVP.
 - Added `create`, `diff`, `validate`, `apply`, `discard`, and `status` commands.
-- Added directory-based dream artifacts with `manifest.json`, `REPORT.md`, `sources.jsonl`, and `proposals.jsonl`.
+- Added directory-based memory artifacts with `manifest.json`, `REPORT.md`, `sources.jsonl`, and `proposals.jsonl`.
 - Added validation, backups, and discard/archive semantics.
 - Added offline marker parsing plus an optional OpenAI-compatible provider.
 - Added tests for the core model, validation, CLI flow, and apply/discard behavior.

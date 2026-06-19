@@ -196,7 +196,7 @@ def test_digest_renders_local_priorities_deltas_and_weekly_rollup(tmp_path: Path
 
     state_path = state_root / "state.json"
     ledger_path = state_root / "runs.jsonl"
-    diary_path = state_root / "DREAMS.md"
+    diary_path = state_root / "MNEMOS.md"
     record_run(
         {
             "command": "create",
@@ -242,13 +242,13 @@ def test_digest_renders_local_priorities_deltas_and_weekly_rollup(tmp_path: Path
     )
     output = capsys.readouterr().out
 
-    assert "Hermes Dreaming digest" in output
+    assert "Hermes Mnemos digest" in output
     assert "Priority:" in output
-    assert "Previous successful dream: `artifact-previous`" in output
+    assert "Previous successful memory run: `artifact-previous`" in output
     assert "Next step: approve or reject proposals" in output
-    assert f"dreaming approve {shlex.quote(str(current_dir))} p-user" in output
-    assert f"dreaming reject {shlex.quote(str(current_dir))} p-memory --reason \"...\"" in output
-    assert "What changed since last dream" in output
+    assert f"mnemos approve {shlex.quote(str(current_dir))} p-user" in output
+    assert f"mnemos reject {shlex.quote(str(current_dir))} p-memory --reason \"...\"" in output
+    assert "What changed since last memory run" in output
     assert "Changed:" in output
     assert "Repeated:" in output
     assert "Weekly rollup" in output
@@ -303,8 +303,8 @@ def test_digest_inbox_mode_renders_attention_blocks_and_counts(tmp_path: Path, c
                 approved=True,
                 risk="high",
                 priority="high",
-                reason="needs Tony now",
-                source_quote="this is the line Tony needs",
+                reason="needs operator now",
+                source_quote="this is the line operator needs",
                 policy_flags=["manual-review"],
             ),
             _proposal(
@@ -335,14 +335,14 @@ def test_digest_inbox_mode_renders_attention_blocks_and_counts(tmp_path: Path, c
     )
     output = capsys.readouterr().out
 
-    assert "Hermes Dreaming inbox digest" in output
+    assert "Hermes Mnemos inbox digest" in output
     assert "- Total artifacts: `2`" in output
     assert "- Active artifacts: `2`" in output
     assert "- High risk count: `1`" in output
     assert "- High priority count: `1`" in output
     assert "- Newest artifact: `artifact-newer`" in output
-    assert "- Top reason: needs Tony now" in output
-    assert "## Needs Tony" in output
+    assert "- Top reason: needs operator now" in output
+    assert "## Needs Operator" in output
     assert "artifact-newer" in output
     assert "manual-review" in output
     assert "## Safe to ignore" in output

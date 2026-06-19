@@ -1,9 +1,9 @@
-# hermes-dreaming installed
+# hermes-mnemos installed
 
 The plugin is live inside Hermes. Start with:
 
 ```bash
-hermes dreaming review --help
+hermes mnemos review --help
 ```
 
 Next:

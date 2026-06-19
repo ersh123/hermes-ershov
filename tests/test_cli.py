@@ -21,7 +21,7 @@ def _write_source_tree(root: Path) -> Path:
     sources = root / "sources"
     sources.mkdir(parents=True, exist_ok=True)
     (sources / "session-1.md").write_text(
-        "# Session 1\n\nDREAM: memory: Keep updates short and concrete.\nDREAM: fact: {\"type\": \"preference\", \"key\": \"tone\", \"value\": \"casual\"}\nDREAM: skill: path=skills/review.md | Preserve review gates and backups.\n",
+        "# Session 1\n\nMEMORY: memory: Keep updates short and concrete.\nMEMORY: fact: {\"type\": \"preference\", \"key\": \"tone\", \"value\": \"casual\"}\nMEMORY: skill: path=skills/review.md | Preserve review gates and backups.\n",
         encoding="utf-8",
     )
     return sources
@@ -40,8 +40,8 @@ def _write_report_card_artifact(root: Path, *, status: str = "staged") -> Path:
             SourceSnapshot(
                 path="sources/session-1.md",
                 kind="session",
-                content="DREAM: memory: TOP-SECRET-SOURCE\n",
-                sha256=sha256(b"DREAM: memory: TOP-SECRET-SOURCE\n").hexdigest(),
+                content="MEMORY: memory: TOP-SECRET-SOURCE\n",
+                sha256=sha256(b"MEMORY: memory: TOP-SECRET-SOURCE\n").hexdigest(),
                 line_count=1,
             )
         ],
@@ -404,3 +404,52 @@ def test_create_with_recent_alias_keeps_back_compat(tmp_path: Path, monkeypatch,
         )
         == 0
     )
+
+
+def test_install_cron_cli_forwards_nightly_review_options(tmp_path: Path, monkeypatch, capsys) -> None:
+    captured: dict[str, object] = {}
+
+    def fake_install_cron(**kwargs):  # type: ignore[no-untyped-def]
+        captured.update(kwargs)
+        return "## hermes mnemos install-cron\n\n**Cron job registered.**"
+
+    monkeypatch.setattr("hermes_dreaming.cli.install_cron_command", fake_install_cron)
+    live_root = tmp_path / "live"
+    artifact_root = tmp_path / "artifacts"
+    archive_root = tmp_path / "archive"
+    state_root = tmp_path / "state"
+
+    exit_code = main(
+        [
+            "install-cron",
+            "--mode",
+            "nightly-memory",
+            "--recent",
+            "9",
+            "--live-root",
+            str(live_root),
+            "--artifact-root",
+            str(artifact_root),
+            "--archive-root",
+            str(archive_root),
+            "--state-root",
+            str(state_root),
+            "--provider",
+            "deepseek",
+            "--model",
+            "deepseek-v4-flash",
+            "--base-url",
+            "https://api.deepseek.com/v1",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["mode"] == "nightly-memory"
+    assert captured["recent"] == 9
+    assert captured["live_root"] == live_root
+    assert captured["artifact_root"] == artifact_root
+    assert captured["archive_root"] == archive_root
+    assert captured["state_root"] == state_root
+    assert captured["provider"] == "deepseek"
+    assert captured["model"] == "deepseek-v4-flash"
+    assert captured["base_url"] == "https://api.deepseek.com/v1"

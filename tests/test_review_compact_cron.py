@@ -6,7 +6,13 @@ from unittest.mock import MagicMock, patch
 
 from hermes_dreaming.artifact import DreamArtifact, DreamProposal, SourceSnapshot, load_artifact, write_artifact
 from hermes_dreaming.cli import main
-from hermes_dreaming.commands.install_cron import DEFAULT_SCHEDULE, JOB_NAME, SCRIPT_NAME, handle as install_cron_handle
+from hermes_dreaming.commands.install_cron import (
+    DEFAULT_SCHEDULE,
+    JOB_NAME,
+    NIGHTLY_REVIEW_SCRIPT_NAME,
+    SCRIPT_NAME,
+    handle as install_cron_handle,
+)
 
 install_cron_module = import_module("hermes_dreaming.commands.install_cron")
 
@@ -15,7 +21,7 @@ def _write_source_tree(root: Path) -> Path:
     sources = root / "sources"
     sources.mkdir(parents=True, exist_ok=True)
     (sources / "session-1.md").write_text(
-        "# Session 1\n\nDREAM: memory: Keep updates short and concrete.\nDREAM: fact: {\"type\": \"preference\", \"key\": \"tone\", \"value\": \"casual\"}\n",
+        "# Session 1\n\nMEMORY: memory: Keep updates short and concrete.\nMEMORY: fact: {\"type\": \"preference\", \"key\": \"tone\", \"value\": \"casual\"}\n",
         encoding="utf-8",
     )
     return sources
@@ -34,7 +40,7 @@ def _write_artifact(artifact_root: Path, *, artifact_id: str, status: str) -> Pa
             SourceSnapshot(
                 path="sources/session-1.md",
                 kind="session",
-                content="DREAM: memory: Keep updates short and concrete.\n",
+                content="MEMORY: memory: Keep updates short and concrete.\n",
                 sha256="f" * 64,
                 line_count=1,
             )
@@ -150,7 +156,7 @@ def test_install_cron_registers_digest_job_and_writes_script(tmp_path: Path, mon
 
     assert "registered" in result.lower()
     call_kwargs = mock_cron.create_job.call_args.kwargs
-    assert call_kwargs["prompt"] == "Hermes Dreaming daily digest"
+    assert call_kwargs["prompt"] == "Hermes Mnemos daily digest"
     assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
     assert call_kwargs["name"] == JOB_NAME
     assert call_kwargs["deliver"] == "local"
@@ -160,7 +166,7 @@ def test_install_cron_registers_digest_job_and_writes_script(tmp_path: Path, mon
 
     script_path = home / "scripts" / SCRIPT_NAME
     assert script_path.exists()
-    assert "Hermes Dreaming daily digest" in script_path.read_text(encoding="utf-8")
+    assert "Hermes Mnemos daily digest" in script_path.read_text(encoding="utf-8")
 
 
 def test_install_cron_registers_inbox_digest_job_and_writes_inbox_script(tmp_path: Path, monkeypatch) -> None:
@@ -179,7 +185,7 @@ def test_install_cron_registers_inbox_digest_job_and_writes_inbox_script(tmp_pat
 
     assert "registered" in result.lower()
     call_kwargs = mock_cron.create_job.call_args.kwargs
-    assert call_kwargs["prompt"] == "Hermes Dreaming inbox digest"
+    assert call_kwargs["prompt"] == "Hermes Mnemos inbox digest"
     assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
     assert call_kwargs["name"] == JOB_NAME
     assert call_kwargs["deliver"] == "local"
@@ -193,6 +199,61 @@ def test_install_cron_registers_inbox_digest_job_and_writes_inbox_script(tmp_pat
     assert "--inbox" in script_text
 
 
+def test_install_cron_registers_nightly_review_job_and_writes_review_script(tmp_path: Path, monkeypatch) -> None:
+    home = _patch_hermes_home(monkeypatch, tmp_path)
+    live_root = tmp_path / "live"
+    artifact_root = tmp_path / "artifacts"
+    archive_root = tmp_path / "archive"
+    state_root = tmp_path / "state"
+    mock_cron = MagicMock()
+    mock_cron.list_jobs.return_value = []
+    mock_cron.create_job.return_value = {
+        "id": "job-789",
+        "name": JOB_NAME,
+        "schedule_display": "At 03:00 every day",
+        "next_run_at": "2099-01-02T03:00:00+00:00",
+        "script": NIGHTLY_REVIEW_SCRIPT_NAME,
+    }
+
+    with patch.dict("sys.modules", {"cron.jobs": mock_cron}):
+        result = install_cron_handle(
+            mode="nightly-memory",
+            recent=7,
+            provider="deepseek",
+            model="deepseek-v4-flash",
+            base_url="https://api.deepseek.com/v1",
+            live_root=live_root,
+            artifact_root=artifact_root,
+            archive_root=archive_root,
+            state_root=state_root,
+        )
+
+    assert "registered" in result.lower()
+    call_kwargs = mock_cron.create_job.call_args.kwargs
+    assert call_kwargs["prompt"] == "Hermes Mnemos nightly memory"
+    assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
+    assert call_kwargs["name"] == JOB_NAME
+    assert call_kwargs["deliver"] == "local"
+    assert call_kwargs["script"] == NIGHTLY_REVIEW_SCRIPT_NAME
+    assert call_kwargs["no_agent"] is True
+    assert call_kwargs["workdir"] == str(install_cron_module._repo_root())
+
+    script_path = home / "scripts" / NIGHTLY_REVIEW_SCRIPT_NAME
+    script_text = script_path.read_text(encoding="utf-8")
+    assert script_path.exists()
+    assert "Hermes Mnemos nightly memory" in script_text
+    assert '"nightly"' in script_text
+    assert '"--recent"' in script_text
+    assert '"--archive-root"' in script_text
+    assert '"--state-root"' in script_text
+    assert "deepseek-v4-flash" in script_text
+    assert str(live_root) in script_text
+    assert str(artifact_root) in script_text
+    assert str(archive_root) in script_text
+    assert str(state_root) in script_text
+    assert "DEEPSEEK_API_KEY" not in script_text
+
+
 def test_install_cron_reuses_existing_job_when_config_matches(tmp_path: Path, monkeypatch) -> None:
     _patch_hermes_home(monkeypatch, tmp_path)
     mock_cron = MagicMock()
@@ -203,7 +264,7 @@ def test_install_cron_reuses_existing_job_when_config_matches(tmp_path: Path, mo
             "schedule_display": "At 03:00 every day",
             "enabled": True,
             "next_run_at": "2099-01-02T03:00:00+00:00",
-            "prompt": "Hermes Dreaming daily digest",
+            "prompt": "Hermes Mnemos daily digest",
             "schedule": DEFAULT_SCHEDULE,
             "deliver": "local",
             "script": SCRIPT_NAME,
@@ -230,7 +291,7 @@ def test_install_cron_refreshes_legacy_prompt_job(tmp_path: Path, monkeypatch) -
             "schedule_display": "At 03:00 every day",
             "enabled": True,
             "next_run_at": "2099-01-02T03:00:00+00:00",
-            "prompt": "/dreaming review",
+            "prompt": "/mnemos review",
             "schedule": DEFAULT_SCHEDULE,
             "deliver": "local",
             "no_agent": False,
@@ -242,7 +303,7 @@ def test_install_cron_refreshes_legacy_prompt_job(tmp_path: Path, monkeypatch) -
         "schedule_display": "At 03:00 every day",
         "enabled": True,
         "next_run_at": "2099-01-03T03:00:00+00:00",
-        "prompt": "Hermes Dreaming daily digest",
+        "prompt": "Hermes Mnemos daily digest",
         "schedule": DEFAULT_SCHEDULE,
         "deliver": "local",
         "script": SCRIPT_NAME,
@@ -257,7 +318,7 @@ def test_install_cron_refreshes_legacy_prompt_job(tmp_path: Path, monkeypatch) -
     mock_cron.create_job.assert_not_called()
     mock_cron.update_job.assert_called_once()
     update_kwargs = mock_cron.update_job.call_args.args[1]
-    assert update_kwargs["prompt"] == "Hermes Dreaming daily digest"
+    assert update_kwargs["prompt"] == "Hermes Mnemos daily digest"
     assert update_kwargs["deliver"] == "local"
     assert update_kwargs["script"] == SCRIPT_NAME
     assert update_kwargs["no_agent"] is True

@@ -1,0 +1,192 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+
+from ..analyze import DreamRunConfig, create_dream_artifact
+from ..state import STATE_ROOT, record_run
+from .compact import CompactResult, handle as compact_artifacts
+from .digest import build_digest, build_inbox_digest, render_digest, render_inbox_digest
+from .harvest import HarvestResult, harvest_recent
+
+
+@dataclass(slots=True)
+class NightlyMemoryResult:
+    live_root: Path
+    artifact_root: Path
+    archive_root: Path
+    state_root: Path
+    source_bundle: Path
+    artifact_dir: Path
+    artifact_id: str
+    artifact_status: str
+    proposal_count: int
+    validation_errors: list[str]
+    digest_path: Path
+    inbox_digest_path: Path
+    compact_result: CompactResult | None
+    harvest_result: HarvestResult
+    success: bool
+    summary: str
+
+
+def _state_root(path: Path | None) -> Path:
+    return Path(path) if path is not None else STATE_ROOT
+
+
+def _source_bundle_path(artifact_root: Path) -> Path:
+    return artifact_root / "_sources" / "nightly-recent-sessions.md"
+
+
+def _inbox_digest_path(artifact_root: Path) -> Path:
+    return artifact_root / "_digests" / "latest-inbox.md"
+
+
+def _record_nightly_run(result: NightlyMemoryResult) -> None:
+    record_run(
+        {
+            "command": "nightly",
+            "success": result.success,
+            "artifact_id": result.artifact_id,
+            "artifact_status": result.artifact_status,
+            "artifact_dir": str(result.artifact_dir),
+            "artifact_root": str(result.artifact_root),
+            "live_root": str(result.live_root),
+            "summary": result.summary,
+            "sessions": len(result.harvest_result.sessions),
+            "redactions": result.harvest_result.redaction_count,
+            "proposals": result.proposal_count,
+            "digest_path": str(result.digest_path),
+            "inbox_digest_path": str(result.inbox_digest_path),
+            "compacted": len(result.compact_result.moved) if result.compact_result is not None else 0,
+            "errors": list(result.validation_errors),
+        },
+        state_path=result.state_root / "state.json",
+        ledger_path=result.state_root / "runs.jsonl",
+        diary_path=result.state_root / "MNEMOS.md",
+    )
+
+
+def run_nightly_memory(
+    *,
+    live_root: Path,
+    artifact_root: Path,
+    archive_root: Path | None = None,
+    state_root: Path | None = None,
+    recent: int = 14,
+    provider_name: str = "deepseek",
+    model: str | None = "deepseek-v4-flash",
+    base_url: str | None = "https://api.deepseek.com/v1",
+    compact: bool = True,
+    include_weekly: bool = True,
+) -> NightlyMemoryResult:
+    if recent <= 0:
+        raise ValueError("recent must be greater than 0")
+
+    live_root = Path(live_root)
+    artifact_root = Path(artifact_root)
+    archive_root = Path(archive_root) if archive_root is not None else artifact_root.parent / "archive"
+    resolved_state_root = _state_root(state_root)
+    source_bundle = _source_bundle_path(artifact_root)
+
+    harvest = harvest_recent(
+        recent=recent,
+        output_path=source_bundle,
+        include_assistant=True,
+    )
+    creation = create_dream_artifact(
+        DreamRunConfig(
+            live_root=live_root,
+            artifact_root=artifact_root,
+            source_paths=[source_bundle],
+            provider_name=provider_name,
+            model=model,
+            api_key=None,
+            base_url=base_url,
+        )
+    )
+
+    digest = build_digest(
+        creation.artifact_dir,
+        artifact_root=artifact_root,
+        state_root=resolved_state_root,
+        include_weekly=include_weekly,
+    )
+    digest_text = render_digest(digest)
+    digest_path = creation.artifact_dir / "NIGHTLY.md"
+    digest_path.write_text(digest_text, encoding="utf-8")
+
+    compact_result = compact_artifacts(artifact_root=artifact_root, archive_root=archive_root) if compact else None
+
+    inbox_digest = build_inbox_digest(
+        artifact_root,
+        state_root=resolved_state_root,
+    )
+    inbox_text = render_inbox_digest(inbox_digest)
+    inbox_path = _inbox_digest_path(artifact_root)
+    inbox_path.parent.mkdir(parents=True, exist_ok=True)
+    inbox_path.write_text(inbox_text, encoding="utf-8")
+
+    success = not creation.validation_errors and creation.artifact.status != "invalid"
+    summary = (
+        f"nightly staged {len(creation.artifact.proposals)} proposal(s) "
+        f"from {len(harvest.sessions)} session(s)"
+        if success
+        else "nightly staged invalid artifact: " + "; ".join(creation.validation_errors or ["unknown validation failure"])
+    )
+    result = NightlyMemoryResult(
+        live_root=live_root,
+        artifact_root=artifact_root,
+        archive_root=archive_root,
+        state_root=resolved_state_root,
+        source_bundle=source_bundle,
+        artifact_dir=creation.artifact_dir,
+        artifact_id=creation.artifact.artifact_id,
+        artifact_status=creation.artifact.status,
+        proposal_count=len(creation.artifact.proposals),
+        validation_errors=list(creation.validation_errors),
+        digest_path=digest_path,
+        inbox_digest_path=inbox_path,
+        compact_result=compact_result,
+        harvest_result=harvest,
+        success=success,
+        summary=summary,
+    )
+    _record_nightly_run(result)
+    return result
+
+
+def render_nightly_memory(result: NightlyMemoryResult) -> str:
+    compacted = len(result.compact_result.moved) if result.compact_result is not None else 0
+    lines = [
+        "# Hermes Mnemos nightly memory",
+        "",
+        f"- Artifact: `{result.artifact_id}`",
+        f"- Status: `{result.artifact_status}`",
+        f"- Success: `{str(result.success).lower()}`",
+        f"- Live root: `{result.live_root}`",
+        f"- Artifact root: `{result.artifact_root}`",
+        f"- Source bundle: `{result.source_bundle}`",
+        f"- Digest: `{result.digest_path}`",
+        f"- Inbox digest: `{result.inbox_digest_path}`",
+        f"- Sessions harvested: `{len(result.harvest_result.sessions)}`",
+        f"- Redactions: `{result.harvest_result.redaction_count}`",
+        f"- Proposals: `{result.proposal_count}`",
+        f"- Compacted terminal artifacts: `{compacted}`",
+        "",
+        "## Safety",
+        "",
+        "- Live memory writes: disabled.",
+        "- Apply requires explicit `mnemos approve` / `mnemos apply`.",
+        "- Provider keys are read from the runtime environment, not persisted in the nightly script.",
+        "",
+        "## Next",
+        "",
+        f"- Review: `mnemos summarize {result.artifact_dir}`",
+        f"- Inbox: `mnemos inbox --artifact-root {result.artifact_root}`",
+    ]
+    if result.validation_errors:
+        lines.extend(["", "## Validation errors", ""])
+        for error in result.validation_errors:
+            lines.append(f"- {error}")
+    return "\n".join(lines).rstrip() + "\n"

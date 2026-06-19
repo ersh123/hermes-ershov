@@ -8,7 +8,7 @@ Strategy:
   3. Final fallback: pointer log from ``state.json`` (session IDs only).
 
 The public API returns compact, deterministic digests suitable for prompt
-injection into the Hermes Dreaming curation loop.
+injection into the Hermes Mnemos curation loop.
 """
 
 import json
@@ -36,6 +36,7 @@ class SessionDigest:
     message_count: int
     source: str
     user_turns: list[str]
+    context_lines: list[str] | None = None
 
     @property
     def date_str(self) -> str:
@@ -52,7 +53,8 @@ class SessionDigest:
 
     def to_prompt_block(self) -> str:
         lines = [f"**{self.label()}** ({self.date_str}, {self.message_count} messages)"]
-        for turn in self.user_turns:
+        turns = self.context_lines if self.context_lines is not None else self.user_turns
+        for turn in turns:
             lines.append(f"  > {turn}")
         return "\n".join(lines)
 
@@ -85,6 +87,29 @@ def _extract_user_turns(messages: list[dict[str, Any]]) -> list[str]:
     return turns
 
 
+def _extract_dialogue_lines(messages: list[dict[str, Any]]) -> list[str]:
+    lines: list[str] = []
+    for msg in messages:
+        role = str(msg.get("role") or "").strip().lower()
+        if role not in {"user", "assistant", "tool"}:
+            continue
+        content = msg.get("content") or ""
+        if isinstance(content, list):
+            parts = [
+                block.get("text", "") if isinstance(block, dict) else str(block)
+                for block in content
+                if not isinstance(block, dict) or block.get("type") in {"text", "tool_result"}
+            ]
+            content = " ".join(parts)
+        content = str(content).strip()
+        if not content or len(content) < 10:
+            continue
+        lines.append(f"{role}: {_truncate(content, _MAX_CHARS_PER_TURN)}")
+        if len(lines) >= _MAX_TURNS_PER_SESSION:
+            break
+    return lines
+
+
 def _db_path(db_path: Path | None = None) -> Path:
     if db_path is not None:
         return Path(db_path)
@@ -99,14 +124,14 @@ def _db_path(db_path: Path | None = None) -> Path:
 def _state_path(state_path: Path | None = None) -> Path:
     if state_path is not None:
         return Path(state_path)
-    return Path.home() / ".hermes" / "dreaming" / "state.json"
+    return Path.home() / ".hermes" / "mnemos" / "state.json"
 
 
 # ---------------------------------------------------------------------------
 # Primary path: hermes_state.SessionDB
 # ---------------------------------------------------------------------------
 
-def _read_via_session_db(limit: int) -> list[SessionDigest] | None:
+def _read_via_session_db(limit: int, *, include_assistant: bool = False) -> list[SessionDigest] | None:
     try:
         from hermes_state import SessionDB  # type: ignore
 
@@ -121,7 +146,7 @@ def _read_via_session_db(limit: int) -> list[SessionDigest] | None:
             try:
                 messages = db.get_messages(sid)
             except Exception as exc:  # pragma: no cover - best-effort fallback
-                logger.debug("dreaming: get_messages(%s) failed: %s", sid[:8], exc)
+                logger.debug("mnemos: get_messages(%s) failed: %s", sid[:8], exc)
             digests.append(
                 SessionDigest(
                     session_id=sid,
@@ -130,11 +155,12 @@ def _read_via_session_db(limit: int) -> list[SessionDigest] | None:
                     message_count=int(row.get("message_count", 0) or 0),
                     source=str(row.get("source", "") or "sessiondb"),
                     user_turns=_extract_user_turns(messages),
+                    context_lines=_extract_dialogue_lines(messages) if include_assistant else None,
                 )
             )
         return digests
     except Exception as exc:
-        logger.debug("dreaming: SessionDB read failed: %s", exc)
+        logger.debug("mnemos: SessionDB read failed: %s", exc)
         return None
 
 
@@ -142,7 +168,7 @@ def _read_via_session_db(limit: int) -> list[SessionDigest] | None:
 # Fallback 1: direct SQLite read
 # ---------------------------------------------------------------------------
 
-def _read_via_sqlite(limit: int, *, db_path: Path | None = None) -> list[SessionDigest] | None:
+def _read_via_sqlite(limit: int, *, db_path: Path | None = None, include_assistant: bool = False) -> list[SessionDigest] | None:
     db_file = _db_path(db_path)
     if not db_file.exists():
         return None
@@ -183,11 +209,12 @@ def _read_via_sqlite(limit: int, *, db_path: Path | None = None) -> list[Session
                         message_count=int(row["message_count"] or 0),
                         source=str(row["source"] or "sqlite"),
                         user_turns=_extract_user_turns(raw_msgs),
+                        context_lines=_extract_dialogue_lines(raw_msgs) if include_assistant else None,
                     )
                 )
         return digests
     except Exception as exc:
-        logger.debug("dreaming: direct SQLite read failed: %s", exc)
+        logger.debug("mnemos: direct SQLite read failed: %s", exc)
         return None
 
 
@@ -220,6 +247,7 @@ def list_recent(
     *,
     db_path: Path | None = None,
     state_path: Path | None = None,
+    include_assistant: bool = False,
 ) -> list[SessionDigest]:
     """Return up to *limit* recent sessions, most recent first.
 
@@ -227,17 +255,20 @@ def list_recent(
     the returned session IDs are recorded into ``state.json`` as
     ``recent_session_ids`` so the pointer-log fallback stays populated for
     future low-degradation reads."""
-    result = _read_via_session_db(limit)
+    result = _read_via_session_db(limit, include_assistant=include_assistant) if include_assistant else _read_via_session_db(limit)
     if result is not None:
         _record_pointer_ids(result, state_path=state_path)
         return result
 
-    result = _read_via_sqlite(limit) if db_path is None else _read_via_sqlite(limit, db_path=db_path)
+    if db_path is None:
+        result = _read_via_sqlite(limit, include_assistant=include_assistant) if include_assistant else _read_via_sqlite(limit)
+    else:
+        result = _read_via_sqlite(limit, db_path=db_path, include_assistant=include_assistant) if include_assistant else _read_via_sqlite(limit, db_path=db_path)
     if result is not None:
         _record_pointer_ids(result, state_path=state_path)
         return result
 
-    logger.warning("dreaming: all session read paths failed; using pointer log only")
+    logger.warning("mnemos: all session read paths failed; using pointer log only")
     return _read_via_pointer_log(limit) if state_path is None else _read_via_pointer_log(limit, state_path=state_path)
 
 
@@ -273,6 +304,7 @@ def read_recent_session_context(
     *,
     db_path: Path | None = None,
     state_path: Path | None = None,
+    include_assistant: bool = False,
 ) -> str:
     """Return a compact prompt block with recent session context."""
-    return format_for_prompt(list_recent(limit=limit, db_path=db_path, state_path=state_path))
+    return format_for_prompt(list_recent(limit=limit, db_path=db_path, state_path=state_path, include_assistant=include_assistant))

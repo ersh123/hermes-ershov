@@ -433,7 +433,7 @@ def revert_artifact(
         )
 
     workspace_root = Path(live_root) if live_root is not None else Path(artifact.workspace_root)
-    resolved_backup_root = Path(backup_root) if backup_root is not None else workspace_root / ".dreaming" / "backups"
+    resolved_backup_root = Path(backup_root) if backup_root is not None else workspace_root / ".mnemos" / "backups"
 
     # Pre-flight: every backup must exist and be readable.
     missing: list[str] = []
@@ -663,7 +663,7 @@ def _render_revert_markdown(
     failures: list[str],
 ) -> str:
     lines = [
-        f"# Hermes Dreaming revert — {artifact.artifact_id}",
+        f"# Hermes Mnemos revert — {artifact.artifact_id}",
         "",
         f"- Started: `{started_at}`",
         f"- Finished: `{finished_at}`",

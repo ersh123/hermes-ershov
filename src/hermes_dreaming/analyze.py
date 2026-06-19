@@ -71,7 +71,7 @@ def generate_artifact_id() -> str:
 
 def build_report(artifact: DreamArtifact) -> str:
     lines = [
-        "# Hermes Dreaming Report",
+        "# Hermes Mnemos Report",
         "",
         f"- Artifact: `{artifact.artifact_id}`",
         f"- Created: `{artifact.created_at}`",
@@ -116,7 +116,7 @@ def _build_failure_report(
     payload_hash: str | None = None,
 ) -> str:
     lines = [
-        "# Hermes Dreaming Report",
+        "# Hermes Mnemos Report",
         "",
         f"- Artifact: `{artifact_id}`",
         f"- Provider: `{provider_name}`",
@@ -193,7 +193,7 @@ def build_report_card(artifact: DreamArtifact) -> DreamReportCard:
 
 def render_report_card_markdown(card: DreamReportCard) -> str:
     lines = [
-        "# Hermes Dreaming report card",
+        "# Hermes Mnemos report card",
         "",
         f"- Artifact: `{card.artifact_id}`",
         f"- Created: `{card.created_at}`",

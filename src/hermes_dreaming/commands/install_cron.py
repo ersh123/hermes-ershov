@@ -9,11 +9,13 @@ except Exception:  # pragma: no cover - fallback for direct source inspection
     def get_hermes_home() -> Path:
         return Path.home() / ".hermes"
 
-JOB_NAME = "hermes-dreaming"
+JOB_NAME = "hermes-mnemos"
 DEFAULT_SCHEDULE = "0 3 * * *"
-SCRIPT_NAME = "hermes_dreaming_status_digest.py"
-_PROMPT = "Hermes Dreaming daily digest"
-_INBOX_PROMPT = "Hermes Dreaming inbox digest"
+SCRIPT_NAME = "hermes_mnemos_status_digest.py"
+NIGHTLY_REVIEW_SCRIPT_NAME = "hermes_mnemos_nightly.py"
+_PROMPT = "Hermes Mnemos daily digest"
+_INBOX_PROMPT = "Hermes Mnemos inbox digest"
+_REVIEW_PROMPT = "Hermes Mnemos nightly memory"
 
 
 _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
@@ -116,9 +118,15 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
 
     def main() -> int:
         state_root = Path(
-            os.environ.get("HERMES_DREAMING_STATE_ROOT", str(Path.home() / ".hermes" / "dreaming"))
+            os.environ.get(
+                "HERMES_MNEMOS_STATE_ROOT",
+                os.environ.get(
+                    "HERMES_NIGHT_MEMORY_STATE_ROOT",
+                    os.environ.get("HERMES_DREAMING_STATE_ROOT", str(Path.home() / ".hermes" / "mnemos")),
+                ),
+            )
         )
-        artifact_root = REPO_ROOT / ".dreaming" / "artifacts"
+        artifact_root = REPO_ROOT / ".mnemos" / "artifacts"
         state = _read_json(state_root / "state.json")
         runs = _read_jsonl(state_root / "runs.jsonl")
         git_lines = _git_status(REPO_ROOT)
@@ -141,7 +149,7 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
                     last_successful_run = record
                     break
 
-        print("## Hermes Dreaming daily digest")
+        print("## Hermes Mnemos daily digest")
         print("")
         print(f"- Repo: `{REPO_ROOT}`")
         print(f"- Artifact root: `{artifact_root}`")
@@ -152,18 +160,18 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
         for line in git_lines:
             print(f"- `{line}`")
         print("")
-        print("## Dreaming runtime")
+        print("## Mnemos runtime")
         print("")
         print(f"- Runs: `{run_count}` total, `{successful_runs}` successful")
         print(f"- Last run: `{_format_run(last_run)}`")
         print(f"- Last successful run: `{_format_run(last_successful_run)}`")
         print(f"- Ledger bytes: `{(state_root / 'runs.jsonl').stat().st_size if (state_root / 'runs.jsonl').exists() else 0}`")
-        print(f"- Diary bytes: `{(state_root / 'DREAMS.md').stat().st_size if (state_root / 'DREAMS.md').exists() else 0}`")
+        print(f"- Diary bytes: `{(state_root / 'MNEMOS.md').stat().st_size if (state_root / 'MNEMOS.md').exists() else 0}`")
         print("")
         print("## Staged artifacts")
         print("")
         if not artifact_root.exists():
-            print("- No `.dreaming/artifacts` directory under the repo root.")
+            print("- No `.mnemos/artifacts` directory under the repo root.")
         elif not artifact_counts:
             print("- No artifacts staged yet.")
         else:
@@ -196,13 +204,108 @@ _INBOX_DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
     REPO_ROOT = Path(__REPO_ROOT__)
 
     def main() -> int:
-        cmd = [sys.executable, "-m", "hermes_dreaming", "digest", "--inbox", "--artifact-root", str(REPO_ROOT / ".dreaming" / "artifacts")]
+        cmd = [sys.executable, "-m", "hermes_mnemos", "digest", "--inbox", "--artifact-root", str(REPO_ROOT / ".mnemos" / "artifacts")]
         result = subprocess.run(cmd, cwd=str(REPO_ROOT), text=True, capture_output=True, check=False)
         if result.stdout:
             print(result.stdout.rstrip())
         if result.returncode != 0 and result.stderr:
             print(result.stderr.rstrip())
         return result.returncode
+
+    if __name__ == "__main__":
+        raise SystemExit(main())
+    '''
+).lstrip()
+
+
+_NIGHTLY_REVIEW_SCRIPT_TEMPLATE = textwrap.dedent(
+    '''
+    #!/usr/bin/env python3
+    from __future__ import annotations
+
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    REPO_ROOT = Path(__REPO_ROOT__)
+    DEFAULT_LIVE_ROOT = Path(__LIVE_ROOT__)
+    DEFAULT_ARTIFACT_ROOT = Path(__ARTIFACT_ROOT__)
+    DEFAULT_ARCHIVE_ROOT = Path(__ARCHIVE_ROOT__)
+    DEFAULT_STATE_ROOT = Path(__STATE_ROOT__)
+    DEFAULT_PROVIDER = __PROVIDER__
+    DEFAULT_MODEL = __MODEL__
+    DEFAULT_BASE_URL = __BASE_URL__
+    DEFAULT_RECENT = __RECENT__
+
+
+    def _positive_int(name: str, default: int) -> int:
+        value = os.environ.get(name)
+        if not value:
+            return default
+        try:
+            parsed = int(value)
+        except ValueError:
+            return default
+        return parsed if parsed > 0 else default
+
+
+    def main() -> int:
+        live_root = Path(os.environ.get("HERMES_MNEMOS_LIVE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_LIVE_ROOT", os.environ.get("HERMES_DREAMING_LIVE_ROOT", str(DEFAULT_LIVE_ROOT)))))
+        artifact_root = Path(os.environ.get("HERMES_MNEMOS_ARTIFACT_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_ARTIFACT_ROOT", os.environ.get("HERMES_DREAMING_ARTIFACT_ROOT", str(DEFAULT_ARTIFACT_ROOT)))))
+        archive_root = Path(os.environ.get("HERMES_MNEMOS_ARCHIVE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_ARCHIVE_ROOT", os.environ.get("HERMES_DREAMING_ARCHIVE_ROOT", str(DEFAULT_ARCHIVE_ROOT)))))
+        state_root = Path(os.environ.get("HERMES_MNEMOS_STATE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_STATE_ROOT", os.environ.get("HERMES_DREAMING_STATE_ROOT", str(DEFAULT_STATE_ROOT)))))
+        provider = os.environ.get("HERMES_MNEMOS_PROVIDER", os.environ.get("HERMES_NIGHT_MEMORY_PROVIDER", os.environ.get("HERMES_DREAMING_PROVIDER", DEFAULT_PROVIDER)))
+        model = os.environ.get("HERMES_MNEMOS_MODEL", os.environ.get("HERMES_NIGHT_MEMORY_MODEL", os.environ.get("HERMES_DREAMING_MODEL", DEFAULT_MODEL)))
+        base_url = os.environ.get("HERMES_MNEMOS_BASE_URL", os.environ.get("HERMES_NIGHT_MEMORY_BASE_URL", os.environ.get("HERMES_DREAMING_BASE_URL", DEFAULT_BASE_URL)))
+        recent = _positive_int("HERMES_MNEMOS_RECENT_SESSIONS", _positive_int("HERMES_NIGHT_MEMORY_RECENT_SESSIONS", _positive_int("HERMES_DREAMING_RECENT_SESSIONS", DEFAULT_RECENT)))
+
+        cmd = [
+            sys.executable,
+            "-m",
+            "hermes_mnemos",
+            "nightly",
+            "--recent",
+            str(recent),
+            "--live-root",
+            str(live_root),
+            "--artifact-root",
+            str(artifact_root),
+            "--archive-root",
+            str(archive_root),
+            "--state-root",
+            str(state_root),
+            "--provider",
+            provider,
+        ]
+        if model:
+            cmd.extend(["--model", model])
+        if base_url:
+            cmd.extend(["--base-url", base_url])
+
+        env = os.environ.copy()
+        src_path = str(REPO_ROOT / "src")
+        env["PYTHONPATH"] = src_path + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
+
+        print("## Hermes Mnemos nightly memory")
+        print("")
+        print(f"- Repo: `{REPO_ROOT}`")
+        print(f"- Live root: `{live_root}`")
+        print(f"- Artifact root: `{artifact_root}`")
+        print(f"- Archive root: `{archive_root}`")
+        print(f"- State root: `{state_root}`")
+        print(f"- Provider: `{provider}`")
+        print(f"- Model: `{model or 'provider-default'}`")
+        print(f"- Recent sessions: `{recent}`")
+        print("")
+
+        result = subprocess.run(cmd, cwd=str(REPO_ROOT), env=env, text=True, capture_output=True, check=False)
+        if result.stdout:
+            print(result.stdout.rstrip())
+        if result.returncode != 0 and result.stderr:
+            print(result.stderr.rstrip())
+        return result.returncode
+
 
     if __name__ == "__main__":
         raise SystemExit(main())
@@ -220,16 +323,85 @@ def _repo_root() -> Path:
     return here.parents[3]
 
 
-def _script_path() -> Path:
-    return Path(get_hermes_home()) / "scripts" / SCRIPT_NAME
+def _script_name(mode: str) -> str:
+    return NIGHTLY_REVIEW_SCRIPT_NAME if mode in {"nightly-review", "nightly-memory"} else SCRIPT_NAME
 
 
-def _ensure_digest_script(*, mode: str = "status-digest") -> Path:
-    script_path = _script_path()
+def _script_path(*, mode: str = "status-digest") -> Path:
+    return Path(get_hermes_home()) / "scripts" / _script_name(mode)
+
+
+def _default_live_root() -> Path:
+    return Path(get_hermes_home()) / "memories"
+
+
+def _default_artifact_root() -> Path:
+    return _repo_root() / ".mnemos" / "artifacts"
+
+
+def _default_archive_root() -> Path:
+    return _repo_root() / ".mnemos" / "archive"
+
+
+def _default_state_root() -> Path:
+    return Path(get_hermes_home()) / "mnemos"
+
+
+def render_nightly_script(
+    *,
+    repo_root: Path | None = None,
+    recent: int = 14,
+    provider: str = "deepseek",
+    model: str = "deepseek-v4-flash",
+    base_url: str | None = "https://api.deepseek.com/v1",
+    live_root: Path | None = None,
+    artifact_root: Path | None = None,
+    archive_root: Path | None = None,
+    state_root: Path | None = None,
+) -> str:
+    resolved_repo_root = repo_root or _repo_root()
+    return (
+        _NIGHTLY_REVIEW_SCRIPT_TEMPLATE.replace("__REPO_ROOT__", repr(str(resolved_repo_root)))
+        .replace("__LIVE_ROOT__", repr(str(live_root or _default_live_root())))
+        .replace("__ARTIFACT_ROOT__", repr(str(artifact_root or _default_artifact_root())))
+        .replace("__ARCHIVE_ROOT__", repr(str(archive_root or _default_archive_root())))
+        .replace("__STATE_ROOT__", repr(str(state_root or _default_state_root())))
+        .replace("__PROVIDER__", repr(provider))
+        .replace("__MODEL__", repr(model or ""))
+        .replace("__BASE_URL__", repr(base_url or ""))
+        .replace("__RECENT__", str(recent))
+    )
+
+
+def _ensure_digest_script(
+    *,
+    mode: str = "status-digest",
+    recent: int = 14,
+    provider: str = "deepseek",
+    model: str = "deepseek-v4-flash",
+    base_url: str | None = "https://api.deepseek.com/v1",
+    live_root: Path | None = None,
+    artifact_root: Path | None = None,
+    archive_root: Path | None = None,
+    state_root: Path | None = None,
+) -> Path:
+    script_path = _script_path(mode=mode)
     script_path.parent.mkdir(parents=True, exist_ok=True)
     current = script_path.read_text(encoding="utf-8") if script_path.exists() else None
-    template = _INBOX_DIGEST_SCRIPT_TEMPLATE if mode == "inbox-digest" else _DIGEST_SCRIPT_TEMPLATE
-    script_text = template.replace("__REPO_ROOT__", repr(str(_repo_root())))
+    if mode in {"nightly-review", "nightly-memory"}:
+        script_text = render_nightly_script(
+            recent=recent,
+            provider=provider,
+            model=model,
+            base_url=base_url,
+            live_root=live_root,
+            artifact_root=artifact_root,
+            archive_root=archive_root,
+            state_root=state_root,
+        )
+    else:
+        template = _INBOX_DIGEST_SCRIPT_TEMPLATE if mode == "inbox-digest" else _DIGEST_SCRIPT_TEMPLATE
+        script_text = template.replace("__REPO_ROOT__", repr(str(_repo_root())))
     if current != script_text:
         script_path.write_text(script_text, encoding="utf-8")
         try:
@@ -249,13 +421,21 @@ def _find_existing(list_jobs_fn) -> dict | None:
     return None
 
 
+def _prompt(mode: str) -> str:
+    if mode == "inbox-digest":
+        return _INBOX_PROMPT
+    if mode in {"nightly-review", "nightly-memory"}:
+        return _REVIEW_PROMPT
+    return _PROMPT
+
+
 def _desired_job_fields(schedule: str, *, mode: str = "status-digest") -> dict:
     return {
-        "prompt": _INBOX_PROMPT if mode == "inbox-digest" else _PROMPT,
+        "prompt": _prompt(mode),
         "schedule": schedule,
         "name": JOB_NAME,
         "deliver": "local",
-        "script": SCRIPT_NAME,
+        "script": _script_name(mode),
         "no_agent": True,
         "workdir": str(_repo_root()),
     }
@@ -266,36 +446,67 @@ def _job_matches(job: dict, desired: dict) -> bool:
 
 
 def _render_job_block(header: str, job: dict, schedule_display: str) -> str:
+    script_name = str(job.get("script") or SCRIPT_NAME)
+    mode_label = "no-agent nightly memory script" if script_name == NIGHTLY_REVIEW_SCRIPT_NAME else "no-agent digest script"
+    tail = (
+        "Each night Hermes will run the full memory pipeline: dialogue harvest, staged artifact, digest, inbox digest, and compaction. Live memory is not applied automatically."
+        if script_name == NIGHTLY_REVIEW_SCRIPT_NAME
+        else "Each night Hermes will run a deterministic status digest, so you get an actual report instead of a polite little tombstone."
+    )
     return (
-        "## hermes dreaming install-cron\n\n"
+        "## hermes mnemos install-cron\n\n"
         f"**{header}.**\n\n"
         f"- Job ID:    `{job['id']}`\n"
         f"- Name:      `{JOB_NAME}`\n"
         f"- Schedule:  {schedule_display}\n"
         f"- Next run:  {job.get('next_run_at', 'unknown')}\n"
-        f"- Mode:      no-agent digest script\n"
-        f"- Script:    `{SCRIPT_NAME}`\n"
+        f"- Mode:      {mode_label}\n"
+        f"- Script:    `{script_name}`\n"
         f"- Workdir:   `{_repo_root()}`\n\n"
-        "Each night Hermes will run a deterministic status digest, so you get an actual report instead of a polite little tombstone."
+        f"{tail}"
     )
 
 
-def handle(schedule: str | None = None, *, mode: str = "status-digest") -> str:
-    """Register or refresh the nightly Hermes Dreaming digest cron job."""
+def handle(
+    schedule: str | None = None,
+    *,
+    mode: str = "status-digest",
+    recent: int = 14,
+    provider: str = "deepseek",
+    model: str = "deepseek-v4-flash",
+    base_url: str | None = "https://api.deepseek.com/v1",
+    live_root: Path | None = None,
+    artifact_root: Path | None = None,
+    archive_root: Path | None = None,
+    state_root: Path | None = None,
+) -> str:
+    """Register or refresh the nightly Hermes Mnemos digest cron job."""
 
     try:
         from cron.jobs import create_job, list_jobs, update_job
     except ImportError:
         return (
-            "## hermes dreaming install-cron\n\n"
+            "## hermes mnemos install-cron\n\n"
             "**Error:** Hermes cron module not available in this environment.\n\n"
             "Start Hermes in an environment that exposes `cron.jobs`, then retry."
         )
 
     schedule = (schedule or DEFAULT_SCHEDULE).strip()
-    if mode not in {"status-digest", "inbox-digest"}:
-        return "## hermes dreaming install-cron\n\n**Error:** unsupported mode."
-    _ensure_digest_script(mode=mode)
+    if mode not in {"status-digest", "inbox-digest", "nightly-review", "nightly-memory"}:
+        return "## hermes mnemos install-cron\n\n**Error:** unsupported mode."
+    if recent <= 0:
+        return "## hermes mnemos install-cron\n\n**Error:** recent must be greater than 0."
+    _ensure_digest_script(
+        mode=mode,
+        recent=recent,
+        provider=provider,
+        model=model,
+        base_url=base_url,
+        live_root=live_root,
+        artifact_root=artifact_root,
+        archive_root=archive_root,
+        state_root=state_root,
+    )
     desired = _desired_job_fields(schedule, mode=mode)
 
     existing = _find_existing(list_jobs)
@@ -307,7 +518,7 @@ def handle(schedule: str | None = None, *, mode: str = "status-digest") -> str:
         updated = update_job(existing["id"], desired)
         if not updated:
             return (
-                "## hermes dreaming install-cron\n\n"
+                "## hermes mnemos install-cron\n\n"
                 f"**Error updating cron job `{existing['id']}`.**\n\n"
                 "The job exists, but Hermes could not refresh it. Check the cron registry and retry."
             )
@@ -318,7 +529,7 @@ def handle(schedule: str | None = None, *, mode: str = "status-digest") -> str:
         job = create_job(**desired)
     except Exception as exc:
         return (
-            "## hermes dreaming install-cron\n\n"
+            "## hermes mnemos install-cron\n\n"
             f"**Error creating cron job:** {exc}\n\n"
             f"Check that the schedule expression `{schedule}` is valid "
             "(for example, `0 3 * * *` for nightly at 03:00)."

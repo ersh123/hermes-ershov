@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Sequence
 
-DREAMS_MD_PATH = Path.home() / ".hermes" / "dreaming" / "DREAMS.md"
+DREAMS_MD_PATH = Path.home() / ".hermes" / "mnemos" / "MNEMOS.md"
 
 
 def _resolve_diary_path(diary_path: Path | None = None) -> Path:
@@ -59,9 +59,9 @@ def render_dream_entry(record: dict[str, Any]) -> list[str]:
 
 def render_dreams_md(records: Sequence[dict[str, Any]]) -> str:
     lines = [
-        "# DREAMS.md",
+        "# MNEMOS.md",
         "",
-        "Hermes Dreaming run diary, newest entries last.",
+        "Hermes Mnemos run diary, newest entries last.",
         "",
     ]
     if not records:

@@ -19,7 +19,7 @@ Check every box that applies:
 
 - [ ] touches live roots
 - [ ] touches artifact roots
-- [ ] touches `.dreaming/` runtime outputs
+- [ ] touches `.mnemos/` runtime outputs
 - [ ] changes docs only
 - [ ] changes release-facing text
 - [ ] changes apply / discard / validation / backup behavior

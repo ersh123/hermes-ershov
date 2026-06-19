@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This note defines the local digest format for Hermes Dreaming artifacts and the action loop that follows it.
+This note defines the local digest format for Hermes Mnemos artifacts and the action loop that follows it.
 It is intentionally Telegram-friendly, but it does not send anything anywhere. It is just the render contract.
 
 The digest must be generated entirely from local artifact data and run history:
@@ -13,7 +13,7 @@ The digest must be generated entirely from local artifact data and run history:
 - `proposals.jsonl`
 - `audit.jsonl`
 - `runs.jsonl`
-- `DREAMS.md`
+- `MNEMOS.md`
 - `state.json`
 
 No remote state, no hidden cache, no second source of truth.
@@ -22,7 +22,7 @@ No remote state, no hidden cache, no second source of truth.
 
 1. Make the current artifact obvious in one scan.
 2. Put the highest-value decisions at the top.
-3. Show what changed since the last dream, not a wall of repeated history.
+3. Show what changed since the last memory run, not a wall of repeated history.
 4. Make approve/reject commands copy-paste safe.
 5. Keep weekly rollups useful, not ceremonial.
 6. Stay readable on a phone.
@@ -37,7 +37,7 @@ If it would exceed the transport limit, split at section boundaries, never mid-c
 1. Header
 2. Status snapshot
 3. Priority-ranked proposals
-4. What changed since last dream
+4. What changed since last memory run
 5. Action loop
 6. Weekly rollup, only when requested or when the current artifact closes a week
 
@@ -47,7 +47,7 @@ Keep it short.
 
 Example:
 
-- `Hermes Dreaming digest`
+- `Hermes Mnemos digest`
 - `Artifact: 20260527T221500Z-abc12345`
 - `Status: staged | valid | 4 proposals | 2 approved | 1 rejected | 0 applied`
 - `Priority: 87/100`
@@ -108,12 +108,12 @@ Recommended formula:
 
 `recurrence` 0-15
 
-- +8, same theme appeared in the last dream
+- +8, same theme appeared in the last memory run
 - +7, same theme appears in 2+ source sessions or source snapshots
 
 `freshness` 0-10
 
-- +10, new proposal set or new evidence since the last dream
+- +10, new proposal set or new evidence since the last memory run
 - +5, mostly unchanged but with new audit state
 - +0, pure repeat with no new signal
 
@@ -157,12 +157,12 @@ Inside an artifact, proposals are sorted by this score:
 
 - +10, direct source quote or explicit marker
 - +8, corroborated by 2+ source sessions or snapshots
-- +5, supported by audit history or prior accepted dream
+- +5, supported by audit history or prior accepted memory run
 - +0, weak or indirect evidence only
 
 `recurrence_bonus`
 
-- +10, recurring theme across multiple dreams
+- +10, recurring theme across multiple memory runs
 - +5, recurring theme across multiple source sessions
 - +0, one-off
 
@@ -186,12 +186,12 @@ If scores tie, prefer:
 5. higher confidence
 6. newer evidence
 
-## What changed since last dream
+## What changed since last memory run
 
 This is the part that keeps the digest from becoming a rerun.
-The section should compare the current artifact to the previous dream, not to some abstract idea of progress.
+The section should compare the current artifact to the previous memory run, not to some abstract idea of progress.
 
-### Definition of “last dream”
+### Definition of "last memory run"
 
 Use the most recent successful run from `runs.jsonl`.
 If the current artifact belongs to a chain of related runs, prefer the previous artifact with the same source bundle or source roots.
@@ -201,7 +201,7 @@ If no prior successful run exists, say so plainly and skip the delta block.
 
 Report only the deltas that matter:
 
-- `new` — proposal or theme did not exist in the prior dream
+- `new` — proposal or theme did not exist in the prior memory run
 - `changed` — same proposal id, but summary, confidence, target, or proposed text changed
 - `resolved` — proposal moved to approved, rejected, or applied
 - `repeated` — same theme showed up again with new evidence
@@ -247,12 +247,12 @@ Always quote rejection reasons.
 
 Examples:
 
-- `dreaming summarize '/tmp/hermes-dreaming/artifacts/20260527T221500Z-abc12345'`
-- `dreaming approve '/tmp/hermes-dreaming/artifacts/20260527T221500Z-abc12345' all`
-- `dreaming reject '/tmp/hermes-dreaming/artifacts/20260527T221500Z-abc12345' p-04 --reason "too broad"`
-- `dreaming diff '/tmp/hermes-dreaming/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
-- `dreaming validate '/tmp/hermes-dreaming/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
-- `dreaming apply '/tmp/hermes-dreaming/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root' --backup-root '/tmp/backups'`
+- `mnemos summarize '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345'`
+- `mnemos approve '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' all`
+- `mnemos reject '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' p-04 --reason "too broad"`
+- `mnemos diff '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
+- `mnemos validate '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
+- `mnemos apply '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root' --backup-root '/tmp/backups'`
 
 ### Approval gate wording
 
@@ -308,7 +308,7 @@ Example:
 Use run history and artifact audits:
 
 - `runs.jsonl` for run outcomes and timestamps
-- `DREAMS.md` for the human-readable diary trail
+- `MNEMOS.md` for the human-readable diary trail
 - `audit.jsonl` for per-proposal state transitions
 - `manifest.json` for proposal metadata
 
@@ -342,5 +342,5 @@ If it needs more than that, the format is too clever.
 ## Bottom line
 
 The digest should act like a sharp operator brief, not a scrapbook.
-It should tell Tony what matters, what changed, what to approve, what to reject, and what to do next.
+It should tell Niko what matters, what changed, what to approve, what to reject, and what to do next.
 If it doesn't help him decide in under a minute, it failed.

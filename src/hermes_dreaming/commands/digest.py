@@ -354,8 +354,8 @@ def _build_proposal_views(artifact: DreamArtifact, artifact_dir: Path, previous_
                 policy_flags=list(proposal.policy_flags),
                 provenance=list(proposal.provenance),
                 score=score,
-                approve_command=f"dreaming approve {artifact_text} {proposal.id}",
-                reject_command=f'dreaming reject {artifact_text} {proposal.id} --reason "..."',
+                approve_command=f"mnemos approve {artifact_text} {proposal.id}",
+                reject_command=f'mnemos reject {artifact_text} {proposal.id} --reason "..."',
                 theme_key=_proposal_theme_key(proposal),
                 rejection_reason=proposal.rejection_reason,
             )
@@ -420,8 +420,8 @@ def _next_step_text(artifact: DreamArtifact) -> str:
 
 def _proposal_descriptor(proposal: DreamProposal, *, score: int, artifact_dir: Path) -> list[str]:
     artifact_text = _safe_quote(artifact_dir)
-    approve_cmd = f"dreaming approve {artifact_text} {proposal.id}"
-    reject_cmd = f'dreaming reject {artifact_text} {proposal.id} --reason "..."'
+    approve_cmd = f"mnemos approve {artifact_text} {proposal.id}"
+    reject_cmd = f'mnemos reject {artifact_text} {proposal.id} --reason "..."'
     lines = [
         f"- `{proposal.id}` [{proposal_state(proposal)}] `{proposal.target_kind}` -> `{proposal.target_path}`",
         f"  - summary: {proposal.summary}",
@@ -449,7 +449,7 @@ def _proposal_descriptor(proposal: DreamProposal, *, score: int, artifact_dir: P
 
 def _delta_lines(current: DreamArtifact, previous: DreamArtifact | None) -> list[str]:
     if previous is None:
-        return ["- No prior successful dream found."]
+        return ["- No prior successful memory run found."]
 
     previous_by_id = {proposal.id: proposal for proposal in previous.proposals}
     current_by_id = {proposal.id: proposal for proposal in current.proposals}
@@ -492,7 +492,7 @@ def _delta_lines(current: DreamArtifact, previous: DreamArtifact | None) -> list
     ]
 
     if not any([new_items, changed_items, resolved_items, repeated_items, removed_items]):
-        lines.append("- Stalled: nothing material changed since the last dream.")
+        lines.append("- Stalled: nothing material changed since the last memory run.")
     return lines
 
 
@@ -632,14 +632,14 @@ def render_digest(result: DigestResult) -> str:
     target_kind_breakdown = Counter(proposal.target_kind for proposal in artifact.proposals)
     theme_labels = sorted({_proposal_theme_key(proposal) for proposal in artifact.proposals})
     lines = [
-        "# Hermes Dreaming digest",
+        "# Hermes Mnemos digest",
         "",
         f"- Artifact: `{artifact.artifact_id}`",
         f"- Created: `{artifact.created_at}`",
         f"- Provider: `{artifact.provider}`",
         f"- Status: `{artifact.status}`",
         f"- Priority: `{result.priority_score}/100`",
-        f"- Previous successful dream: `{result.previous_artifact_id}`" if result.previous_artifact_id else "- Previous successful dream: none",
+        f"- Previous successful memory run: `{result.previous_artifact_id}`" if result.previous_artifact_id else "- Previous successful memory run: none",
         f"- Next step: {result.next_step}",
         "",
         "## Status snapshot",
@@ -670,7 +670,7 @@ def render_digest(result: DigestResult) -> str:
         lines.extend(["- None", ""])
 
     lines.extend([
-        "## What changed since last dream",
+        "## What changed since last memory run",
         "",
     ])
     lines.extend(result.delta_lines)
@@ -679,13 +679,13 @@ def render_digest(result: DigestResult) -> str:
     artifact_text = _safe_quote(artifact_dir)
     live_root_text = _safe_quote(live_root)
     artifact_root_text = _safe_quote(result.artifact_root)
-    summarize_cmd = f"dreaming summarize {artifact_text}"
-    approve_all_cmd = f"dreaming approve {artifact_text} all"
-    reject_one_cmd = f'dreaming reject {artifact_text} <proposal-id> --reason "..."'
-    diff_cmd = f"dreaming diff {artifact_text} --live-root {live_root_text}"
-    validate_cmd = f"dreaming validate {artifact_text} --live-root {live_root_text}"
-    apply_cmd = f"dreaming apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>"
-    status_cmd = f"dreaming status --artifact-root {artifact_root_text}"
+    summarize_cmd = f"mnemos summarize {artifact_text}"
+    approve_all_cmd = f"mnemos approve {artifact_text} all"
+    reject_one_cmd = f'mnemos reject {artifact_text} <proposal-id> --reason "..."'
+    diff_cmd = f"mnemos diff {artifact_text} --live-root {live_root_text}"
+    validate_cmd = f"mnemos validate {artifact_text} --live-root {live_root_text}"
+    apply_cmd = f"mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>"
+    status_cmd = f"mnemos status --artifact-root {artifact_root_text}"
 
     lines.extend([
         "## Action loop",
@@ -829,7 +829,7 @@ def _render_inbox_digest_rows(rows: list[Any]) -> list[str]:
         lines.append(f"  - age: {getattr(row, 'age', 'unknown age')}")
         lines.append(f"  - reason: {getattr(row, 'top_reason', 'none')}")
         lines.append(f"  - policy flags: {flags}")
-        lines.append(f"  - next: `{getattr(row, 'next_command', 'dreaming summarize <artifact>')}`")
+        lines.append(f"  - next: `{getattr(row, 'next_command', 'mnemos summarize <artifact>')}`")
     if not lines:
         lines.append("- none")
     return lines
@@ -837,7 +837,7 @@ def _render_inbox_digest_rows(rows: list[Any]) -> list[str]:
 
 def render_inbox_digest(result: InboxDigestResult) -> str:
     lines = [
-        "# Hermes Dreaming inbox digest",
+        "# Hermes Mnemos inbox digest",
         "",
         f"- Artifact root: `{result.artifact_root}`",
         f"- Total artifacts: `{result.total_artifacts}`",
@@ -852,7 +852,7 @@ def render_inbox_digest(result: InboxDigestResult) -> str:
         "",
     ]
     lines.extend(_render_inbox_digest_rows(result.apply_ready_rows))
-    lines.extend(["", "## Needs Tony", ""])
+    lines.extend(["", "## Needs Operator", ""])
     lines.extend(_render_inbox_digest_rows(result.needs_tony_rows))
     lines.extend(["", "## Safe to ignore", ""])
     lines.extend(_render_inbox_digest_rows(result.safe_to_ignore_rows))

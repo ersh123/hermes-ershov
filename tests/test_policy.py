@@ -46,7 +46,7 @@ def test_validate_proposals_accepts_skill_and_fact_targets() -> None:
             mode="append_text",
             summary="Stage a skill note",
             provenance=["sessions/1.md:2"],
-            proposed_text="## Dreaming note\n\n- Keep the skill note crisp.\n",
+            proposed_text="## Mnemos note\n\n- Keep the skill note crisp.\n",
             approved=False,
         ),
         DreamProposal(

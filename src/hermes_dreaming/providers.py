@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+import os
 import re
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Protocol
@@ -11,7 +13,7 @@ from typing import Protocol
 from .artifact import DreamProposal, SourceSnapshot, text_sha256
 from .validation import validate_proposals
 
-MARKER_RE = re.compile(r"^\s*(?:-\s*)?DREAM:\s*(memory|user|skill|fact)\s*:\s*(.+?)\s*$", re.IGNORECASE)
+MARKER_RE = re.compile(r"^\s*(?:-\s*)?(?:MEMORY|DREAM):\s*(memory|user|skill|fact)\s*:\s*(.+?)\s*$", re.IGNORECASE)
 
 
 class ProviderOutputError(RuntimeError):
@@ -64,7 +66,7 @@ class OfflineMarkerProvider:
         if validation_errors:
             raise ProviderOutputError(self.name, "; ".join(validation_errors), payload_hash=text_sha256("\n".join(source.sha256 for source in sources)))
         if not proposals:
-            notes.append("No DREAM markers were found in the supplied sources.")
+            notes.append("No MEMORY markers were found in the supplied sources.")
         report = self._build_report(sources, proposals, context, notes)
         return report, proposals, notes
 
@@ -87,7 +89,7 @@ class OfflineMarkerProvider:
                 snippet=snippet,
                 risk="medium" if kind == "user" else "low",
                 priority="normal",
-                reason=f"explicit DREAM marker requested a {kind} update",
+                reason=f"explicit MEMORY marker requested a {kind} update",
                 source_quote=source_quote,
                 policy_flags=["safe_append", "profile_preference" if kind == "user" else "memory_update"],
             )
@@ -109,7 +111,7 @@ class OfflineMarkerProvider:
                 snippet=snippet,
                 risk="low",
                 priority="normal",
-                reason="explicit DREAM marker requested a fact update",
+                reason="explicit MEMORY marker requested a fact update",
                 source_quote=source_quote,
                 policy_flags=["fact_update", "safe_append"],
             )
@@ -119,7 +121,7 @@ class OfflineMarkerProvider:
             if not target_path:
                 return None
             body = body.strip()
-            text = body if body.startswith("#") else f"## Dreaming note\n\n- {body}\n\nSource: {source.path}:{line_number}\n"
+            text = body if body.startswith("#") else f"## Mnemos note\n\n- {body}\n\nSource: {source.path}:{line_number}\n"
             return DreamProposal(
                 id=f"skill-{source.sha256[:8]}-{line_number}",
                 target_kind="skill",
@@ -133,7 +135,7 @@ class OfflineMarkerProvider:
                 snippet=snippet,
                 risk="medium",
                 priority="normal",
-                reason="explicit DREAM marker requested a skill note",
+                reason="explicit MEMORY marker requested a skill note",
                 source_quote=source_quote,
                 policy_flags=["skill_update", "safe_append"],
             )
@@ -216,7 +218,7 @@ class OfflineMarkerProvider:
         notes: list[str],
     ) -> str:
         lines = [
-            "# Hermes Dreaming Report",
+            "# Hermes Mnemos Report",
             "",
             f"- Provider: `{self.name}`",
             f"- Workspace: `{context.workspace_root}`",
@@ -259,8 +261,15 @@ class OpenAICompatibleProvider:
 
         client = OpenAI(api_key=self.api_key, base_url=self.base_url)
         prompt = self._build_prompt(sources, context)
-        response = client.responses.create(model=self.model, input=prompt, temperature=0)
-        text = getattr(response, "output_text", "").strip()
+        response = client.chat.completions.create(
+            model=self.model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0,
+        )
+        try:
+            text = str(response.choices[0].message.content or "").strip()
+        except (AttributeError, IndexError, TypeError) as exc:
+            raise RuntimeError("provider returned malformed chat completion") from exc
         if not text:
             raise RuntimeError("provider returned no text")
         payload = self._parse_payload(text)
@@ -291,7 +300,7 @@ class OpenAICompatibleProvider:
         *,
         payload_hash: str,
     ) -> tuple[str, list[DreamProposal], list[str]]:
-        report = str(payload.get("report", "# Hermes Dreaming Report\n\nNo report provided.\n"))
+        report = str(payload.get("report", "# Hermes Mnemos Report\n\nNo report provided.\n"))
         proposals_value = payload.get("proposals", [])
         if proposals_value is None:
             proposals_value = []
@@ -487,7 +496,7 @@ class OpenAICompatibleProvider:
     def _build_prompt(self, sources: list[SourceSnapshot], context: DreamContext) -> str:
         source_block = "\n\n".join(f"### {source.path}\n{source.content}" for source in sources)
         return (
-            "You are Hermes Dreaming, a staged self-improvement engine.\n"
+            "You are Hermes Mnemos, a staged self-improvement engine.\n"
             "Return JSON only with keys: report, proposals, notes.\n"
             "Each proposal must include id, target_kind, target_path, mode, summary, provenance, confidence, snippet, proposed_text, approved, risk, priority, reason, source_quote, policy_flags.\n"
             "Risk must be one of low, medium, high. Priority must be one of low, normal, high.\n"
@@ -509,6 +518,46 @@ class OpenAICompatibleProvider:
 
 
 @dataclass(slots=True)
+class DeepSeekProvider(OpenAICompatibleProvider):
+    model: str = "deepseek-v4-flash"
+    api_key: str | None = None
+    base_url: str | None = "https://api.deepseek.com/v1"
+    name: str = "deepseek"
+
+    def generate(self, sources: list[SourceSnapshot], context: DreamContext) -> tuple[str, list[DreamProposal], list[str]]:
+        api_key = self.api_key or os.environ.get("DEEPSEEK_API_KEY")
+        if not api_key:
+            raise RuntimeError("DEEPSEEK_API_KEY is required to use the deepseek provider")
+        provider = OpenAICompatibleProvider(
+            model=self.model or "deepseek-v4-flash",
+            api_key=api_key,
+            base_url=self.base_url or "https://api.deepseek.com/v1",
+            name=self.name,
+        )
+        return provider.generate(sources, context)
+
+
+@dataclass(slots=True)
+class OpenRouterProvider(OpenAICompatibleProvider):
+    model: str = "openrouter/auto"
+    api_key: str | None = None
+    base_url: str | None = "https://openrouter.ai/api/v1"
+    name: str = "openrouter"
+
+    def generate(self, sources: list[SourceSnapshot], context: DreamContext) -> tuple[str, list[DreamProposal], list[str]]:
+        api_key = self.api_key or os.environ.get("OPENROUTER_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENROUTER_API_KEY is required to use the openrouter provider")
+        provider = OpenAICompatibleProvider(
+            model=self.model or "openrouter/auto",
+            api_key=api_key,
+            base_url=self.base_url or "https://openrouter.ai/api/v1",
+            name=self.name,
+        )
+        return provider.generate(sources, context)
+
+
+@dataclass(slots=True)
 class OllamaProvider(OpenAICompatibleProvider):
     model: str = "qwen2.5:3b"
     api_key: str | None = None
@@ -516,9 +565,17 @@ class OllamaProvider(OpenAICompatibleProvider):
     name: str = "ollama"
     timeout_seconds: int = 180
 
+    @staticmethod
+    def _validated_base_url(base_url: str) -> str:
+        parsed = urllib.parse.urlparse(base_url)
+        if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+            raise ValueError("ollama base_url must be an http(s) URL")
+        return base_url.rstrip("/")
+
     def generate(self, sources: list[SourceSnapshot], context: DreamContext) -> tuple[str, list[DreamProposal], list[str]]:
         prompt = self._build_prompt(sources, context)
-        url = f"{(self.base_url or 'http://127.0.0.1:11434').rstrip('/')}/api/chat"
+        base_url = self._validated_base_url(self.base_url or "http://127.0.0.1:11434")
+        url = f"{base_url}/api/chat"
         body = json.dumps(
             {
                 "model": self.model,
@@ -530,7 +587,8 @@ class OllamaProvider(OpenAICompatibleProvider):
         ).encode("utf-8")
         request = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
         try:
-            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:
+            # URL scheme is validated above; Ollama is an explicit local/HTTP provider.
+            with urllib.request.urlopen(request, timeout=self.timeout_seconds) as response:  # nosec B310
                 raw = response.read().decode("utf-8")
         except urllib.error.URLError as exc:  # pragma: no cover - network-specific
             raise RuntimeError(f"ollama request failed: {exc}") from exc
@@ -554,6 +612,18 @@ def build_provider(name: str, *, model: str | None = None, api_key: str | None =
         return OfflineMarkerProvider()
     if normalized in {"openai", "openai-compatible"}:
         return OpenAICompatibleProvider(model=model or "gpt-4o-mini", api_key=api_key, base_url=base_url)
+    if normalized in {"deepseek", "deepseek-v4-flash", "deepseek-flash"}:
+        return DeepSeekProvider(
+            model=model or "deepseek-v4-flash",
+            api_key=api_key,
+            base_url=base_url or "https://api.deepseek.com/v1",
+        )
+    if normalized in {"openrouter", "openrouter-auto"}:
+        return OpenRouterProvider(
+            model=model or "openrouter/auto",
+            api_key=api_key,
+            base_url=base_url or "https://openrouter.ai/api/v1",
+        )
     if normalized in {"ollama", "ollama-native"}:
         return OllamaProvider(model=model or "qwen2.5:3b", api_key=api_key, base_url=base_url or "http://127.0.0.1:11434")
     raise ValueError(f"unknown provider: {name}")
@@ -595,6 +665,18 @@ def list_providers() -> list[ProviderInfo]:
             kind="openai_compat",
             status="optional" if _openai_compat_available() else "missing",
             notes="requires [llm] extra (openai package)",
+        ),
+        ProviderInfo(
+            name="deepseek",
+            kind="openai_compat",
+            status="optional" if _openai_compat_available() else "missing",
+            notes="requires [llm] extra and DEEPSEEK_API_KEY; default model deepseek-v4-flash",
+        ),
+        ProviderInfo(
+            name="openrouter",
+            kind="openai_compat",
+            status="optional" if _openai_compat_available() else "missing",
+            notes="requires [llm] extra and OPENROUTER_API_KEY; default model openrouter/auto",
         ),
         ProviderInfo(
             name="ollama",

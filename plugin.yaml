@@ -1,8 +1,8 @@
-name: hermes-dreaming
-version: 0.3.0
+name: hermes-mnemos
+version: 0.4.0
 description: >-
-  Staged self-improvement engine for Hermes-style memory, user, skill,
-  and fact updates. Commands: create, review, diff, validate, apply,
-  discard, compact, install-cron, status, update.
-author: Tony Simons
+  Personal staged nightly memory engine for Hermes operator memory. Commands:
+  create, review, nightly, diff, validate, apply, discard, compact,
+  install-cron, install-systemd, status, update.
+author: Niko
 kind: standalone

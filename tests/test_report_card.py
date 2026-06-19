@@ -24,8 +24,8 @@ def _write_report_card_artifact(root: Path, *, status: str = "staged") -> Path:
             SourceSnapshot(
                 path="sources/session-1.md",
                 kind="session",
-                content="DREAM: memory: TOP-SECRET-SOURCE\n",
-                sha256=sha256(b"DREAM: memory: TOP-SECRET-SOURCE\n").hexdigest(),
+                content="MEMORY: memory: TOP-SECRET-SOURCE\n",
+                sha256=sha256(b"MEMORY: memory: TOP-SECRET-SOURCE\n").hexdigest(),
                 line_count=1,
             )
         ],

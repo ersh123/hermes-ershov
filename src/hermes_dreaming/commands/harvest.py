@@ -50,7 +50,7 @@ def render_harvest_bundle(
     max_chars: int = 8000,
 ) -> tuple[str, int]:
     lines = [
-        "# Hermes Dreaming recent session harvest",
+        "# Hermes Mnemos recent session harvest",
         "",
         "This local source bundle was generated from recent Hermes sessions.",
         "It is bounded and redacted before providers see it.",
@@ -69,10 +69,11 @@ def render_harvest_bundle(
             f"- Messages: `{session.message_count}`",
             "",
         ]
-        if session.user_turns:
-            block_lines.append("### User turns")
+        context_lines = session.context_lines if session.context_lines is not None else session.user_turns
+        if context_lines:
+            block_lines.append("### Dialogue digest" if session.context_lines is not None else "### User turns")
             block_lines.append("")
-            for turn in session.user_turns:
+            for turn in context_lines:
                 safe, count = redact_text(turn)
                 redactions += count
                 block_lines.append(f"- {_clip(safe, 500)}")
@@ -94,8 +95,9 @@ def build_recent_source_snapshot(
     db_path: Path | None = None,
     state_path: Path | None = None,
     max_chars: int = 8000,
+    include_assistant: bool = False,
 ) -> tuple[SourceSnapshot, list[SessionDigest], int]:
-    sessions = list_recent(limit=recent, db_path=db_path, state_path=state_path)
+    sessions = list_recent(limit=recent, db_path=db_path, state_path=state_path, include_assistant=include_assistant)
     content, redactions = render_harvest_bundle(sessions, max_chars=max_chars)
     snapshot = SourceSnapshot(
         path=f"recent-sessions-{recent}.md",
@@ -113,12 +115,14 @@ def build_recent_bundle(
     db_path: Path | None = None,
     state_path: Path | None = None,
     max_chars: int = 8000,
+    include_assistant: bool = False,
 ) -> HarvestResult:
     snapshot, sessions, redactions = build_recent_source_snapshot(
         recent=recent,
         db_path=db_path,
         state_path=state_path,
         max_chars=max_chars,
+        include_assistant=include_assistant,
     )
     return HarvestResult(output_path=None, sessions=sessions, content=snapshot.content, redaction_count=redactions)
 
@@ -134,12 +138,14 @@ def harvest_recent(
     db_path: Path | None = None,
     state_path: Path | None = None,
     max_chars: int = 8000,
+    include_assistant: bool = False,
 ) -> HarvestResult:
     snapshot, sessions, redactions = build_recent_source_snapshot(
         recent=recent,
         db_path=db_path,
         state_path=state_path,
         max_chars=max_chars,
+        include_assistant=include_assistant,
     )
     path = Path(output_path) if output_path is not None else None
     if path is not None:

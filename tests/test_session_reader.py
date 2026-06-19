@@ -53,10 +53,10 @@ def _build_sqlite_session_db(db_path: Path) -> None:
             "INSERT INTO messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
             [
                 ("s1", "user", "first user turn for session one", 1000.0),
-                ("s1", "assistant", "reply", 1001.0),
+                ("s1", "assistant", "assistant reply for session one", 1001.0),
                 ("s1", "user", "second user turn for session one", 1002.0),
                 ("s2", "user", "first user turn for session two", 2000.0),
-                ("s2", "assistant", "reply", 2001.0),
+                ("s2", "assistant", "assistant reply for session two", 2001.0),
             ],
         )
         conn.commit()
@@ -160,6 +160,22 @@ def test_read_via_sqlite_prefers_most_recent_session_and_compacts_user_turns(tmp
         "first user turn for session one",
         "second user turn for session one",
     ]
+
+
+def test_read_via_sqlite_can_include_dialogue_lines(tmp_path: Path) -> None:
+    db_path = tmp_path / "state.db"
+    _build_sqlite_session_db(db_path)
+
+    sessions = reader._read_via_sqlite(limit=1, db_path=db_path, include_assistant=True)
+
+    assert sessions is not None
+    assert sessions[0].session_id == "s2"
+    assert sessions[0].user_turns == ["first user turn for session two"]
+    assert sessions[0].context_lines == [
+        "user: first user turn for session two",
+        "assistant: assistant reply for session two",
+    ]
+    assert "assistant: assistant reply for session two" in reader.format_for_prompt(sessions)
 
 
 def test_read_via_pointer_log_returns_recent_ids_in_reverse_order(tmp_path: Path) -> None:

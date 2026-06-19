@@ -19,9 +19,11 @@ from .apply import (
 )
 from .commands.compact import handle as compact_artifacts
 from .commands.install_cron import handle as install_cron_command
+from .commands.install_systemd import handle as install_systemd_command, render_result as render_systemd_install
 from .commands.harvest import harvest_recent
 from .commands.inbox import build_inbox, parse_filter, render_inbox, render_inbox_json
 from .commands.digest import build_digest, build_inbox_digest, render_digest, render_inbox_digest
+from .commands.nightly import render_nightly_memory, run_nightly_memory
 from .commands.report_card import handle as report_card_command
 from .commands.review import (
     ReviewError,
@@ -40,13 +42,17 @@ from .validation import validate_artifact
 
 
 def _discover_update_repo_root() -> Path:
-    env_root = os.environ.get("HERMES_DREAMING_REPO_ROOT")
+    env_root = (
+        os.environ.get("HERMES_MNEMOS_REPO_ROOT")
+        or os.environ.get("HERMES_NIGHT_MEMORY_REPO_ROOT")
+        or os.environ.get("HERMES_DREAMING_REPO_ROOT")
+    )
     if env_root:
         candidate = Path(env_root).expanduser()
         if (candidate / "pyproject.toml").exists() and (candidate / "plugin.yaml").exists():
             return candidate
 
-    canonical = Path("/home/tony/projects/hermes-dreaming")
+    canonical = Path("/home/niko/projects/hermes-mnemos")
     if (canonical / "pyproject.toml").exists() and (canonical / "plugin.yaml").exists():
         return canonical
 
@@ -58,7 +64,7 @@ def _add_creation_arguments(parser: argparse.ArgumentParser, *, required_source:
     parser.add_argument(
         "--artifact-root",
         type=Path,
-        default=Path.cwd() / ".dreaming" / "artifacts",
+        default=Path.cwd() / ".mnemos" / "artifacts",
         help="Where artifacts are stored",
     )
     parser.add_argument("--source", action="append", required=False, type=Path, help="Source file or directory to scan")
@@ -76,24 +82,36 @@ def _add_creation_arguments(parser: argparse.ArgumentParser, *, required_source:
     parser.add_argument("--model", default=None, help="Optional provider model name")
     parser.add_argument("--api-key", default=None, help="Optional provider API key")
     parser.add_argument("--base-url", default=None, help="Optional provider base URL")
+    parser.add_argument(
+        "--harvest-mode",
+        choices=["user", "dialogue"],
+        default="user",
+        help="Session harvest scope when using --from-sessions/--recent: user turns only, or compact user+assistant+tool dialogue",
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="dreaming", description="Hermes Dreaming MVP")
+    parser = argparse.ArgumentParser(prog="mnemos", description="Hermes Mnemos")
     sub = parser.add_subparsers(dest="command", required=True)
 
-    create = sub.add_parser("create", help="Create a staged dream artifact")
+    create = sub.add_parser("create", help="Create a staged memory artifact")
     _add_creation_arguments(create)
 
     harvest = sub.add_parser("harvest", help="Harvest recent local Hermes sessions into a bounded source bundle")
     harvest.add_argument("--recent", type=int, default=10, help="Number of recent sessions to harvest")
     harvest.add_argument("--out", type=Path, default=None, help="Output path for the harvested source bundle")
     harvest.add_argument("--db-path", type=Path, default=None, help="Optional Hermes session DB path for tests or alternate homes")
-    harvest.add_argument("--state-path", type=Path, default=None, help="Optional Dreaming state path for pointer-log fallback")
+    harvest.add_argument("--state-path", type=Path, default=None, help="Optional Mnemos state path for pointer-log fallback")
     harvest.add_argument("--max-chars", type=int, default=8000, help="Maximum characters in the harvested bundle")
+    harvest.add_argument(
+        "--mode",
+        choices=["user", "dialogue"],
+        default="user",
+        help="Harvest user turns only, or compact user+assistant+tool dialogue",
+    )
 
     inbox = sub.add_parser("inbox", help="Show the staged artifact review queue")
-    inbox.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".dreaming" / "artifacts", help="Where artifacts are stored")
+    inbox.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".mnemos" / "artifacts", help="Where artifacts are stored")
     inbox.add_argument("--state", default=None, help="Comma-separated inbox states to include")
     inbox.add_argument("--priority", default=None, help="Comma-separated priority values to include")
     inbox.add_argument("--limit", type=int, default=None, help="Maximum inbox rows to show")
@@ -136,7 +154,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply.add_argument(
         "--backup-root",
         type=Path,
-        default=Path.cwd() / ".dreaming" / "backups",
+        default=Path.cwd() / ".mnemos" / "backups",
         help="Where backups are stored",
     )
     apply.add_argument("--approve", action="append", default=[], help="Compatibility shortcut: approve a proposal id or 'all' before applying")
@@ -156,7 +174,7 @@ def build_parser() -> argparse.ArgumentParser:
     revert = sub.add_parser("revert", help="Restore an applied artifact's live files from the recorded backups")
     revert.add_argument("artifact", type=Path, help="Artifact directory")
     revert.add_argument("--live-root", type=Path, default=None, help="Root of the live workspace (defaults to artifact.workspace_root)")
-    revert.add_argument("--backup-root", type=Path, default=None, help="Where backups are stored (defaults to <live-root>/.dreaming/backups)")
+    revert.add_argument("--backup-root", type=Path, default=None, help="Where backups are stored (defaults to <live-root>/.mnemos/backups)")
     revert.add_argument("--yes", dest="yes", action="store_true", help="Skip the confirmation prompt (required for non-interactive use)")
 
     discard = sub.add_parser("discard", help="Discard a staged artifact")
@@ -164,7 +182,7 @@ def build_parser() -> argparse.ArgumentParser:
     discard.add_argument(
         "--archive-root",
         type=Path,
-        default=Path.cwd() / ".dreaming" / "discarded",
+        default=Path.cwd() / ".mnemos" / "discarded",
         help="Where discarded artifacts are archived",
     )
 
@@ -172,24 +190,78 @@ def build_parser() -> argparse.ArgumentParser:
     compact.add_argument(
         "--artifact-root",
         type=Path,
-        default=Path.cwd() / ".dreaming" / "artifacts",
+        default=Path.cwd() / ".mnemos" / "artifacts",
         help="Where artifacts are stored",
     )
     compact.add_argument(
         "--archive-root",
         type=Path,
-        default=Path.cwd() / ".dreaming" / "archive",
+        default=Path.cwd() / ".mnemos" / "archive",
         help="Where compacted artifacts are archived",
     )
 
-    install_cron = sub.add_parser("install-cron", help="Register the nightly review-only cron job")
+    install_cron = sub.add_parser("install-cron", help="Register the nightly memory cron job")
     install_cron.add_argument("--schedule", default=None, help="Cron schedule, defaults to nightly at 03:00 UTC")
-    install_cron.add_argument("--mode", choices=["status-digest", "inbox-digest"], default="status-digest", help="Cron script mode")
+    install_cron.add_argument(
+        "--mode",
+        choices=["status-digest", "inbox-digest", "nightly-review", "nightly-memory"],
+        default="status-digest",
+        help="Cron script mode",
+    )
+    install_cron.add_argument("--recent", type=int, default=14, help="Recent sessions to harvest for nightly memory")
+    install_cron.add_argument("--live-root", type=Path, default=None, help="Live Hermes memory root for nightly memory")
+    install_cron.add_argument("--artifact-root", type=Path, default=None, help="Artifact root for nightly memory")
+    install_cron.add_argument("--archive-root", type=Path, default=None, help="Archive root for nightly memory compaction")
+    install_cron.add_argument("--state-root", type=Path, default=None, help="State root for nightly memory run ledger")
+    install_cron.add_argument("--provider", default="deepseek", help="Provider for nightly memory")
+    install_cron.add_argument("--model", default="deepseek-v4-flash", help="Model for nightly memory")
+    install_cron.add_argument("--base-url", default="https://api.deepseek.com/v1", help="OpenAI-compatible base URL for nightly memory")
+
+    install_systemd = sub.add_parser("install-systemd", help="Install a user systemd timer for nightly memory")
+    install_systemd.add_argument("--on-calendar", default="*-*-* 03:00:00", help="systemd OnCalendar schedule")
+    install_systemd.add_argument("--randomized-delay", default="10m", help="systemd RandomizedDelaySec value")
+    install_systemd.add_argument("--recent", type=int, default=14, help="Recent sessions to harvest for nightly memory")
+    install_systemd.add_argument("--live-root", type=Path, default=None, help="Live Hermes memory root for nightly memory")
+    install_systemd.add_argument("--artifact-root", type=Path, default=None, help="Artifact root for nightly memory")
+    install_systemd.add_argument("--archive-root", type=Path, default=None, help="Archive root for nightly memory compaction")
+    install_systemd.add_argument("--state-root", type=Path, default=None, help="State root for nightly memory run ledger")
+    install_systemd.add_argument("--provider", default="deepseek", help="Provider for nightly memory")
+    install_systemd.add_argument("--model", default="deepseek-v4-flash", help="Model for nightly memory")
+    install_systemd.add_argument("--base-url", default="https://api.deepseek.com/v1", help="OpenAI-compatible base URL for nightly memory")
+    install_systemd.add_argument("--systemd-dir", type=Path, default=None, help="Override user systemd unit directory")
+    install_systemd.add_argument("--script-dir", type=Path, default=None, help="Override generated script directory")
+    install_systemd.add_argument("--env-dir", type=Path, default=None, help="Override generated env directory")
+    install_systemd.add_argument("--no-enable", dest="no_enable", action="store_true", help="Write files without enabling the timer")
+    install_systemd.add_argument("--dry-run", dest="dry_run", action="store_true", help="Print target paths without writing files")
+
+    nightly = sub.add_parser("nightly", help="Run the full nightly memory pipeline")
+    nightly.add_argument("--live-root", type=Path, default=Path.cwd(), help="Root of the live Hermes memory workspace")
+    nightly.add_argument(
+        "--artifact-root",
+        type=Path,
+        default=Path.cwd() / ".mnemos" / "artifacts",
+        help="Where staged artifacts are stored",
+    )
+    nightly.add_argument(
+        "--archive-root",
+        type=Path,
+        default=None,
+        help="Where terminal artifacts are archived (defaults to sibling archive directory)",
+    )
+    nightly.add_argument("--state-root", type=Path, default=None, help="Mnemos state root for runs.jsonl and MNEMOS.md")
+    nightly.add_argument("--recent", type=int, default=14, help="Recent sessions to harvest")
+    nightly.add_argument("--from-sessions", dest="from_sessions", type=int, default=None, help="Alias for --recent")
+    nightly.add_argument("--provider", default="deepseek", help="Analysis provider for nightly memory")
+    nightly.add_argument("--model", default="deepseek-v4-flash", help="Provider model for nightly memory")
+    nightly.add_argument("--base-url", default="https://api.deepseek.com/v1", help="OpenAI-compatible provider base URL")
+    nightly.add_argument("--no-llm", dest="no_llm", action="store_true", help="Use offline-marker provider")
+    nightly.add_argument("--no-compact", dest="no_compact", action="store_true", help="Skip terminal artifact compaction")
+    nightly.add_argument("--no-weekly", dest="no_weekly", action="store_true", help="Skip weekly rollup in the artifact digest")
 
     digest = sub.add_parser("digest", help="Render a local operator digest for an artifact or inbox")
     digest.add_argument("artifact", nargs="?", type=Path, help="Artifact directory")
     digest.add_argument("--artifact-root", type=Path, default=None, help="Root containing related artifact runs")
-    digest.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl and DREAMS.md")
+    digest.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl and MNEMOS.md")
     digest.add_argument("--weekly", action="store_true", help="Include the weekly rollup section")
     digest.add_argument("--inbox", action="store_true", help="Render a queue-level digest instead of a single-artifact digest")
     digest.add_argument("--state", default=None, help="Comma-separated inbox states when --inbox is used")
@@ -197,14 +269,14 @@ def build_parser() -> argparse.ArgumentParser:
     digest.add_argument("--limit", type=int, default=20, help="Maximum inbox rows when --inbox is used")
 
     status = sub.add_parser("status", help="List known artifacts")
-    status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".dreaming" / "artifacts", help="Where artifacts are stored")
+    status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".mnemos" / "artifacts", help="Where artifacts are stored")
 
     report_card = sub.add_parser("report-card", help="Render a redacted shareable artifact summary")
     report_card.add_argument("artifact", type=Path, help="Artifact directory")
     report_card.add_argument("--output", type=Path, default=None, help="Write the Markdown report card to a file")
     report_card.add_argument("--json", type=Path, default=None, help="Write a JSON companion to a file")
 
-    update = sub.add_parser("update", help="Safely fast-forward the installed Hermes Dreaming checkout")
+    update = sub.add_parser("update", help="Safely fast-forward the installed Hermes Mnemos checkout")
     update.add_argument("--remote", default="origin", help="Git remote to update from")
     update.add_argument("--branch", default="main", help="Branch to fast-forward onto")
     update.add_argument("--check", action="store_true", help="Report update status without pulling")
@@ -299,7 +371,11 @@ def _resolve_creation_sources(args: argparse.Namespace, parser: argparse.Argumen
         harvest_out = getattr(args, "harvest_out", None)
         if harvest_out is None:
             harvest_out = Path(args.artifact_root) / "_sources" / "recent-sessions.md"
-        result = harvest_recent(recent=harvest_count, output_path=harvest_out)
+        result = harvest_recent(
+            recent=harvest_count,
+            output_path=harvest_out,
+            include_assistant=getattr(args, "harvest_mode", "user") == "dialogue",
+        )
         print(f"harvest: {result.output_path}")
         print(f"sessions: {len(result.sessions)}")
         print(f"redactions: {result.redaction_count}")
@@ -314,14 +390,14 @@ def _render_inbox_digest(result) -> str:
     high_priority = [row for row in result.rows if row.highest_priority == "high"]
     high_risk = [row for row in result.rows if row.highest_risk == "high"]
     lines = [
-        "# Hermes Dreaming inbox digest",
+        "# Hermes Mnemos inbox digest",
         "",
         f"- Artifact root: `{result.artifact_root}`",
         f"- Active rows shown: `{len(result.rows)}`",
         f"- High-priority rows: `{len(high_priority)}`",
         f"- High-risk rows: `{len(high_risk)}`",
         "",
-        "## Needs Tony",
+        "## Needs Operator",
         "",
     ]
     needs_tony = [row for row in result.rows if row.highest_priority == "high" or row.highest_risk == "high" or row.inbox_state in {"staged", "mixed", "approved"}]
@@ -343,7 +419,7 @@ def _render_inbox_digest(result) -> str:
 
 
 def _run_creation_like(command: str, args: argparse.Namespace, *, dry_run: bool, parser: argparse.ArgumentParser | None = None) -> int:
-    source_paths = _resolve_creation_sources(args, parser or argparse.ArgumentParser(prog="dreaming"), command=command)
+    source_paths = _resolve_creation_sources(args, parser or argparse.ArgumentParser(prog="mnemos"), command=command)
     provider_name = args.provider
     if getattr(args, "no_llm", False):
         provider_name = "offline-marker"
@@ -422,6 +498,7 @@ def main(argv: list[str] | None = None) -> int:
             db_path=args.db_path,
             state_path=args.state_path,
             max_chars=args.max_chars,
+            include_assistant=args.mode == "dialogue",
         )
         print(f"harvest: {result.output_path}")
         print(f"sessions: {len(result.sessions)}")
@@ -454,8 +531,13 @@ def main(argv: list[str] | None = None) -> int:
                 summary=f"opened artifact {artifact.artifact_id}",
             )
             return 0
-        if not getattr(args, "source", None) and getattr(args, "recent", None) is None:
-            parser.error("review requires --source or --recent unless --open is set")
+        if (
+            not getattr(args, "source", None)
+            and getattr(args, "recent", None) is None
+            and getattr(args, "from_sessions", None) is None
+            and getattr(args, "from_since", None) is None
+        ):
+            parser.error("review requires --source, --recent, --from-sessions, or --from-since unless --open is set")
         return _run_creation_like("review", args, dry_run=True, parser=parser)
 
     if args.command == "summarize":
@@ -724,7 +806,19 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "install-cron":
-        message = install_cron_command(schedule=args.schedule, mode=args.mode)
+        install_cron_options = {
+            "schedule": args.schedule,
+            "mode": args.mode,
+            "recent": args.recent,
+            "provider": args.provider,
+            "model": args.model,
+            "base_url": args.base_url,
+            "live_root": args.live_root,
+            "artifact_root": args.artifact_root,
+            "archive_root": args.archive_root,
+            "state_root": args.state_root,
+        }
+        message = install_cron_command(**install_cron_options)
         print(message.rstrip())
         _record_cli_run(
             "install-cron",
@@ -733,9 +827,63 @@ def main(argv: list[str] | None = None) -> int:
         )
         return 0 if "error" not in message.lower() else 1
 
+    if args.command == "install-systemd":
+        try:
+            result = install_systemd_command(
+                on_calendar=args.on_calendar,
+                randomized_delay=args.randomized_delay,
+                recent=args.recent,
+                provider=args.provider,
+                model=args.model,
+                base_url=args.base_url,
+                live_root=args.live_root,
+                artifact_root=args.artifact_root,
+                archive_root=args.archive_root,
+                state_root=args.state_root,
+                systemd_dir=args.systemd_dir,
+                script_dir=args.script_dir,
+                env_dir=args.env_dir,
+                enable=not args.no_enable,
+                dry_run=args.dry_run,
+            )
+        except (RuntimeError, ValueError) as exc:
+            print(f"install-systemd failed: {exc}")
+            if not args.dry_run:
+                _record_cli_run("install-systemd", success=False, summary=str(exc))
+            return 1
+        print(render_systemd_install(result).rstrip())
+        if not result.dry_run:
+            _record_cli_run(
+                "install-systemd",
+                success=True,
+                summary="installed Hermes Mnemos systemd timer" if result.enabled else "rendered Hermes Mnemos systemd timer",
+            )
+        return 0
+
+    if args.command == "nightly":
+        recent = args.from_sessions if args.from_sessions is not None else args.recent
+        provider_name = "offline-marker" if args.no_llm else args.provider
+        try:
+            result = run_nightly_memory(
+                live_root=args.live_root,
+                artifact_root=args.artifact_root,
+                archive_root=args.archive_root,
+                state_root=args.state_root,
+                recent=recent,
+                provider_name=provider_name,
+                model=None if args.no_llm else args.model,
+                base_url=None if args.no_llm else args.base_url,
+                compact=not args.no_compact,
+                include_weekly=not args.no_weekly,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        print(render_nightly_memory(result).rstrip())
+        return 0 if result.success else 1
+
     if args.command == "digest":
         if args.inbox:
-            artifact_root = args.artifact_root or (Path.cwd() / ".dreaming" / "artifacts")
+            artifact_root = args.artifact_root or (Path.cwd() / ".mnemos" / "artifacts")
             inbox_digest = build_inbox_digest(
                 artifact_root,
                 state_filter=parse_filter(args.state),

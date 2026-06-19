@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-"""Target-aware policy helpers for staged and live Hermes Dreaming writes.
+"""Target-aware policy helpers for staged and live Hermes Mnemos writes.
 
 This module keeps the policy concerns separate from I/O:
 - normalize proposals before hashing

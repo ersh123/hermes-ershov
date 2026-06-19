@@ -1,4 +1,4 @@
-# Hermes Dreaming v0.3.0 Handoff
+# Hermes Mnemos v0.3.0 Handoff
 
 This is the short follow-up note for the v0.3.0 release lane.
 
@@ -12,7 +12,7 @@ This is the short follow-up note for the v0.3.0 release lane.
 
 - Plugin version: `0.3.0`
 - GitHub release: `v0.3.0`
-- GitHub release URL: https://github.com/asimons81/hermes-dreaming/releases/tag/v0.3.0
+- GitHub release URL: https://github.com/ersh123/hermes-mnemos/releases/tag/v0.3.0
 - PR #3 stays separate while draft and must not be merged as part of this sprint
 
 ## Verification gates
@@ -20,9 +20,9 @@ This is the short follow-up note for the v0.3.0 release lane.
 - `python -m pytest -q`
 - `git diff --check`
 - `python3 -m build`
-- temp-only Dreaming smoke with `HERMES_DREAMING_STATE_ROOT`, including a negative path-policy smoke that rejects `skill -> README.md` before live writeback and a source-secret preflight smoke that blocks provider calls before source serialization
+- temp-only Mnemos smoke with `HERMES_MNEMOS_STATE_ROOT`, including a negative path-policy smoke that rejects `skill -> README.md` before live writeback and a source-secret preflight smoke that blocks provider calls before source serialization
 
 ## Bottom line
 
 `v0.3.0` is built, verified, tagged, and published.
-It is the Dream Inbox release: queue-level operator review, recent-session harvest plumbing, proposal metadata surfacing, and inbox digest cron support.
+It is the Mnemos Inbox release: queue-level operator review, recent-session harvest plumbing, proposal metadata surfacing, and inbox digest cron support.

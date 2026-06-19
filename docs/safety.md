@@ -1,6 +1,6 @@
-# What Dreaming can and cannot mutate
+# What Mnemos can and cannot mutate
 
-Hermes Dreaming is staged self-improvement. It can make durable changes, but only through a reviewable artifact and an explicit apply step.
+Hermes Mnemos is staged self-improvement. It can make durable changes, but only through a reviewable artifact and an explicit apply step.
 
 ## It can mutate
 
@@ -20,6 +20,7 @@ In the current offline fixture, the demo shows four target kinds:
 ## It cannot mutate
 
 - the live root during `review`, `summarize`, `diff`, or `validate`
+- the live root during `nightly`
 - the source bundle itself
 - paths outside the live root
 - absolute paths or path traversal targets like `..`
@@ -36,19 +37,21 @@ In the current offline fixture, the demo shows four target kinds:
 - backups are taken before live writes
 - unsafe proposal paths are rejected instead of being normalized into something dangerous
 - `reject` requires a non-empty reason at the command layer; the same rule applies to any library or plugin caller
+- `nightly` is an orchestration loop only: it harvests, stages, writes digests, compacts terminal artifacts, and records the run ledger. It never applies live memory.
+- `install-systemd` only installs a timer/service/wrapper for `nightly`; the timer runs outside the Hermes gateway process and does not restart Hermes.
 
 ## Revert in plain English
 
-`dreaming revert <artifact>` does three things, in this order:
+`mnemos revert <artifact>` does three things, in this order:
 
 1. Loads the artifact and checks that it is in the `applied` state. Anything else fails loud.
 2. For each path in `artifact.backup_paths`, copies the recorded backup back to its original live location. If the live file was missing at apply time, the file is recreated from the backup. Drift between the live file and the pre-apply snapshot is recorded as a `drift_detected` audit event, but the restore still runs.
 3. Marks the artifact's `applied` proposals back to `approved` and writes a `REVERT.md` summary next to the artifact describing what was restored and what failed.
 
-Revert does **not** re-run validation. It is a restore from backup, not a re-apply. If you want to re-apply the same proposals, run `dreaming apply <artifact>` again with the same filters. If you want to apply a subset, pass `--priority` or `--target-kind`.
+Revert does **not** re-run validation. It is a restore from backup, not a re-apply. If you want to re-apply the same proposals, run `mnemos apply <artifact>` again with the same filters. If you want to apply a subset, pass `--priority` or `--target-kind`.
 
 Non-interactive callers (cron, pipe) must pass `--yes`. The CLI exits with code 2 when a confirmation prompt is needed, so scripts can distinguish "needs confirmation" from a real failure.
 
 ## Practical rule
 
-If you would not be comfortable restoring it from a backup, do not point Dreaming at it. Keep the live root boring, explicit, and easy to inspect on disk.
+If you would not be comfortable restoring it from a backup, do not point Mnemos at it. Keep the live root boring, explicit, and easy to inspect on disk.

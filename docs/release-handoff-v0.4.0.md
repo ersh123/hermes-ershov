@@ -1,4 +1,4 @@
-# Hermes Dreaming v0.4.0 — Handoff
+# Hermes Mnemos v0.4.0 — Handoff
 
 This is the short follow-up note for the v0.4.0 release lane.
 
@@ -12,12 +12,12 @@ This is the short follow-up note for the v0.4.0 release lane.
 ## Current release facts
 
 - Plugin version: `0.4.0`
-- GitHub release: NOT YET TAGGED — Tony's explicit release gate required
-- PR #3 (`codex/dreaming-exit-code-macos-path`) status: still separate, must not be merged as part of this sprint
+- GitHub release: NOT YET TAGGED — Niko's explicit release gate required
+- PR #3 (`codex/mnemos-exit-code-macos-path`) status: still separate, must not be merged as part of this sprint
 
 ## What shipped
 
-- **Trust loop**: `dreaming revert`, `apply --dry-run`, `apply --priority`, `apply --target-kind`
+- **Trust loop**: `mnemos revert`, `apply --dry-run`, `apply --priority`, `apply --target-kind`
 - **Friction-killer**: `create --from-sessions N`, `create --from-since 7d` (with `--recent` alias), `--no-llm`
 - **Discovery**: `providers list`, `inbox --apply-ready`, inbox digest "Ready to apply" section
 - **Hardening**: `reject --reason` enforced at the command layer
@@ -38,7 +38,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 - `python -m pytest -q` (112 tests pass)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
-- Temp-only Dreaming smoke with `HERMES_DREAMING_STATE_ROOT`:
+- Temp-only Mnemos smoke with `HERMES_MNEMOS_STATE_ROOT`:
   - apply→revert roundtrip on a real fixture
   - revert on a non-applied artifact raises and leaves live state untouched
   - revert with a missing backup fails loud
@@ -59,9 +59,9 @@ This is the short follow-up note for the v0.4.0 release lane.
 - [x] `python -m build --wheel` succeeds
 - [x] Each new + modified command smoke-tested on temp fixtures
 - [x] CHANGELOG, release notes, handoff all written
-- [ ] NO tag, NO release, NO push — Tony's call
+- [ ] NO tag, NO release, NO push — Niko's call
 
-## What needs Tony's eyes
+## What needs Niko's eyes
 
 - **Revert command behavior**: the drift detection compares live content to the recorded backup snapshot before restoring. If you want per-write post-apply shas tracked in the manifest (for stronger post-apply audit), that's a small follow-up.
 - **Apply filter behavior**: filtered-out proposals stay `approved` so a later apply with a different filter can still land them. This is the right behavior for the use case, but it's a state-machine subtlety. Read `apply_artifact` to confirm.
@@ -70,4 +70,4 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 ## Bottom line
 
-`v0.4.0` is built, verified, and ready for the release gate. It is **not** tagged or published yet. Tony's explicit approval is required for the tag, GitHub release, and PyPI publish.
+`v0.4.0` is built, verified, and ready for the release gate. It is **not** tagged or published yet. Niko's explicit approval is required for the tag, GitHub release, and PyPI publish.

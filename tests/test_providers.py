@@ -7,22 +7,36 @@ from pathlib import Path
 import pytest
 
 from hermes_dreaming.artifact import SourceSnapshot
-from hermes_dreaming.providers import DreamContext, OllamaProvider, OpenAICompatibleProvider, build_provider
+from hermes_dreaming.providers import (
+    DeepSeekProvider,
+    DreamContext,
+    OfflineMarkerProvider,
+    OllamaProvider,
+    OpenAICompatibleProvider,
+    OpenRouterProvider,
+    build_provider,
+)
 
 
-class _FakeResponses:
+class _FakeChatCompletions:
     def __init__(self, text: str) -> None:
         self._text = text
 
     def create(self, **_kwargs):
-        return types.SimpleNamespace(output_text=self._text)
+        message = types.SimpleNamespace(content=self._text)
+        return types.SimpleNamespace(choices=[types.SimpleNamespace(message=message)])
+
+
+class _FakeChat:
+    def __init__(self, text: str) -> None:
+        self.completions = _FakeChatCompletions(text)
 
 
 class _FakeOpenAI:
     output_text = ""
 
     def __init__(self, **_kwargs) -> None:
-        self.responses = _FakeResponses(self.output_text)
+        self.chat = _FakeChat(self.output_text)
 
 
 def _install_fake_openai(monkeypatch, text: str) -> None:
@@ -49,6 +63,26 @@ def _source() -> SourceSnapshot:
         sha256="abc123",
         line_count=1,
     )
+
+
+def test_offline_marker_accepts_memory_and_legacy_dream_markers(tmp_path: Path) -> None:
+    source = SourceSnapshot(
+        path="sources/session.md",
+        kind="file",
+        content="\n".join([
+            "MEMORY: memory: Keep updates staged.",
+            "DREAM: user: Legacy marker remains readable.",
+        ]),
+        sha256="feedface",
+        line_count=2,
+    )
+
+    report, proposals, notes = OfflineMarkerProvider().generate([source], _context(tmp_path))
+
+    assert "Hermes Mnemos Report" in report
+    assert notes == []
+    assert [proposal.target_kind for proposal in proposals] == ["memory", "user"]
+    assert all("MEMORY marker" in proposal.reason for proposal in proposals)
 
 
 def test_openai_compatible_provider_accepts_fenced_json_and_forces_unapproved(monkeypatch, tmp_path: Path) -> None:
@@ -233,6 +267,12 @@ def test_ollama_provider_uses_native_json_chat(monkeypatch, tmp_path: Path) -> N
     assert proposals[0].provenance == ["sources/session.md:1"]
 
 
+def test_ollama_provider_rejects_non_http_base_url(tmp_path: Path) -> None:
+    for base_url in ("file:///tmp/socket", "localhost:11434"):
+        with pytest.raises(ValueError, match="http"):
+            OllamaProvider(model="qwen2.5:3b", base_url=base_url).generate([_source()], _context(tmp_path))
+
+
 def test_build_provider_supports_ollama() -> None:
     provider = build_provider("ollama", model="qwen2.5:3b")
 
@@ -240,13 +280,45 @@ def test_build_provider_supports_ollama() -> None:
     assert provider.model == "qwen2.5:3b"
 
 
-def test_list_providers_returns_all_three_with_status() -> None:
+def test_build_provider_supports_deepseek_flash_defaults() -> None:
+    provider = build_provider("deepseek")
+
+    assert isinstance(provider, DeepSeekProvider)
+    assert provider.model == "deepseek-v4-flash"
+    assert provider.base_url == "https://api.deepseek.com/v1"
+
+
+def test_build_provider_supports_openrouter_defaults() -> None:
+    provider = build_provider("openrouter")
+
+    assert isinstance(provider, OpenRouterProvider)
+    assert provider.model == "openrouter/auto"
+    assert provider.base_url == "https://openrouter.ai/api/v1"
+
+
+def test_deepseek_provider_requires_api_key(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="DEEPSEEK_API_KEY"):
+        DeepSeekProvider().generate([_source()], _context(tmp_path))
+
+
+def test_openrouter_provider_requires_api_key(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    with pytest.raises(RuntimeError, match="OPENROUTER_API_KEY"):
+        OpenRouterProvider().generate([_source()], _context(tmp_path))
+
+
+def test_list_providers_returns_all_builtins_with_status() -> None:
     from hermes_dreaming.providers import list_providers
 
     rows = list_providers()
     names = [row.name for row in rows]
     assert "offline-marker" in names
     assert "openai-compatible" in names
+    assert "deepseek" in names
+    assert "openrouter" in names
     assert "ollama" in names
     offline = next(row for row in rows if row.name == "offline-marker")
     assert offline.status == "always"
@@ -254,6 +326,12 @@ def test_list_providers_returns_all_three_with_status() -> None:
     openai_row = next(row for row in rows if row.name == "openai-compatible")
     assert openai_row.status in {"optional", "missing"}
     assert openai_row.kind == "openai_compat"
+    deepseek_row = next(row for row in rows if row.name == "deepseek")
+    assert deepseek_row.status in {"optional", "missing"}
+    assert deepseek_row.kind == "openai_compat"
+    openrouter_row = next(row for row in rows if row.name == "openrouter")
+    assert openrouter_row.status in {"optional", "missing"}
+    assert openrouter_row.kind == "openai_compat"
     ollama_row = next(row for row in rows if row.name == "ollama")
     # We never ping external services; ollama status is "optional" by import-only design.
     assert ollama_row.status == "optional"
@@ -271,6 +349,7 @@ def test_render_providers_table_emits_table_with_header_and_separator() -> None:
     assert "NOTES" in rendered
     assert "----" in rendered
     assert "offline-marker" in rendered
+    assert "deepseek" in rendered
     assert "always" in rendered
     # Sanity: also works for arbitrary rows.
     custom = [ProviderInfo(name="x", kind="k", status="always", notes="n")]

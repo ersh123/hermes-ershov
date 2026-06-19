@@ -94,7 +94,7 @@ def render_open_brief(artifact_dir: Path) -> str:
     live_root_text = shlex.quote(str(live_root))
     artifact_text = shlex.quote(str(artifact_dir))
     lines = [
-        "# Hermes Dreaming review",
+        "# Hermes Mnemos review",
         "",
         f"Artifact: `{artifact_text}`",
         f"Artifact id: `{artifact.artifact_id}`",
@@ -103,12 +103,12 @@ def render_open_brief(artifact_dir: Path) -> str:
         "",
         "## Next commands",
         "",
-        f"- `dreaming summarize {artifact_text}`",
-        f"- `dreaming approve {artifact_text} all`",
-        f"- `dreaming reject {artifact_text} <proposal-id> --reason \"...\"`",
-        f"- `dreaming diff {artifact_text} --live-root {live_root_text}`",
-        f"- `dreaming validate {artifact_text} --live-root {live_root_text}`",
-        f"- `dreaming apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
+        f"- `mnemos summarize {artifact_text}`",
+        f"- `mnemos approve {artifact_text} all`",
+        f"- `mnemos reject {artifact_text} <proposal-id> --reason \"...\"`",
+        f"- `mnemos diff {artifact_text} --live-root {live_root_text}`",
+        f"- `mnemos validate {artifact_text} --live-root {live_root_text}`",
+        f"- `mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
     ]
     return "\n".join(lines) + "\n"
 
@@ -119,7 +119,7 @@ def render_summary(artifact_dir: Path) -> str:
     artifact_text = shlex.quote(str(artifact_dir))
     live_root_text = shlex.quote(str(Path(artifact.workspace_root)))
     lines = [
-        "# Hermes Dreaming summary",
+        "# Hermes Mnemos summary",
         "",
         f"Artifact: `{artifact_text}`",
         f"Artifact id: `{artifact.artifact_id}`",
@@ -153,12 +153,12 @@ def render_summary(artifact_dir: Path) -> str:
             "",
             "## Next commands",
             "",
-            f"- `dreaming review --open {artifact_text}`",
-            f"- `dreaming approve {artifact_text} all`",
-            f"- `dreaming reject {artifact_text} <proposal-id> --reason \"...\"`",
-            f"- `dreaming diff {artifact_text} --live-root {live_root_text}`",
-            f"- `dreaming validate {artifact_text} --live-root {live_root_text}`",
-            f"- `dreaming apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
+            f"- `mnemos review --open {artifact_text}`",
+            f"- `mnemos approve {artifact_text} all`",
+            f"- `mnemos reject {artifact_text} <proposal-id> --reason \"...\"`",
+            f"- `mnemos diff {artifact_text} --live-root {live_root_text}`",
+            f"- `mnemos validate {artifact_text} --live-root {live_root_text}`",
+            f"- `mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
         ]
     )
     return "\n".join(lines) + "\n"

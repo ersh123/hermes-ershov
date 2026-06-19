@@ -7,19 +7,25 @@ from pathlib import Path
 from hermes_dreaming.analyze import DreamRunConfig, create_dream_artifact
 
 
-class _FakeResponses:
+class _FakeChatCompletions:
     def __init__(self, text: str) -> None:
         self._text = text
 
     def create(self, **_kwargs):
-        return types.SimpleNamespace(output_text=self._text)
+        message = types.SimpleNamespace(content=self._text)
+        return types.SimpleNamespace(choices=[types.SimpleNamespace(message=message)])
+
+
+class _FakeChat:
+    def __init__(self, text: str) -> None:
+        self.completions = _FakeChatCompletions(text)
 
 
 class _FakeOpenAI:
     output_text = ""
 
     def __init__(self, **_kwargs) -> None:
-        self.responses = _FakeResponses(self.output_text)
+        self.chat = _FakeChat(self.output_text)
 
 
 def _install_fake_openai(monkeypatch, text: str) -> None:
@@ -37,7 +43,7 @@ def test_create_dream_artifact_writes_failure_artifact_for_invalid_provider_outp
     source_root = tmp_path / "sources"
     source_root.mkdir()
     (source_root / "session.md").write_text(
-        "DREAM: user: Keep the output short.\n",
+        "MEMORY: user: Keep the output short.\n",
         encoding="utf-8",
     )
     artifact_root = tmp_path / "artifacts"
@@ -78,7 +84,7 @@ def test_create_dream_artifact_writes_failure_artifact_for_invalid_provider_outp
     assert result.artifact_dir.exists()
     assert (result.artifact_dir / "manifest.json").exists()
     assert (result.artifact_dir / "proposals.jsonl").read_text(encoding="utf-8") == ""
-    assert (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8").startswith("# Hermes Dreaming Report")
+    assert (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8").startswith("# Hermes Mnemos Report")
     report = (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8")
     assert "Provider/preflight failure" in report
     assert "Payload hash" in report
@@ -93,20 +99,24 @@ def test_create_dream_artifact_preflights_secret_sources_before_provider_call(
     source_root = tmp_path / "sources"
     source_root.mkdir()
     (source_root / "session.md").write_text(
-        "DREAM: memory: api_key = 'ghp_1234567890abcdef'\n",
+        "MEMORY: memory: api_key = 'ghp_1234567890abcdef'\n",
         encoding="utf-8",
     )
     artifact_root = tmp_path / "artifacts"
     calls = {"count": 0}
 
-    class CountingResponses:
+    class CountingCompletions:
         def create(self, **_kwargs):
             calls["count"] += 1
             raise AssertionError("provider should not be called for secret-like source content")
 
+    class CountingChat:
+        def __init__(self) -> None:
+            self.completions = CountingCompletions()
+
     class CountingOpenAI:
         def __init__(self, **_kwargs) -> None:
-            self.responses = CountingResponses()
+            self.chat = CountingChat()
 
     monkeypatch.setitem(sys.modules, "openai", types.SimpleNamespace(OpenAI=CountingOpenAI))
 

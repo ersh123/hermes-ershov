@@ -15,11 +15,11 @@ import tempfile
 from pathlib import Path
 from typing import NamedTuple
 
-MEMORY_MD = Path.home() / ".hermes" / "dreaming" / "memory.md"
-USER_MD = Path.home() / ".hermes" / "dreaming" / "user.md"
+MEMORY_MD = Path.home() / ".hermes" / "mnemos" / "memory.md"
+USER_MD = Path.home() / ".hermes" / "mnemos" / "user.md"
 MEMORY_MD_LIMIT = 4000
 USER_MD_LIMIT = 4000
-BACKUPS_DIR = Path.home() / ".hermes" / "dreaming" / "backups"
+BACKUPS_DIR = Path.home() / ".hermes" / "mnemos" / "backups"
 
 
 class MemoryFile(NamedTuple):

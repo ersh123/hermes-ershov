@@ -4,11 +4,11 @@ from dataclasses import dataclass
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 DEFAULT_REMOTE = "origin"
 DEFAULT_BRANCH = "main"
-_PYTEST_CACHE_DIR = "/tmp/hermes-dreaming-update-pytest-cache"
 
 
 @dataclass(slots=True)
@@ -37,7 +37,7 @@ def _discover_repo_root(start: Path | None = None) -> Path:
     for path in [candidate, *candidate.parents]:
         if (path / "pyproject.toml").exists() and (path / "plugin.yaml").exists():
             return path
-    raise RuntimeError("Could not locate the Hermes Dreaming repository root.")
+    raise RuntimeError("Could not locate the Hermes Mnemos repository root.")
 
 
 def _run_git(args: list[str], *, cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -53,7 +53,7 @@ def _git_output(args: list[str], *, cwd: Path) -> str:
 
 
 def _format_update_report(result: UpdateResult) -> str:
-    lines = ["# Hermes Dreaming update", ""]
+    lines = ["# Hermes Mnemos update", ""]
     lines.extend(
         [
             f"- Repo: `{result.repo_root}`",
@@ -250,13 +250,14 @@ def handle(
     if verify:
         env = os.environ.copy()
         env["PYTHONDONTWRITEBYTECODE"] = "1"
-        verify_proc = subprocess.run(
-            [sys.executable, "-m", "pytest", "-q", "-o", f"cache_dir={_PYTEST_CACHE_DIR}"],
-            cwd=repo_root,
-            text=True,
-            capture_output=True,
-            env=env,
-        )
+        with tempfile.TemporaryDirectory(prefix="hermes-mnemos-update-pytest-cache-") as cache_dir:
+            verify_proc = subprocess.run(
+                [sys.executable, "-m", "pytest", "-q", "-o", f"cache_dir={cache_dir}"],
+                cwd=repo_root,
+                text=True,
+                capture_output=True,
+                env=env,
+            )
         if verify_proc.returncode != 0:
             rollback_error: str | None = None
             try:

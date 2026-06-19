@@ -10,7 +10,13 @@ if SRC.exists() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 
-def _run_dreaming(args: argparse.Namespace) -> int:
+PRIMARY_COMMAND = "mnemos"
+LEGACY_NIGHTMEM_COMMAND = "nightmem"
+LEGACY_COMMAND = "dreaming"
+PRODUCT_NAME = "Hermes Mnemos"
+
+
+def _run_night_memory(args: argparse.Namespace) -> int:
     from hermes_dreaming.cli import main as dreaming_main
 
     dream_args = list(getattr(args, "dreaming_args", []) or [])
@@ -34,22 +40,29 @@ def _setup_dreaming_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "dreaming_args",
         nargs=argparse.REMAINDER,
-        help="Arguments forwarded to the dreaming CLI.",
+        help="Arguments forwarded to the Mnemos CLI.",
     )
 
 
 def register(ctx) -> None:
-    ctx.register_cli_command(
-        name="dreaming",
-        help="Run the hermes-dreaming staged self-improvement engine",
-        setup_fn=_setup_dreaming_cli,
-        handler_fn=_run_dreaming,
-        description=(
-            "Expose the standalone hermes-dreaming CLI inside Hermes. "
-            "Use it to create, inspect, validate, apply, or discard staged self-improvement artifacts."
-        ),
-    )
+    for name, help_text in (
+        (PRIMARY_COMMAND, "Run the personal Hermes Mnemos engine"),
+        (LEGACY_NIGHTMEM_COMMAND, "Run the legacy mnemos compatibility command"),
+        (LEGACY_COMMAND, "Run the legacy mnemos compatibility command"),
+    ):
+        ctx.register_cli_command(
+            name=name,
+            help=help_text,
+            setup_fn=_setup_dreaming_cli,
+            handler_fn=_run_night_memory,
+            description=(
+                f"Expose the standalone {PRODUCT_NAME} CLI inside Hermes. "
+                "Use it to create, inspect, validate, apply, or discard staged personal memory artifacts."
+            ),
+        )
 
-    skill_md = ROOT / "skills" / "hermes-dreaming" / "SKILL.md"
+    skill_md = ROOT / "skills" / "hermes-mnemos" / "SKILL.md"
     if skill_md.exists():
-        ctx.register_skill("dreaming", skill_md)
+        ctx.register_skill("mnemos", skill_md)
+        ctx.register_skill(LEGACY_NIGHTMEM_COMMAND, skill_md)
+        ctx.register_skill(LEGACY_COMMAND, skill_md)

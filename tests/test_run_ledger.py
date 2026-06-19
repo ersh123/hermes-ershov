@@ -21,7 +21,7 @@ def _artifact(tmp_path: Path, *, artifact_id: str, status: str) -> Path:
             SourceSnapshot(
                 path="sessions/2026-05-25.md",
                 kind="session",
-                content="DREAM: memory: Keep updates short and concrete.\n",
+                content="MEMORY: memory: Keep updates short and concrete.\n",
                 sha256="f" * 64,
                 line_count=1,
             )
@@ -47,7 +47,7 @@ def _artifact(tmp_path: Path, *, artifact_id: str, status: str) -> Path:
 def test_record_run_appends_ledger_and_rewrites_dreams_md(tmp_path: Path) -> None:
     state_path = tmp_path / "state.json"
     ledger_path = tmp_path / "runs.jsonl"
-    diary_path = tmp_path / "DREAMS.md"
+    diary_path = tmp_path / "MNEMOS.md"
 
     first = record_run(
         {
@@ -79,7 +79,7 @@ def test_record_run_appends_ledger_and_rewrites_dreams_md(tmp_path: Path) -> Non
     assert read_run_ledger(ledger_path=ledger_path) == [first, second]
 
     diary = diary_path.read_text(encoding="utf-8")
-    assert diary.startswith("# DREAMS.md")
+    assert diary.startswith("# MNEMOS.md")
     assert "2026-05-25T12:00:00Z" in diary
     assert "create" in diary
     assert "validation failed" in diary
@@ -106,7 +106,7 @@ def test_status_command_reports_last_run_success_and_artifact_state(tmp_path: Pa
 
     state_path = tmp_path / "state.json"
     ledger_path = tmp_path / "runs.jsonl"
-    diary_path = tmp_path / "DREAMS.md"
+    diary_path = tmp_path / "MNEMOS.md"
 
     record_run(
         {
@@ -150,4 +150,4 @@ def test_status_command_reports_last_run_success_and_artifact_state(tmp_path: Pa
     assert "staged=1" in output or "staged: 1" in output
     assert "applied=1" in output or "applied: 1" in output
     assert "Memory usage:" in output
-    assert "DREAMS.md" in output
+    assert "MNEMOS.md" in output

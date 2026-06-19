@@ -1,8 +1,8 @@
-# Hermes Dreaming Release Checklist
+# Hermes Mnemos Release Checklist
 
 This is a pre-release checklist only.
 
-**Do not tag, publish, or release this repo until Tony explicitly says so.**
+**Do not tag, publish, or release this repo until Niko explicitly says so.**
 Contributor documentation and GitHub templates are welcome, but they do not constitute release approval.
 
 ## 1. First pass
@@ -31,15 +31,17 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] `pytest -q`
 - [ ] `python -m pip install build` if needed
 - [ ] `python -m build --wheel`
-- [ ] Smoke the CLI with `dreaming status`
-- [ ] Smoke `dreaming create`, `review`, `diff`, `validate`, `apply`, and `discard` on temp fixtures
-- [ ] Smoke `dreaming compact` on terminal artifacts
-- [ ] Smoke `dreaming install-cron`
-- [ ] Smoke `dreaming update --check` and the real `dreaming update --no-verify` path on a disposable repo
+- [ ] Smoke the CLI with `mnemos status`
+- [ ] Smoke `mnemos create`, `review`, `diff`, `validate`, `apply`, and `discard` on temp fixtures
+- [ ] Smoke `mnemos compact` on terminal artifacts
+- [ ] Smoke `mnemos nightly --no-llm`
+- [ ] Smoke `mnemos install-cron`
+- [ ] Smoke `mnemos install-systemd --dry-run`
+- [ ] Smoke `mnemos update --check` and the real `mnemos update --no-verify` path on a disposable repo
 
 ## 5. Release gate
 
-- [ ] Confirm Tony has explicitly approved release
+- [ ] Confirm Niko has explicitly approved release
 - [ ] Confirm the intended version/tag is still correct
 - [ ] Confirm nothing is half-finished in sibling worktrees or other release notes
 - [ ] Only then consider a commit, tag, or publish step

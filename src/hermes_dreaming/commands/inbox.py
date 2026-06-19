@@ -141,12 +141,12 @@ def _next_command(artifact_dir: Path, state: str, artifact: DreamArtifact) -> st
     live_root_text = shlex_quote(str(Path(artifact.workspace_root)))
     counts = _state_counts(artifact)
     if state in {"staged", "mixed"} or counts.get("pending", 0):
-        return f"dreaming summarize {artifact_text}"
+        return f"mnemos summarize {artifact_text}"
     if state == "approved" or counts.get("approved", 0):
-        return f"dreaming apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>"
+        return f"mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>"
     if state == "invalid":
-        return f"dreaming validate {artifact_text} --live-root {live_root_text}"
-    return f"dreaming review --open {artifact_text}"
+        return f"mnemos validate {artifact_text} --live-root {live_root_text}"
+    return f"mnemos review --open {artifact_text}"
 
 
 def shlex_quote(value: str) -> str:
@@ -262,7 +262,7 @@ def parse_filter(value: str | None) -> set[str] | None:
 
 def render_inbox(result: InboxResult) -> str:
     lines = [
-        "# Hermes Dreaming inbox",
+        "# Hermes Mnemos inbox",
         "",
         f"- Artifact root: `{result.artifact_root}`",
         f"- Artifacts scanned: `{result.total_artifacts}`",

@@ -1,6 +1,6 @@
 # Security Policy
 
-Hermes Dreaming handles staged writes and writeback safety. Treat anything that touches live roots, artifact validation, or proposal generation as security-sensitive.
+Hermes Mnemos handles staged writes and writeback safety. Treat anything that touches live roots, artifact validation, or proposal generation as security-sensitive.
 
 ## Supported versions
 
@@ -18,7 +18,7 @@ Do **not** open a public issue for:
 
 Instead, open a **private GitHub security advisory**:
 
-- https://github.com/asimons81/hermes-dreaming/security/advisories/new
+- https://github.com/ersh123/hermes-mnemos/security/advisories/new
 
 Include:
 

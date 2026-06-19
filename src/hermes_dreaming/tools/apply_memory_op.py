@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Apply Hermes Dreaming memory operations with threshold gating and backups.
+Apply Hermes Mnemos memory operations with threshold gating and backups.
 
 This stays deliberately small: validate the proposal, skip idempotent repeats,
 create a backup before a live write, verify the write, and record the result.
@@ -20,7 +20,7 @@ from ..scoring import ProposedOp, thresholds_for_prompt, validate_op
 from ..validation import validate_memory_op
 
 SCHEMA = {
-    "name": "dreaming_apply_memory_op",
+    "name": "mnemos_apply_memory_op",
     "description": (
         "Propose or apply a durable memory operation (add / replace / remove). "
         "In dry-run mode this records the proposal without touching MEMORY.md or USER.md. "
@@ -85,7 +85,7 @@ def _op_hash(op: str, target: str, old_text: str | None, new_text: str | None) -
 
 
 def _default_live_root() -> Path:
-    return Path.home() / ".hermes" / "dreaming"
+    return Path.home() / ".hermes" / "mnemos"
 
 
 def _coerce_sources(value: Any) -> list[str]:

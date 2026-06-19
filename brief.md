@@ -1,4 +1,4 @@
-# Hermes Dreaming — Project Brief
+# Hermes Mnemos — Project Brief
 
 ## Goal
 Build a safe, reviewable self-improvement engine for Hermes-style memory,
@@ -7,7 +7,7 @@ through an explicit apply step after a staged proposal is reviewed.
 
 ## Approved contract
 - Read recent sessions and durable context
-- Produce a staged dream artifact with proposed changes and provenance
+- Produce a staged memory artifact with proposed changes and provenance
 - Allow explicit apply/discard
 - Apply approved changes to live memory, user, skills, and fact-store targets
 - Verify the resulting state after writeback
@@ -26,7 +26,7 @@ The upstream Hermes repo already has overlapping open work in flight. Keep this 
 
 ## Success criteria
 - Repo is buildable and testable locally
-- Dream artifacts are deterministic enough to review
+- Memory artifacts are deterministic enough to review
 - The apply step is explicit and safe
 - Tests prove discard/apply behavior and catch bad proposals
 - No embarrassing leaked or incorrect repo content

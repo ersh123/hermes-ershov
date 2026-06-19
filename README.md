@@ -1,11 +1,21 @@
-# hermes-dreaming
+# hermes-mnemos
 
-[![CI](https://github.com/asimons81/hermes-dreaming/actions/workflows/ci.yml/badge.svg)](https://github.com/asimons81/hermes-dreaming/actions/workflows/ci.yml)
+[![CI](https://github.com/ersh123/hermes-mnemos/actions/workflows/ci.yml/badge.svg)](https://github.com/ersh123/hermes-mnemos/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ersh123/hermes-mnemos/actions/workflows/codeql.yml/badge.svg)](https://github.com/ersh123/hermes-mnemos/actions/workflows/codeql.yml)
 
-![Hermes Dreaming hero banner](assets/readme/hermes-dreaming-hero.png)
+![Hermes Mnemos hero banner](assets/readme/hermes-mnemos-hero.png)
 
-A standalone, open-source staged self-improvement engine for Hermes-style memory, user, skill, and fact updates.
-It scans explicit source inputs, stages proposed changes in a reviewable artifact directory, and only writes to live state after an explicit apply step.
+Hermes Mnemos is a staged nightly memory engine for Hermes operators.
+It turns recent sessions and explicit notes into reviewable memory proposals, then keeps live memory untouched until an explicit approve/apply step.
+
+What makes it useful:
+
+- nightly review loop that survives gateway restarts
+- artifact-first workflow: inspect, diff, validate, approve, reject, apply, revert
+- no silent live-memory mutation
+- offline mode for deterministic demos and tests
+- LLM connectors for DeepSeek, OpenRouter, OpenAI-compatible endpoints, and Ollama
+- local run ledger plus `MNEMOS.md` diary for auditability
 
 ## Hermes plugin
 
@@ -14,30 +24,30 @@ This repo now ships as a proper Hermes plugin too.
 Install from GitHub with:
 
 ```bash
-hermes plugins install asimons81/hermes-dreaming --enable
+hermes plugins install ersh123/hermes-mnemos --enable
 ```
 
 For a local checkout during development:
 
 ```bash
-hermes plugins install file:///path/to/hermes-dreaming --enable
+hermes plugins install file:///path/to/hermes-mnemos --enable
 ```
 
 Once installed, use:
 
 ```bash
-hermes dreaming review --help
+hermes mnemos review --help
 ```
 
 Update the installed checkout with:
 
 ```bash
-hermes dreaming update
+hermes mnemos update
 ```
 
-Use `hermes dreaming update --check` if you only want the status check.
+Use `hermes mnemos update --check` if you only want the status check.
 
-The plugin also bundles a Hermes skill named `dreaming`. Load that bare name inside Hermes if you want the guided staged workflow.
+The plugin also bundles a Hermes skill named `mnemos`. Load that bare name inside Hermes if you want the guided staged workflow.
 
 ## Onboarding docs
 
@@ -45,16 +55,17 @@ The plugin also bundles a Hermes skill named `dreaming`. Load that bare name ins
 - `docs/install-update.md` covers plugin install and safe fast-forward updates.
 - `docs/quickstart.md` is the copy/paste offline demo.
 - `docs/personas.md` shows how different operators use the same loop.
-- `docs/safety.md` spells out what Dreaming can and cannot mutate.
+- `docs/safety.md` spells out what Mnemos can and cannot mutate.
 
 ## Current status
 
-- **Full feature set:** create, review/open, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, status, update, all implemented
+- **Full feature set:** create, review/open, nightly, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, install-systemd, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
-- **Run ledger + DREAMS.md diary** for auditability
+- **Run ledger + MNEMOS.md diary** for auditability
 - **Hermes-native plugin:** install once, use everywhere
 - **Recent-session reader** with fallback chain (SessionDB → SQLite → pointer-log)
-- **Cron installer** for nightly dry-run review
+- **Nightly memory pipeline** for dialogue harvest, staged review artifacts, digests, inbox digest, compaction, and run-ledger audit
+- **Cron and user-systemd installers** for the full nightly memory pipeline
 - **Test suite passes locally**
 
 ## Install
@@ -71,79 +82,108 @@ If you want the optional OpenAI-compatible provider:
 python -m pip install -e .[llm]
 ```
 
+## LLM connectors
+
+The default `offline-marker` provider needs no key and never calls the network. For model-backed review, install the `llm` extra and choose a provider explicitly:
+
+```bash
+# DeepSeek, OpenAI-compatible endpoint
+export DEEPSEEK_API_KEY="..."
+mnemos review --provider deepseek --model deepseek-v4-flash --source ./sources --live-root ./live --artifact-root ./artifacts
+
+# OpenRouter, auto-routed model selection
+export OPENROUTER_API_KEY="..."
+mnemos review --provider openrouter --model openrouter/auto --source ./sources --live-root ./live --artifact-root ./artifacts
+
+# Any OpenAI-compatible endpoint
+mnemos review --provider openai-compatible --api-key "$OPENAI_API_KEY" --base-url https://api.openai.com/v1 --model gpt-4o-mini --source ./sources
+
+# Local Ollama, no cloud key
+mnemos review --provider ollama --model qwen2.5:3b --base-url http://127.0.0.1:11434 --source ./sources
+```
+
+Provider calls fail closed before writeback: source bundles are preflighted for secret-like content, model output must be valid JSON, provenance must point at scanned source lines, and every proposal is staged as unapproved.
+
 ## CLI
 
 ```bash
 # Create an artifact from sources
 
-dreaming create --live-root ./live --artifact-root ./artifacts --source ./sources
+mnemos create --live-root ./live --artifact-root ./artifacts --source ./sources
 
 # Review: create and validate without applying
 
-dreaming review --live-root ./live --artifact-root ./artifacts --source ./sources
+mnemos review --live-root ./live --artifact-root ./artifacts --source ./sources
 
 # Open an existing artifact and print next steps
 
-dreaming review --open ./artifacts/<artifact-id>
+mnemos review --open ./artifacts/<artifact-id>
 
-dreaming summarize ./artifacts/<artifact-id>
-dreaming approve ./artifacts/<artifact-id> all
-dreaming reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
+mnemos summarize ./artifacts/<artifact-id>
+mnemos approve ./artifacts/<artifact-id> all
+mnemos reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
 
 # Inspect an artifact
 
-dreaming diff ./artifacts/<artifact-id> --live-root ./live
+mnemos diff ./artifacts/<artifact-id> --live-root ./live
 
 # Validate a staged artifact
 
-dreaming validate ./artifacts/<artifact-id> --live-root ./live
+mnemos validate ./artifacts/<artifact-id> --live-root ./live
 
 # Apply approved changes
 
-dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
+mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 # Preview the apply without writing live state or creating backups
-dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
+mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
 # Apply only high-priority memory and user updates, skip skills and facts
-dreaming apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
+mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
 # Undo an apply: restore live files from the recorded backups
-dreaming revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
+mnemos revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
 # Discard a staged artifact
-dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
+mnemos discard ./artifacts/<artifact-id> --archive-root ./archive
 # Show artifacts that are approved and ready to apply
-dreaming inbox --artifact-root ./artifacts --apply-ready
+mnemos inbox --artifact-root ./artifacts --apply-ready
 # List available analysis providers
-dreaming providers list
+mnemos providers list
 # Stage from the last 5 local sessions in one step (replaces manual harvest + create)
-dreaming create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
+mnemos create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
 
-dreaming discard ./artifacts/<artifact-id> --archive-root ./archive
+# Run the full nightly memory pipeline locally
+mnemos nightly --live-root ./live --artifact-root ./artifacts --no-llm
+
+mnemos discard ./artifacts/<artifact-id> --archive-root ./archive
 
 # Compact terminal (applied/discarded) artifacts to an archive
 
-dreaming compact --artifact-root ./artifacts --archive-root ./archive
+mnemos compact --artifact-root ./artifacts --archive-root ./archive
 
-# Install a nightly review-only cron job
+# Install a nightly memory cron job
 
-dreaming install-cron --schedule "0 3 * * *"
+mnemos install-cron --mode nightly-memory --schedule "0 3 * * *"
+
+# Or install a user systemd timer that runs outside the Hermes gateway process
+
+mnemos install-systemd --on-calendar "*-*-* 03:00:00"
 
 # Render a local operator digest
 
-dreaming digest ./artifacts/<artifact-id> --weekly
+mnemos digest ./artifacts/<artifact-id> --weekly
 
 # Show artifact status
 
-dreaming status --artifact-root ./artifacts
+mnemos status --artifact-root ./artifacts
 
 # Safely update the installed checkout
 
-dreaming update
-dreaming update --check
+mnemos update
+mnemos update --check
 ```
 
 ## Quickstart demo fixture
 
 If you want the shortest path to "oh, I get it," use `examples/quickstart/`. It is an offline fixture, so no API key or external model access is required.
-If the `dreaming` entrypoint is not installed yet, swap in `python -m hermes_dreaming` for the same commands.
+If the `mnemos` entrypoint is not installed yet, swap in `python -m hermes_mnemos` for the same commands.
 
 - Fixture notes: `examples/quickstart/README.md`
 - Onboarding path: `docs/onboarding.md`
@@ -156,26 +196,29 @@ If the `dreaming` entrypoint is not installed yet, swap in `python -m hermes_dre
 - `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`.
 - `digest` renders a local operator brief to stdout only. It can include `--weekly` rollups, but it does not send anything to Telegram. If you want delivery later, wrap the command in a separate transport layer that consumes stdout.
 - `create` and `review` accept repeatable `--source`, `--from-sessions N` (or `--recent N` alias), `--from-since 7d`, and `--no-llm` (shorthand for `--provider offline-marker`). Harvest stats (`sessions`, `redactions`) print to stdout before staging. `review --open` prints the artifact path and the next commands.
+- `nightly` runs the full local mnemos loop: dialogue harvest, staged artifact creation, artifact `NIGHTLY.md`, latest inbox digest, terminal artifact compaction, and run-ledger / `MNEMOS.md` update. It never applies live memory automatically.
+- `install-systemd` writes a user-level systemd service/timer for nightly memory. This is the safer VPS path when the Hermes gateway itself may be down: the timer runs the no-agent `nightly` script outside the gateway process and does not restart Hermes.
+- Provider secrets are not written by `install-systemd`; put them in `~/.config/hermes-mnemos/nightly.secrets.env` when the timer needs cloud model access.
 - `apply` accepts `--dry-run` for previews, `--priority low,normal,high` to filter proposals, and `--target-kind memory,user,skill,fact` to filter by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
 - `revert` restores live files from the recorded backups and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Drift detection records an audit event when the live file changed after apply, but the restore still runs.
 - `inbox` supports `--apply-ready` to show only artifacts where every proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. The inbox digest also surfaces a "Ready to apply" section.
-- `providers list` introspects the three built-in providers (offline-marker, openai-compatible, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create` and `review`.
-- OpenAI-compatible and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
+- `providers list` introspects the built-in providers (offline-marker, openai-compatible, deepseek, openrouter, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create`, `review`, and `nightly`.
+- OpenAI-compatible, DeepSeek, OpenRouter, and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
 - `summarize` prints a concise decision brief for an existing artifact.
 - `approve` and `reject` update artifact metadata only, they do not touch live roots. `reject` requires a non-empty `--reason` at the command layer; any code path (CLI, library, plugin) is constrained by the same rule.
 - `diff` accepts optional `--live-root` and renders unified diffs when the live target root is available.
 - `apply` applies already approved proposals. `--approve` still works as a compatibility shortcut for recording approvals before apply.
 - `update` supports `--remote`, `--branch`, `--check`, and `--no-verify`.
 
-## Dream markers
+## Memory markers
 
-The offline provider looks for explicit `DREAM:` lines in the source bundle.
+The offline provider looks for explicit `MEMORY:` lines in the source bundle.
 
 ```text
-DREAM: memory: Keep updates short and concrete.
-DREAM: user: Prefer concise status updates.
-DREAM: fact: {"type": "preference", "key": "tone", "value": "casual"}
-DREAM: skill: path=skills/review.md | Preserve review gates and backups.
+MEMORY: memory: Keep updates short and concrete.
+MEMORY: user: Prefer concise status updates.
+MEMORY: fact: {"type": "preference", "key": "tone", "value": "casual"}
+MEMORY: skill: path=skills/review.md | Preserve review gates and backups.
 ```
 
 ## Artifact layout

@@ -10,8 +10,8 @@ def test_artifact_round_trip(tmp_path: Path) -> None:
     source = SourceSnapshot(
         path="sessions/2026-05-25.md",
         kind="session",
-        content="DREAM: memory: Keep updates short and concrete.\n",
-        sha256=sha256(b"DREAM: memory: Keep updates short and concrete.\n").hexdigest(),
+        content="MEMORY: memory: Keep updates short and concrete.\n",
+        sha256=sha256(b"MEMORY: memory: Keep updates short and concrete.\n").hexdigest(),
         line_count=1,
     )
     proposal = DreamProposal(
