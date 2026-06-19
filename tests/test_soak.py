@@ -475,6 +475,64 @@ def test_soak_cli_strict_systemd_fills_release_gate_defaults(tmp_path: Path, mon
     assert captured["allow_failures"] is False
 
 
+def test_soak_cli_strict_systemd_preserves_min_successful_promotion_gate(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    state_root = tmp_path / "state"
+    _write_ledger(
+        state_root,
+        [
+            _nightly(success=True, hours_ago=3, run_source="systemd", git_commit="abc1234"),
+            _nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234"),
+        ],
+    )
+    captured: dict[str, object] = {}
+
+    def fake_build_soak_report(**kwargs):  # type: ignore[no-untyped-def]
+        captured.update(kwargs)
+        return build_soak_report(
+            state_root=kwargs["state_root"],
+            since_hours=kwargs["since_hours"],
+            min_successful=kwargs["min_successful"],
+            require_timer=False,
+            required_source=kwargs["required_source"],
+            required_commit=kwargs["required_commit"],
+            require_clean=kwargs["require_clean"],
+            allow_failures=kwargs["allow_failures"],
+            now=NOW,
+        )
+
+    monkeypatch.setattr(cli_module, "_current_git_commit", lambda: "abc1234")
+    monkeypatch.setattr(cli_module, "_current_git_dirty", lambda: False)
+    monkeypatch.setattr(cli_module, "build_soak_report", fake_build_soak_report)
+
+    assert (
+        main(
+            [
+                "soak",
+                "--state-root",
+                str(state_root),
+                "--since-hours",
+                "96",
+                "--min-successful",
+                "3",
+                "--strict-systemd",
+                "--json",
+            ]
+        )
+        == 1
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["passed"] is False
+    assert payload["min_successful"] == 3
+    assert captured["min_successful"] == 3
+    assert captured["require_timer"] is True
+    assert captured["required_source"] == "systemd"
+    assert captured["required_commit"] == "abc1234"
+    assert captured["require_clean"] is True
+
+
 def test_soak_cli_strict_systemd_rejects_allow_failures(tmp_path: Path) -> None:
     try:
         main(["soak", "--state-root", str(tmp_path / "state"), "--strict-systemd", "--allow-failures"])

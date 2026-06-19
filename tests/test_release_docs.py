@@ -116,4 +116,20 @@ def test_release_docs_use_current_test_count() -> None:
         text = path.read_text(encoding="utf-8")
         assert "183 tests" not in text, path
         assert "185 tests" not in text, path
-        assert "186 tests" in text, path
+        assert "186 tests" not in text, path
+        assert "187 tests" not in text, path
+        assert "188 tests" in text, path
+
+
+def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
+    docs = [
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "docs" / "release-checklist.md",
+        REPO_ROOT / "docs" / "install-update.md",
+        REPO_ROOT / "docs" / "onboarding.md",
+        REPO_ROOT / "docs" / "release-notes-v0.4.0.md",
+    ]
+    gate = "--since-hours 96 --min-successful 3 --strict-systemd"
+    for path in docs:
+        text = path.read_text(encoding="utf-8")
+        assert gate in text, path

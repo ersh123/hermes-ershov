@@ -55,8 +55,12 @@ rejects runs produced by a dirty installed checkout.
 `--strict-systemd` applies those release gates and auto-detects the current
 checkout commit. It refuses a dirty current git checkout; if the checkout is not
 a git repo, pass `--require-commit`.
-A passing `soak` after the real schedule fires is the stronger
-evidence for stable operations.
+A passing `soak` after the real schedule fires is the minimum stable-candidate
+evidence. For public stable promotion, prefer several scheduled nights:
+
+```bash
+hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd
+```
 
 ## Update the installed checkout
 
