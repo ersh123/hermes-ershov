@@ -75,6 +75,20 @@ def test_handler_blocks_low_score(tmp_path: Path):
     assert "threshold" in result.get("error", "").lower()
 
 
+def test_handler_rejects_non_live_targets(tmp_path: Path):
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+
+    result = handler(
+        _params(target="fact", old_text='{"key": "tone"}'),
+        live_root=live_root,
+        backup_root=tmp_path / "backups",
+    )
+
+    assert result["applied"] is False
+    assert "unknown target" in result.get("error", "").lower()
+
+
 def test_handler_rejects_secret_like_live_text(tmp_path: Path):
     live_root = tmp_path / "live"
     live_root.mkdir()

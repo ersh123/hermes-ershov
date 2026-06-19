@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from hermes_dreaming.artifact import DreamArtifact, DreamProposal
-from hermes_dreaming.validation import validate_artifact
+from hermes_dreaming.validation import validate_artifact, validate_memory_op
 
 
 def _artifact_with(proposal: DreamProposal, tmp_path: Path) -> DreamArtifact:
@@ -77,3 +77,18 @@ def test_validate_rejects_missing_provenance(tmp_path: Path) -> None:
 
     assert errors
     assert any("provenance" in error.lower() for error in errors)
+
+
+def test_validate_memory_op_rejects_non_live_targets() -> None:
+    errors = validate_memory_op(
+        op="remove",
+        target="fact",
+        old_text='{"key": "tone"}',
+        new_text=None,
+        reason="facts are staged artifact writes, not live memory ops",
+        sources=["sessions/1.md:4"],
+        score=0.9,
+        supersession_confidence=0.9,
+    )
+
+    assert any("unsupported live target kind" in error for error in errors)

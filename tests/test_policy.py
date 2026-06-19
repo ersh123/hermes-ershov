@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from hermes_dreaming.artifact import DreamProposal
-from hermes_dreaming.policy import POLICY_VERSION, evaluate_proposal, stamp_proposal
+from hermes_dreaming.policy import POLICY_VERSION, evaluate_live_op, evaluate_proposal, stamp_proposal
 from hermes_dreaming.validation import validate_proposals
 
 
@@ -168,3 +168,17 @@ def test_evaluate_proposal_rejects_kind_escape_paths() -> None:
     assert "unsafe target path" in skill_decision.error
     assert fact_decision.ok is False
     assert "unsafe target path" in fact_decision.error
+
+
+def test_evaluate_live_op_rejects_non_live_targets() -> None:
+    decision = evaluate_live_op(
+        op="remove",
+        target="fact",
+        old_text='{"key": "tone"}',
+        new_text=None,
+        reason="live mutator only owns memory and user files",
+        sources=["sessions/1.md:12"],
+    )
+
+    assert decision.ok is False
+    assert "unsupported live target kind" in decision.error

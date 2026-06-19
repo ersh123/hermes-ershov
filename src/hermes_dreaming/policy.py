@@ -31,6 +31,8 @@ TARGET_POLICY: dict[str, dict[str, int]] = {
     "fact": {"max_chars": 320, "max_lines": 12, "total_chars": 12000},
 }
 
+LIVE_TARGET_KINDS = {"memory", "user"}
+
 RUN_POLICY = {
     "max_changes": 3,
     "max_adds": 1,
@@ -428,8 +430,8 @@ def evaluate_live_op(
         policy_version=policy_version,
     )
     warnings: list[str] = []
-    if target not in VALID_TARGET_KINDS:
-        return LivePolicyDecision(False, target, op, key, policy_version, normalized_old, normalized_new, error=f"unsupported target kind {target!r}", warnings=warnings)
+    if target not in LIVE_TARGET_KINDS:
+        return LivePolicyDecision(False, target, op, key, policy_version, normalized_old, normalized_new, error=f"unsupported live target kind {target!r}", warnings=warnings)
     if op not in {"add", "replace", "remove"}:
         return LivePolicyDecision(False, target, op, key, policy_version, normalized_old, normalized_new, error=f"unsupported operation {op!r}", warnings=warnings)
     if not reason.strip():
@@ -452,9 +454,6 @@ def evaluate_live_op(
         return LivePolicyDecision(False, target, op, key, policy_version, normalized_old, normalized_new, error=f"{op} requires old_text", warnings=warnings)
 
     lifecycle = "active"
-    if target == "fact" and op == "remove":
-        lifecycle = "stale"
-        warnings.append("facts should be marked stale before removal")
 
     capacity_reason = ""
     if normalized_new and len(normalized_new) > TARGET_POLICY[target]["max_chars"]:

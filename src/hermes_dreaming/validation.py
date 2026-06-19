@@ -6,7 +6,7 @@ from pathlib import Path, PurePosixPath
 from typing import Iterable
 
 from .artifact import DreamArtifact, DreamProposal, SourceSnapshot, VALID_MODES, VALID_PRIORITY_LEVELS, VALID_RISK_LEVELS, VALID_TARGET_KINDS
-from .policy import evaluate_live_op, evaluate_proposal, target_path_is_allowed
+from .policy import LIVE_TARGET_KINDS, evaluate_live_op, evaluate_proposal, target_path_is_allowed
 
 SECRET_PATTERNS = [
     re.compile(r"\b(sk-[A-Za-z0-9]{12,}|ghp_[A-Za-z0-9]{8,}|xox[baprs]-[A-Za-z0-9-]{8,}|AIza[0-9A-Za-z_-]{10,})\b"),
@@ -127,8 +127,8 @@ def validate_memory_op(
     """Validate a live memory mutation before score gating and write attempts."""
     errors: list[str] = []
 
-    if target not in VALID_TARGET_KINDS:
-        errors.append(f"unsupported target kind {target!r}")
+    if target not in LIVE_TARGET_KINDS:
+        errors.append(f"unsupported live target kind {target!r}")
     if op not in {"add", "replace", "remove"}:
         errors.append(f"unsupported operation {op!r}")
     if not reason.strip():
