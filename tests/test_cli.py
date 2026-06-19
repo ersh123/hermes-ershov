@@ -210,6 +210,36 @@ def test_providers_list_prints_table_with_builtin_providers(tmp_path: Path, caps
     assert "ollama" in output
 
 
+def test_providers_doctor_prints_safe_readiness_table(capsys) -> None:
+    exit_code = main(["providers", "doctor", "--provider", "offline-marker"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "READINESS" in output
+    assert "offline-marker" in output
+    assert "api key: not required" in output
+    assert "network probe skipped" in output
+
+
+def test_providers_doctor_json_output(capsys) -> None:
+    exit_code = main(["providers", "doctor", "--provider", "offline-marker", "--json"])
+    output = capsys.readouterr().out
+    payload = json.loads(output)
+
+    assert exit_code == 0
+    assert payload[0]["name"] == "offline-marker"
+    assert payload[0]["readiness"] == "ready"
+
+
+def test_providers_doctor_strict_returns_nonzero_for_unready_provider(capsys) -> None:
+    exit_code = main(["providers", "doctor", "--provider", "openrouter", "--strict"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "openrouter" in output
+    assert "blocked" in output or "missing" in output
+
+
 def test_create_with_no_llm_shorthand_uses_offline_marker(tmp_path: Path, monkeypatch, capsys) -> None:
     """`--no-llm` should set the provider to offline-marker regardless of --provider."""
     from hermes_dreaming.analyze import DreamRunConfig

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 import json
 import os
 import re
@@ -8,7 +8,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Protocol
+from typing import Mapping, Protocol
 
 from .artifact import DreamProposal, SourceSnapshot, text_sha256
 from .validation import validate_proposals
@@ -671,6 +671,15 @@ class ProviderInfo:
     notes: str
 
 
+@dataclass(slots=True, frozen=True)
+class ProviderDoctorRow:
+    name: str
+    kind: str
+    readiness: str  # ready | blocked | unknown
+    checks: str
+    notes: str
+
+
 def _openai_compat_available() -> bool:
     try:
         import openai  # noqa: F401
@@ -678,6 +687,103 @@ def _openai_compat_available() -> bool:
         return True
     except ImportError:
         return False
+
+
+def _canonical_provider_name(name: str) -> str:
+    normalized = name.strip().lower()
+    aliases = {
+        "offline": "offline-marker",
+        "offline-marker": "offline-marker",
+        "marker": "offline-marker",
+        "openai": "openai-compatible",
+        "openai-compatible": "openai-compatible",
+        "deepseek": "deepseek",
+        "deepseek-v4-flash": "deepseek",
+        "deepseek-flash": "deepseek",
+        "openrouter": "openrouter",
+        "openrouter-auto": "openrouter",
+        "ollama": "ollama",
+        "ollama-native": "ollama",
+    }
+    try:
+        return aliases[normalized]
+    except KeyError as exc:
+        raise ValueError(f"unknown provider: {name}") from exc
+
+
+def _env_has(env: Mapping[str, str], name: str) -> bool:
+    return bool(str(env.get(name, "")).strip())
+
+
+def _url_ok(value: str | None) -> bool:
+    if value is None:
+        return True
+    parsed = urllib.parse.urlparse(value)
+    return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+
+def doctor_providers(
+    *,
+    provider: str | None = None,
+    model: str | None = None,
+    base_url: str | None = None,
+    api_key_env: str | None = None,
+    env: Mapping[str, str] | None = None,
+    openai_available: bool | None = None,
+) -> list[ProviderDoctorRow]:
+    """Check local provider readiness without network calls or secret output."""
+    selected = _canonical_provider_name(provider) if provider else None
+    rows = list_providers()
+    if selected is not None:
+        rows = [row for row in rows if row.name == selected]
+    resolved_env = env if env is not None else os.environ
+    has_openai = _openai_compat_available() if openai_available is None else openai_available
+    results: list[ProviderDoctorRow] = []
+
+    for row in rows:
+        checks: list[str] = []
+        notes: list[str] = ["network probe skipped"]
+        readiness = "ready"
+
+        if row.name == "offline-marker":
+            checks.append("api key: not required")
+            checks.append("dependency: built-in")
+        elif row.name in {"openai-compatible", "deepseek", "openrouter"}:
+            checks.append(f"openai package: {'present' if has_openai else 'missing'}")
+            key_name = api_key_env
+            if key_name is None:
+                key_name = {
+                    "openai-compatible": "OPENAI_API_KEY",
+                    "deepseek": "DEEPSEEK_API_KEY",
+                    "openrouter": "OPENROUTER_API_KEY",
+                }[row.name]
+            key_present = _env_has(resolved_env, key_name)
+            checks.append(f"{key_name}: {'present' if key_present else 'missing'}")
+            url_valid = _url_ok(base_url)
+            checks.append(f"base_url: {'valid' if url_valid else 'invalid'}")
+            if not has_openai or not key_present or not url_valid:
+                readiness = "blocked"
+        elif row.name == "ollama":
+            resolved_base_url = base_url or "http://127.0.0.1:11434"
+            url_valid = _url_ok(resolved_base_url)
+            checks.append(f"base_url: {'valid' if url_valid else 'invalid'}")
+            checks.append(f"model: {'set' if (model or 'qwen2.5:3b').strip() else 'missing'}")
+            notes.append("local Ollama server/model not pinged")
+            readiness = "unknown" if url_valid else "blocked"
+        else:  # pragma: no cover - list_providers controls this set.
+            readiness = "blocked"
+            checks.append("unknown built-in provider")
+
+        results.append(
+            ProviderDoctorRow(
+                name=row.name,
+                kind=row.kind,
+                readiness=readiness,
+                checks="; ".join(checks),
+                notes="; ".join(notes),
+            )
+        )
+    return results
 
 
 def list_providers() -> list[ProviderInfo]:
@@ -731,3 +837,18 @@ def render_providers_table(rows: list[ProviderInfo]) -> str:
     for row in data:
         lines.append(line(row))
     return "\n".join(lines) + "\n"
+
+
+def render_provider_doctor_table(rows: list[ProviderDoctorRow]) -> str:
+    headers = ("NAME", "KIND", "READINESS", "CHECKS", "NOTES")
+    data = [(r.name, r.kind, r.readiness, r.checks, r.notes) for r in rows]
+    widths = [max(len(headers[i]), max(len(row[i]) for row in data)) for i in range(len(headers))]
+    line = lambda values: "  ".join(value.ljust(widths[i]) for i, value in enumerate(values))
+    lines = [line(headers), line(tuple("-" * w for w in widths))]
+    for row in data:
+        lines.append(line(row))
+    return "\n".join(lines) + "\n"
+
+
+def render_provider_doctor_json(rows: list[ProviderDoctorRow]) -> str:
+    return json.dumps([asdict(row) for row in rows], ensure_ascii=False, sort_keys=True, indent=2) + "\n"

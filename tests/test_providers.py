@@ -15,6 +15,7 @@ from hermes_dreaming.providers import (
     OpenAICompatibleProvider,
     OpenRouterProvider,
     build_provider,
+    doctor_providers,
 )
 
 
@@ -451,3 +452,49 @@ def test_render_providers_table_emits_table_with_header_and_separator() -> None:
     # Sanity: also works for arbitrary rows.
     custom = [ProviderInfo(name="x", kind="k", status="always", notes="n")]
     assert "x" in render_providers_table(custom)
+
+
+def test_provider_doctor_checks_env_without_printing_secret_values() -> None:
+    from hermes_dreaming.providers import render_provider_doctor_table
+
+    rows = doctor_providers(
+        provider="deepseek",
+        env={"DEEPSEEK_API_KEY": "sk-do-not-print"},
+        openai_available=True,
+    )
+    rendered = render_provider_doctor_table(rows)
+
+    assert rows[0].readiness == "ready"
+    assert "DEEPSEEK_API_KEY: present" in rendered
+    assert "sk-do-not-print" not in rendered
+    assert "network probe skipped" in rendered
+
+
+def test_provider_doctor_blocks_missing_openai_dependency_or_key() -> None:
+    rows = doctor_providers(
+        provider="openrouter",
+        env={},
+        openai_available=False,
+    )
+
+    assert rows[0].readiness == "blocked"
+    assert "openai package: missing" in rows[0].checks
+    assert "OPENROUTER_API_KEY: missing" in rows[0].checks
+
+
+def test_provider_doctor_never_pings_ollama(monkeypatch) -> None:
+    def fail_urlopen(*_args, **_kwargs):
+        raise AssertionError("provider doctor must not call network")
+
+    monkeypatch.setattr("urllib.request.urlopen", fail_urlopen)
+
+    rows = doctor_providers(provider="ollama", base_url="http://127.0.0.1:11434")
+
+    assert rows[0].readiness == "unknown"
+    assert "base_url: valid" in rows[0].checks
+    assert "local Ollama server/model not pinged" in rows[0].notes
+
+
+def test_provider_doctor_rejects_unknown_provider() -> None:
+    with pytest.raises(ValueError, match="unknown provider"):
+        doctor_providers(provider="not-a-provider")

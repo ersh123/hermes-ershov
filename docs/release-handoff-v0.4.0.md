@@ -19,7 +19,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - **Trust loop**: `ershov revert`, `apply --dry-run`, `apply --priority`, `apply --target-kind`
 - **Friction-killer**: `create --from-sessions N`, `create --from-since 7d` (with `--recent` alias), `--no-llm`
-- **Discovery**: `providers list`, `inbox --apply-ready`, inbox digest "Ready to apply" section
+- **Discovery**: `providers list`, `providers doctor`, `inbox --apply-ready`, inbox digest "Ready to apply" section
 - **Hardening**: `reject --reason` enforced at the command layer
 
 ## Files of note
@@ -30,12 +30,12 @@ This is the short follow-up note for the v0.4.0 release lane.
 - `src/hermes_dreaming/commands/inbox.py` — `apply_ready` filter and `_is_apply_ready`
 - `src/hermes_dreaming/commands/digest.py` — `apply_ready_count` / `apply_ready_rows` and the "Ready to apply" section in `render_inbox_digest`
 - `src/hermes_dreaming/commands/review.py` — `reject_artifact` reason enforcement at command layer
-- `src/hermes_dreaming/providers.py` — `list_providers` and `render_providers_table`
+- `src/hermes_dreaming/providers.py` — `list_providers`, `doctor_providers`, and provider table renderers
 - `tests/test_revert.py` (NEW), `tests/test_inbox.py` (NEW), extended `test_apply.py`, `test_cli.py`, `test_providers.py`, `test_review_actions.py`
 
 ## Verification gates
 
-- `python -m pytest -q` (201 tests pass)
+- `python -m pytest -q` (209 tests pass)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
 - Temp-only Ershov smoke with `HERMES_ERSHOV_STATE_ROOT`:
@@ -51,6 +51,7 @@ This is the short follow-up note for the v0.4.0 release lane.
   - `apply --priority high --target-kind memory` filters correctly
   - `inbox --apply-ready` filters correctly
   - `providers list` prints the table without pinging
+  - `providers doctor` checks local readiness without network calls or secret output
   - `create --from-sessions 5` prints redaction stats and feeds the bundle
   - provider output rejects schema-valid invented `source_quote` / `snippet` evidence
   - `--no-llm` overrides `--provider` to `offline-marker`
@@ -60,7 +61,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - [x] `git status -sb` clean (except intentional v0.4.0 changes)
 - [x] `git diff --check` clean
-- [x] `pytest -q` passes (201 tests)
+- [x] `pytest -q` passes (209 tests)
 - [x] `python -m build` succeeds
 - [x] Each new + modified command smoke-tested on temp fixtures
 - [x] CHANGELOG, release notes, handoff all written

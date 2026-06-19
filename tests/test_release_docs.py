@@ -17,6 +17,7 @@ def test_changelog_provider_list_matches_public_provider_surface() -> None:
     provider_line = next(line for line in text.splitlines() if "`ershov providers list`" in line)
     for provider in PROVIDER_IDS:
         assert provider in provider_line
+    assert "`ershov providers doctor`" in text
 
 
 def test_provider_specs_match_public_provider_surface() -> None:
@@ -130,7 +131,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "193 tests" not in text, path
         assert "194 tests" not in text, path
         assert "198 tests" not in text, path
-        assert "201 tests" in text, path
+        assert "201 tests" not in text, path
+        assert "208 tests" not in text, path
+        assert "209 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -163,3 +166,17 @@ def test_release_docs_keep_revert_validation_and_provider_grounding_honest() -> 
             assert "not-run" in text or path.name == "CHANGELOG.md", path
         if "provider" in text.lower() or "Provider" in text:
             assert "source_quote" in text or "provenance" in text, path
+
+
+def test_release_docs_document_provider_doctor_safety() -> None:
+    docs = [
+        REPO_ROOT / "README.md",
+        REPO_ROOT / "CHANGELOG.md",
+        REPO_ROOT / "docs" / "release-notes-v0.4.0.md",
+        REPO_ROOT / "docs" / "release-handoff-v0.4.0.md",
+    ]
+    for path in docs:
+        text = path.read_text(encoding="utf-8")
+        assert "providers doctor" in text, path
+        assert "without" in text.lower(), path
+    assert "never prints secret values" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")

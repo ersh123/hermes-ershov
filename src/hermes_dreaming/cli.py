@@ -38,7 +38,7 @@ from .commands.status import build_status_snapshot, render_status
 from .commands.soak import build_soak_report, render_soak_report, render_soak_report_json
 from .commands.update import handle as update_command, render_update_result
 from .diffing import render_artifact_diff
-from .providers import list_providers, render_providers_table
+from .providers import doctor_providers, list_providers, render_provider_doctor_json, render_provider_doctor_table, render_providers_table
 from .state import record_run
 from .validation import validate_artifact
 
@@ -342,6 +342,13 @@ def build_parser() -> argparse.ArgumentParser:
     providers = sub.add_parser("providers", help="Discover available analysis providers")
     providers_sub = providers.add_subparsers(dest="providers_command", required=True)
     providers_sub.add_parser("list", help="List available providers and their status")
+    providers_doctor = providers_sub.add_parser("doctor", help="Check local provider readiness without network calls")
+    providers_doctor.add_argument("--provider", default=None, help="Provider to check (defaults to all built-ins)")
+    providers_doctor.add_argument("--model", default=None, help="Model name to validate as configured")
+    providers_doctor.add_argument("--base-url", default=None, help="Provider base URL to validate without pinging")
+    providers_doctor.add_argument("--api-key-env", default=None, help="Environment variable name that should contain the API key")
+    providers_doctor.add_argument("--strict", action="store_true", help="Exit non-zero when any checked provider is not ready")
+    providers_doctor.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
 
     return parser
 
@@ -1095,6 +1102,20 @@ def main(argv: list[str] | None = None) -> int:
         if args.providers_command == "list":
             rows = list_providers()
             print(render_providers_table(rows).rstrip())
+            return 0
+        if args.providers_command == "doctor":
+            rows = doctor_providers(
+                provider=args.provider,
+                model=args.model,
+                base_url=args.base_url,
+                api_key_env=args.api_key_env,
+            )
+            if args.json:
+                print(render_provider_doctor_json(rows).rstrip())
+            else:
+                print(render_provider_doctor_table(rows).rstrip())
+            if args.strict and any(row.readiness != "ready" for row in rows):
+                return 1
             return 0
         parser.error(f"unknown providers subcommand: {args.providers_command}")
         return 2

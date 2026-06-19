@@ -148,6 +148,8 @@ ershov discard ./artifacts/<artifact-id> --archive-root ./archive
 ershov inbox --artifact-root ./artifacts --apply-ready
 # List available analysis providers
 ershov providers list
+# Check provider readiness without sending prompts or pinging model APIs
+ershov providers doctor --provider deepseek --strict
 # Stage from the last 5 local sessions in one step (replaces manual harvest + create)
 ershov create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
 
@@ -213,6 +215,7 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 - `revert` restores existing live files from recorded backups, removes files that were created by apply, and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Add `--validate` to run the existing artifact validator after restore; validation results are written to the revert audit and `REVERT.md`. Without `--validate`, the CLI and `REVERT.md` explicitly report `post_revert_validation: not-run`. Drift detection compares the live file to the recorded post-apply sha when available, then restores from backup.
 - `inbox` supports `--apply-ready` to show only artifacts where every proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. The inbox digest also surfaces a "Ready to apply" section.
 - `providers list` introspects the built-in providers (offline-marker, openai-compatible, deepseek, openrouter, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create`, `review`, and `nightly`.
+- `providers doctor` checks local readiness without sending prompts or pinging model APIs: optional dependency import, expected API-key env var presence, configured base URL shape, and local-only notes. It never prints secret values. Add `--strict` when you want a shell gate that exits non-zero unless every checked provider is ready.
 - OpenAI-compatible, DeepSeek, OpenRouter, and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
 - `HERMES_ERSHOV_SESSION_DB=/path/to/state.db` forces harvest/nightly to read a specific SessionDB-compatible SQLite file before trying the live Hermes SessionDB. This is useful for deterministic smoke tests.
 - `status --release-gate --state-root ~/.hermes/ershov` renders the strict systemd stable gate inline: current commit, dirty state, timer health/next elapse, matching scheduled runs, recent failures, and the exact blockers keeping stable wording off.
