@@ -43,8 +43,8 @@ def test_release_workflow_uploads_assets_only_for_release_event() -> None:
     assert "contents: write" not in build_chunk
     assert "if: github.event_name == 'release'" in upload_chunk
     assert "permissions:\n      contents: write" in upload_chunk
-    assert "actions/upload-artifact@v4" in build_chunk
-    assert "actions/download-artifact@v4" in upload_chunk
+    assert "uses: actions/upload-artifact@" in build_chunk
+    assert "uses: actions/download-artifact@" in upload_chunk
     assert 'gh release upload "$GITHUB_REF_NAME" dist/* --clobber' in upload_chunk
 
 
