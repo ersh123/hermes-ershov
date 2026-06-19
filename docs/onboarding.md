@@ -51,6 +51,8 @@ ershov nightly --live-root ./live --artifact-root ./artifacts --no-llm
 
 With an LLM provider, set the provider key in the runtime environment and omit `--no-llm`. The nightly loop still does not apply live memory by itself; you approve and apply explicitly after review.
 
+In offline `--no-llm` mode, the nightly loop is marker-driven. If the recent harvest has no eligible `MEMORY:` / `DREAM:` lines, Ershov returns a clean `no-op` and does not create an invalid empty artifact.
+
 To schedule the loop inside Hermes, use the cron bridge:
 
 ```bash
@@ -66,6 +68,8 @@ ershov install-systemd --on-calendar "*-*-* 03:00:00"
 The systemd installer writes non-secret runtime knobs only. Put provider keys in
 `~/.config/hermes-ershov/nightly.secrets.env`; reinstalling the timer does not
 touch that file.
+
+For deterministic smoke tests, set `HERMES_ERSHOV_SESSION_DB=/path/to/state.db` to force harvest/nightly to read a specific SessionDB-compatible SQLite file before the live Hermes SessionDB.
 
 ## What to expect
 

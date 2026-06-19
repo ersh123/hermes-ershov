@@ -13,6 +13,7 @@ injection into the Hermes Ershov curation loop.
 
 import json
 import logging
+import os
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -113,6 +114,9 @@ def _extract_dialogue_lines(messages: list[dict[str, Any]]) -> list[str]:
 def _db_path(db_path: Path | None = None) -> Path:
     if db_path is not None:
         return Path(db_path)
+    configured = _configured_session_db_path()
+    if configured is not None:
+        return configured
     try:
         from hermes_constants import get_hermes_home  # type: ignore
 
@@ -125,6 +129,16 @@ def _state_path(state_path: Path | None = None) -> Path:
     if state_path is not None:
         return Path(state_path)
     return Path.home() / ".hermes" / "ershov" / "state.json"
+
+
+def _configured_session_db_path() -> Path | None:
+    configured = os.environ.get("HERMES_ERSHOV_SESSION_DB")
+    if configured:
+        return Path(configured).expanduser()
+    configured = os.environ.get("HERMES_MNEMOS_SESSION_DB")
+    if configured:
+        return Path(configured).expanduser()
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -255,15 +269,25 @@ def list_recent(
     the returned session IDs are recorded into ``state.json`` as
     ``recent_session_ids`` so the pointer-log fallback stays populated for
     future low-degradation reads."""
+    configured_db_path = Path(db_path) if db_path is not None else _configured_session_db_path()
+    if configured_db_path is not None:
+        result = (
+            _read_via_sqlite(limit, db_path=configured_db_path, include_assistant=include_assistant)
+            if include_assistant
+            else _read_via_sqlite(limit, db_path=configured_db_path)
+        )
+        if result is not None:
+            _record_pointer_ids(result, state_path=state_path)
+            return result
+        logger.warning("ershov: configured session DB read failed; using pointer log only")
+        return _read_via_pointer_log(limit) if state_path is None else _read_via_pointer_log(limit, state_path=state_path)
+
     result = _read_via_session_db(limit, include_assistant=include_assistant) if include_assistant else _read_via_session_db(limit)
     if result is not None:
         _record_pointer_ids(result, state_path=state_path)
         return result
 
-    if db_path is None:
-        result = _read_via_sqlite(limit, include_assistant=include_assistant) if include_assistant else _read_via_sqlite(limit)
-    else:
-        result = _read_via_sqlite(limit, db_path=db_path, include_assistant=include_assistant) if include_assistant else _read_via_sqlite(limit, db_path=db_path)
+    result = _read_via_sqlite(limit, include_assistant=include_assistant) if include_assistant else _read_via_sqlite(limit)
     if result is not None:
         _record_pointer_ids(result, state_path=state_path)
         return result

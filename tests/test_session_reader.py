@@ -114,6 +114,27 @@ def test_list_recent_falls_back_to_sqlite_then_pointer_log(monkeypatch) -> None:
     assert calls == ["sessiondb", "sqlite"]
 
 
+def test_list_recent_uses_configured_session_db_before_session_db(
+    tmp_path: Path, monkeypatch
+) -> None:
+    db_path = tmp_path / "state.db"
+    _build_sqlite_session_db(db_path)
+    monkeypatch.setenv("HERMES_ERSHOV_SESSION_DB", str(db_path))
+
+    def session_db(*_args, **_kwargs):
+        raise AssertionError("SessionDB should be skipped when a DB override is configured")
+
+    monkeypatch.setattr(reader, "_read_via_session_db", session_db)
+
+    sessions = reader.list_recent(limit=1, include_assistant=True)
+
+    assert [session.session_id for session in sessions] == ["s2"]
+    assert sessions[0].context_lines == [
+        "user: first user turn for session two",
+        "assistant: assistant reply for session two",
+    ]
+
+
 def test_list_recent_falls_back_to_pointer_log_when_the_first_two_paths_fail(monkeypatch) -> None:
     calls: list[str] = []
 

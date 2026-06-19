@@ -82,6 +82,20 @@ def _fake_harvest(*, recent: int, output_path: Path | None = None, **_kwargs) ->
     )
 
 
+def _empty_harvest(*, recent: int, output_path: Path | None = None, **_kwargs) -> HarvestResult:  # type: ignore[no-untyped-def]
+    assert recent > 0
+    path = Path(output_path)
+    content = "# Recent sessions\n\nNo recent sessions found.\n"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return HarvestResult(
+        output_path=path,
+        sessions=[],
+        content=content,
+        redaction_count=0,
+    )
+
+
 def test_run_nightly_memory_stages_reports_compacts_and_records_ledger(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(nightly_module, "harvest_recent", _fake_harvest)
     live_root = _live_root(tmp_path)
@@ -116,6 +130,7 @@ def test_run_nightly_memory_stages_reports_compacts_and_records_ledger(tmp_path:
     assert (live_root / "memory.md").read_text(encoding="utf-8") == "# MEMORY\n"
     assert (live_root / "user.md").read_text(encoding="utf-8") == "# USER\n"
 
+    assert result.artifact_dir is not None
     artifact = load_artifact(result.artifact_dir)
     assert artifact.status == "staged"
     assert [proposal.target_kind for proposal in artifact.proposals] == ["memory", "user"]
@@ -128,6 +143,49 @@ def test_run_nightly_memory_stages_reports_compacts_and_records_ledger(tmp_path:
     assert ledger[0]["sessions"] == 1
     assert ledger[0]["redactions"] == 1
     assert json.loads((state_root / "state.json").read_text(encoding="utf-8"))["last_run"]["command"] == "nightly"
+
+
+def test_run_nightly_memory_noops_without_offline_markers_and_does_not_create_artifact(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(nightly_module, "harvest_recent", _empty_harvest)
+    live_root = _live_root(tmp_path)
+    artifact_root = tmp_path / "artifacts"
+    state_root = tmp_path / "state"
+
+    result = run_nightly_memory(
+        live_root=live_root,
+        artifact_root=artifact_root,
+        state_root=state_root,
+        provider_name="offline-marker",
+        model=None,
+        base_url=None,
+        compact=False,
+    )
+
+    assert result.success is True
+    assert result.artifact_status == "no-op"
+    assert result.artifact_id is None
+    assert result.artifact_dir is None
+    assert result.proposal_count == 0
+    assert result.validation_errors == []
+    assert result.digest_path == artifact_root / "_digests" / "latest-nightly.md"
+    assert result.digest_path.exists()
+    assert result.inbox_digest_path.exists()
+    assert result.source_bundle.exists()
+    assert list(artifact_root.glob("*/manifest.json")) == []
+
+    output = render_nightly_memory(result)
+    assert "Status: `no-op`" in output
+    assert "Artifact: `none`" in output
+    assert "No eligible MEMORY/DREAM markers" in output
+    assert "ershov summarize" not in output
+
+    ledger = read_run_ledger(ledger_path=state_root / "runs.jsonl")
+    assert ledger[0]["success"] is True
+    assert ledger[0]["artifact_status"] == "no-op"
+    assert ledger[0]["artifact_dir"] is None
+    assert ledger[0]["proposals"] == 0
 
 
 def test_run_nightly_memory_records_invalid_artifact_without_live_write(tmp_path: Path, monkeypatch) -> None:

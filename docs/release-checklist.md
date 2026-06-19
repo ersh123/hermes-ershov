@@ -35,6 +35,8 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Smoke `ershov create`, `review`, `diff`, `validate`, `apply`, and `discard` on temp fixtures
 - [ ] Smoke `ershov compact` on terminal artifacts
 - [ ] Smoke `ershov nightly --no-llm`
+- [ ] Smoke `ershov nightly --no-llm` with no eligible markers: exits `no-op`, creates no invalid empty artifact
+- [ ] Smoke `HERMES_ERSHOV_SESSION_DB=/tmp/state.db ershov nightly --no-llm` with controlled marker input through the installed CLI
 - [ ] Smoke `ershov install-cron`
 - [ ] Smoke `ershov install-systemd --dry-run`
 - [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
