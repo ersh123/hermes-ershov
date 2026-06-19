@@ -50,6 +50,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix
 - [ ] Confirm local markdown links/images pass the docs guard
+- [ ] Confirm the release workflow only uploads assets on a GitHub `release` event and does not publish to package indexes
 
 ## 5. Release gate
 

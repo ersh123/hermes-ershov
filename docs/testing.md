@@ -40,6 +40,7 @@ GitHub Actions runs the same release-shaped matrix:
 - installed wheel smoke for every public console and module alias
 - installed source distribution smoke for every public console and module alias
 - CodeQL on push, pull request, schedule, and manual dispatch
+- release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
 
 ## Coverage shape
 
@@ -51,6 +52,7 @@ The suite is intentionally mixed:
 - property-based tests for path safety, scoring thresholds, systemd escaping, and soak commit matching
 - docs guards that fail when release-facing text drifts from shipped behavior
 - local markdown link/image guards for release-facing docs
+- release workflow guards that prevent accidental PyPI publishing or release creation
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 
 ## Stable-release evidence
