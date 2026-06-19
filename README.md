@@ -211,7 +211,7 @@ ershov update --git-timeout-seconds 180
 ## Quickstart demo fixture
 
 If you want the shortest path to "oh, I get it," use `examples/quickstart/`. It is an offline fixture, so no API key or external model access is required.
-If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ershov` for the same commands.
+If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ershov` for the same commands. The package also exposes a `hermes-ershov` console alias for direct package-name execution.
 
 - Fixture notes: [examples/quickstart/README.md](examples/quickstart/README.md)
 - Onboarding path: [docs/onboarding.md](docs/onboarding.md)

@@ -39,6 +39,7 @@ llm = [
 
 [project.scripts]
 ershov = "hermes_dreaming.cli:main"
+hermes-ershov = "hermes_dreaming.cli:main"
 mnemos = "hermes_dreaming.cli:main"
 nightmem = "hermes_dreaming.cli:main"
 dreaming = "hermes_dreaming.cli:main"

@@ -80,8 +80,8 @@ GitHub Actions runs the same release-shaped matrix:
 - strict systemd release-gate tests that include timer-visible provider readiness and required-provider mismatch checks
 - Hermes plugin wrapper smoke
 - wheel and source distribution build
-- installed wheel smoke for every public console and module alias
-- installed source distribution smoke for every public console and module alias
+- installed wheel smoke for every public console alias (`ershov`, `hermes-ershov`, `mnemos`, `nightmem`, `dreaming`) and module alias, with `uv --no-cache` so the check uses the freshly built artifact
+- installed source distribution smoke for every public console alias (`ershov`, `hermes-ershov`, `mnemos`, `nightmem`, `dreaming`) and module alias, with `uv --no-cache` so the check uses the freshly built artifact
 - CodeQL on push, pull request, schedule, and manual dispatch
 - Dependabot weekly version-update checks for GitHub Actions and uv-managed Python package metadata
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
@@ -100,7 +100,8 @@ GitHub Actions runs the same release-shaped matrix:
 - workflow-level concurrency for repeatable analysis jobs and job-level `timeout-minutes` on every GitHub Actions job
 - job-scoped write permissions for SARIF/code-scanning uploads; top-level workflow permissions stay read-only unless the workflow has no narrower safe option
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`, `id-token: write`, and `attestations: write`
-- publish workflow build runs under read-only repository permissions; release-event-only PyPI publishing is isolated to a `pypi` environment job with `id-token: write` and `attestations: write`
+- publish workflow build runs under read-only repository permissions; it generates and verifies the same SBOM, release manifest, checksum manifest, and artifact bundle contract before uploading only wheel/source-distribution files to the PyPI publishing artifact
+- release-event-only PyPI publishing is isolated to a `pypi` environment job with `id-token: write` and `attestations: write`
 
 ## Coverage shape
 
@@ -113,7 +114,7 @@ The suite is intentionally mixed:
 - ClusterFuzzLite/Atheris fuzz target coverage for path validation, env quoting, provider fact parsing, memory-op validation, and score gates
 - docs guards that fail when release-facing text drifts from shipped behavior
 - local markdown link/image guards for release-facing docs
-- release workflow guards that prevent accidental release creation and accidental PyPI publishing outside the dedicated Trusted Publishing job
+- release workflow guards and publish workflow guards that prevent accidental release creation, accidental PyPI publishing outside the dedicated Trusted Publishing job, and accidental non-package assets in the PyPI upload artifact
 - supply-chain workflow guards for Scorecard permissions, SARIF output, checkout token persistence, full-SHA action pinning, ClusterFuzzLite wiring, workflow timeout/concurrency controls, and top-level permission minimization
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 

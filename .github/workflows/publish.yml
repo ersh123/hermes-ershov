@@ -46,20 +46,29 @@ jobs:
           uv run --locked --extra dev python scripts/hermes_plugin_smoke.py
 
       - name: Build distributions
-        run: uv run --locked --extra dev python -m build
+        run: |
+          uv run --locked --extra dev python -m build
+          uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json
+          uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist
+          uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist
+          uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist
 
       - name: Smoke distributions
         run: |
-          uv run --no-project --isolated --with dist/*.whl ershov --help
-          uv run --no-project --isolated --with dist/*.whl ershov providers list
-          uv run --no-project --isolated --with dist/*.tar.gz ershov --help
-          uv run --no-project --isolated --with dist/*.tar.gz python -m hermes_ershov --help
+          uv run --no-cache --no-project --isolated --with dist/*.whl ershov --help
+          uv run --no-cache --no-project --isolated --with dist/*.whl hermes-ershov --help
+          uv run --no-cache --no-project --isolated --with dist/*.whl ershov providers list
+          uv run --no-cache --no-project --isolated --with dist/*.tar.gz ershov --help
+          uv run --no-cache --no-project --isolated --with dist/*.tar.gz hermes-ershov --help
+          uv run --no-cache --no-project --isolated --with dist/*.tar.gz python -m hermes_ershov --help
 
       - name: Upload distribution artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: hermes-ershov-dist
-          path: dist/*
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
           if-no-files-found: error
 
   attest-and-publish:

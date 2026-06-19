@@ -49,6 +49,8 @@ This is the short follow-up note for the v0.4.0 release lane.
 - `python scripts/generate_release_manifest.py --dist dist` (writes `release-manifest.json`)
 - `python scripts/generate_release_checksums.py --dist dist` (writes `SHA256SUMS`)
 - `python scripts/verify_release_artifacts.py --dist dist` (wheel, sdist, release manifest, SBOM, and checksum bundle pass)
+- Publish workflow parity: build job verifies SBOM, release manifest, `SHA256SUMS`, and release artifacts, then uploads only wheel/source-distribution files to the PyPI publishing artifact
+- Console packaging: wheel and source-distribution smokes cover the package-name `hermes-ershov` alias in addition to `ershov` and legacy aliases, using `uv --no-cache` to avoid stale ephemeral envs
 - `docs/release-integrity.md` (documents release manifest, checksum, SBOM, `gh release verify-asset`, `gh attestation verify`, and stable-soak boundaries)
 - Temp-only Ershov smoke with `HERMES_ERSHOV_STATE_ROOT`:
   - `status --release-gate --fix-plan` shows stable blockers, last nightly rows, timer health, next scheduled elapse, and secret-safe provider remediation

@@ -39,8 +39,10 @@ def test_release_workflow_build_job_uses_ci_strength_gates() -> None:
         "DEEPSEEK_API_KEY=<secret>",
         "sk-release-do-not-print",
         "secret leaked from soak fix-plan",
-        "uv run --no-project --isolated --with dist/*.whl ershov revert --help",
-        "uv run --no-project --isolated --with dist/*.tar.gz ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.whl ershov revert --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.whl hermes-ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.tar.gz ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.tar.gz hermes-ershov --help",
     ):
         assert gate in text
 
@@ -87,6 +89,14 @@ def test_publish_workflow_publishes_only_from_release_event_with_oidc() -> None:
 
     assert "workflow_dispatch:" in text
     assert "permissions:\n  contents: read" in text
+    assert "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json" in build_chunk
+    assert "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist" in build_chunk
+    assert "uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist" in build_chunk
+    assert "uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist" in build_chunk
+    assert "uv run --no-cache --no-project --isolated --with dist/*.whl hermes-ershov --help" in build_chunk
+    assert "uv run --no-cache --no-project --isolated --with dist/*.tar.gz hermes-ershov --help" in build_chunk
+    assert "path: |\n            dist/*.whl\n            dist/*.tar.gz" in build_chunk
+    assert "dist/*\n" not in build_chunk
     assert "id-token: write" not in build_chunk
     assert "attestations: write" not in build_chunk
     assert "if: github.event_name == 'release' && github.event.action == 'published'" in publish_chunk

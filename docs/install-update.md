@@ -20,7 +20,7 @@ hermes plugins install file:///path/to/hermes-ershov --enable
 hermes ershov review --help
 ```
 
-If you are outside Hermes, the repo still exposes the same CLI as the `ershov` console script, and `python -m hermes_ershov` works as a fallback during local development.
+If you are outside Hermes, the repo still exposes the same CLI as the `ershov` console script. The package-name alias `hermes-ershov` is available too, and `python -m hermes_ershov` works as a fallback during local development.
 
 ## Install nightly memory outside the gateway
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import re
+import tomllib
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -30,8 +31,10 @@ def test_ci_workflow_shows_release_shaped_test_matrix() -> None:
         "python scripts/verify_release_artifacts.py --dist dist",
         "dist/*.whl",
         "dist/*.tar.gz",
-        "uv run --no-project --isolated --with dist/*.whl ershov --help",
-        "uv run --no-project --isolated --with dist/*.tar.gz ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.whl ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.whl hermes-ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.tar.gz ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.tar.gz hermes-ershov --help",
         "providers doctor --provider offline-marker --strict",
         "providers doctor --provider deepseek --env-file /tmp/ershov-wheel-nightly.env --fix-plan --strict",
         "status --release-gate",
@@ -162,8 +165,14 @@ def test_publish_workflow_uses_release_only_trusted_publishing() -> None:
         "uv run --locked --extra dev pytest -q tests/test_pbt.py tests/test_fuzz_harness.py",
         "uv run --locked --extra dev python scripts/hermes_plugin_smoke.py",
         "uv run --locked --extra dev python -m build",
-        "uv run --no-project --isolated --with dist/*.whl ershov --help",
-        "uv run --no-project --isolated --with dist/*.tar.gz python -m hermes_ershov --help",
+        "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json",
+        "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist",
+        "uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist",
+        "uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist",
+        "uv run --no-cache --no-project --isolated --with dist/*.whl ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.whl hermes-ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.tar.gz hermes-ershov --help",
+        "uv run --no-cache --no-project --isolated --with dist/*.tar.gz python -m hermes_ershov --help",
         "uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7",
         "uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8",
         "uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0",
@@ -172,6 +181,10 @@ def test_publish_workflow_uses_release_only_trusted_publishing() -> None:
         "attestations: true",
     ):
         assert phrase in text
+    assert "path: |\n            dist/*.whl\n            dist/*.tar.gz" in build_chunk
+    assert "dist/*.whl" in build_chunk
+    assert "dist/*.tar.gz" in build_chunk
+    assert "dist/*\n" not in build_chunk
     assert "id-token: write" not in top_level_permissions
     assert "attestations: write" not in top_level_permissions
     assert "id-token: write" not in build_chunk
@@ -192,6 +205,14 @@ def test_python_classifier_matches_ci_matrix() -> None:
         assert f"'{version}'" in ci
         assert f"Programming Language :: Python :: {version}" in pyproject
         assert version in testing_doc
+
+
+def test_pyproject_exposes_documented_console_aliases() -> None:
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    scripts = pyproject["project"]["scripts"]
+
+    for alias in ("ershov", "hermes-ershov", "mnemos", "nightmem", "dreaming"):
+        assert scripts[alias] == "hermes_dreaming.cli:main"
 
 
 def test_clusterfuzzlite_python_fuzzing_integration_is_present() -> None:

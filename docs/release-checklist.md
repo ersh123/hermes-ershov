@@ -61,6 +61,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Confirm the release workflow exports an SPDX SBOM and release manifest, and only uploads attested assets on a GitHub `release` event, without publishing to package indexes
 - [ ] Confirm GitHub Release consumers can verify `release-manifest.json`, `SHA256SUMS`, `gh release verify-asset`, and `gh attestation verify` using `docs/release-integrity.md`
 - [ ] Confirm the publish workflow can only publish to PyPI from a GitHub `release` event through the `pypi` environment, PyPI Trusted Publishing, OIDC, and artifact attestations
+- [ ] Confirm the publish workflow verifies SBOM, release manifest, `SHA256SUMS`, and `scripts/verify_release_artifacts.py`, but uploads only `dist/*.whl` and `dist/*.tar.gz` to the PyPI publishing artifact
 - [ ] Confirm Dependabot is enabled for GitHub Actions and uv-managed Python package metadata
 - [ ] Confirm OpenSSF Scorecard is enabled and uploads SARIF to GitHub code scanning
 - [ ] Confirm ClusterFuzzLite PR/manual fuzzing is wired to `.clusterfuzzlite/` and uses pinned actions
