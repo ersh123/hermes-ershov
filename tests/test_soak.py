@@ -298,6 +298,30 @@ def test_soak_report_fails_when_clean_checkout_is_required_but_missing(tmp_path:
     assert "Clean successful nightly runs: `0`" in render_soak_report(report)
 
 
+def test_soak_report_fails_when_clean_checkout_is_required_but_ledger_is_legacy(tmp_path: Path) -> None:
+    state_root = tmp_path / "state"
+    legacy_record = _nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234")
+    legacy_record.pop("git_dirty")
+    _write_ledger(state_root, [legacy_record])
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_source="systemd",
+        required_commit="abc1234",
+        require_clean=True,
+    )
+
+    assert report.passed is False
+    assert len(report.commit_matched_successful_nightly_runs) == 1
+    assert len(report.clean_matched_successful_nightly_runs) == 0
+    assert len(report.gate_matched_successful_nightly_runs) == 0
+    assert "clean checkout" in report.reasons[0]
+    output = render_soak_report(report)
+    assert "Gate-matching successful nightly runs: `0`" in output
+    assert "Clean successful nightly runs: `0`" in output
+
+
 def test_soak_report_json_is_machine_readable(tmp_path: Path) -> None:
     state_root = tmp_path / "state"
     _write_ledger(state_root, [_nightly(success=True, hours_ago=2)])

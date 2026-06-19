@@ -5,6 +5,7 @@ from pathlib import PurePosixPath
 from hypothesis import given, settings, strategies as st
 
 from hermes_dreaming.commands.install_systemd import _env_quote, _single_line_unit_value
+from hermes_dreaming.commands.soak import _commit_matches
 from hermes_dreaming.scoring import (
     ADD_MIN_SCORE,
     REMOVE_MIN_CONFIDENCE,
@@ -21,6 +22,7 @@ _PATH_PART = st.text(
     min_size=1,
     max_size=12,
 ).filter(lambda value: value not in {".", ".."})
+_GIT_HEX = st.text(alphabet="0123456789abcdef", min_size=1, max_size=40)
 
 
 @settings(max_examples=250)
@@ -129,6 +131,22 @@ def test_pbt_remove_gate_uses_supersession_confidence(confidence: float) -> None
     )
 
     assert result.ok is (confidence >= REMOVE_MIN_CONFIDENCE)
+
+
+@settings(max_examples=200)
+@given(_GIT_HEX.filter(lambda value: len(value) < 7), st.text(alphabet="0123456789abcdef", min_size=7, max_size=40))
+def test_pbt_soak_rejects_too_short_required_commit_prefix(required: str, ledger_suffix: str) -> None:
+    ledger_commit = (required + ledger_suffix)[:40]
+
+    assert not _commit_matches({"git_commit": ledger_commit}, required_commit=required)
+
+
+@settings(max_examples=200)
+@given(st.text(alphabet="0123456789abcdef", min_size=7, max_size=40))
+def test_pbt_soak_accepts_normal_git_commit_prefixes(commit: str) -> None:
+    required = commit[:7]
+
+    assert _commit_matches({"git_commit": commit}, required_commit=required)
 
 
 @settings(max_examples=120)
