@@ -252,11 +252,6 @@ def _probe_provider(
 
     readiness = row.readiness
     checks = row.checks
-    if expected_provider and configured_provider and configured_provider != expected_provider:
-        readiness = "blocked"
-        checks = f"configured provider: {configured_provider}; expected provider: {expected_provider}; {checks}"
-    elif configured_provider:
-        checks = f"configured provider: {configured_provider}; {checks}"
 
     return ProviderProbe(
         checked=True,

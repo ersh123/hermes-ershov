@@ -188,6 +188,8 @@ def test_soak_report_blocks_when_timer_provider_does_not_match_requirement(tmp_p
     assert report.provider.expected_provider == "deepseek"
     assert report.provider.configured_provider == "offline-marker"
     assert "configured provider: offline-marker; expected provider: deepseek" in report.reasons[-1]
+    assert report.reasons[-1].count("configured provider: offline-marker") == 1
+    assert report.reasons[-1].count("expected provider: deepseek") == 1
 
 
 def test_soak_report_fails_when_required_timer_points_to_wrong_unit(tmp_path: Path) -> None:
