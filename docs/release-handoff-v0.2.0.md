@@ -1,4 +1,4 @@
-# Hermes Mnemos v0.2.0 Handoff
+# Hermes Ershov v0.2.0 Handoff
 
 This is the short follow-up note for the shipped `v0.2.0` line.
 
@@ -11,18 +11,18 @@ This is the short follow-up note for the shipped `v0.2.0` line.
 ## Install / update path
 
 ```bash
-hermes plugins install ersh123/hermes-mnemos --enable
-hermes mnemos review --help
-hermes mnemos update
-hermes mnemos update --check
+hermes plugins install ersh123/hermes-ershov --enable
+hermes ershov review --help
+hermes ershov update
+hermes ershov update --check
 ```
 
-If you are outside Hermes, the repo still exposes the `mnemos` console script for local use, and `python -m hermes_mnemos` remains the development fallback.
+If you are outside Hermes, the repo still exposes the `ershov` console script for local use, and `python -m hermes_ershov` remains the development fallback.
 
 ## Current release facts
 
 - GitHub release: `v0.2.0`
-- GitHub release URL: https://github.com/ersh123/hermes-mnemos/releases/tag/v0.2.0
+- GitHub release URL: https://github.com/ersh123/hermes-ershov/releases/tag/v0.2.0
 - PyPI is still skipped; GitHub Release assets are the distribution path until a PyPI token and policy exist
 - PR #3 is still draft and untouched
 

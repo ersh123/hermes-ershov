@@ -121,7 +121,7 @@ class OfflineMarkerProvider:
             if not target_path:
                 return None
             body = body.strip()
-            text = body if body.startswith("#") else f"## Mnemos note\n\n- {body}\n\nSource: {source.path}:{line_number}\n"
+            text = body if body.startswith("#") else f"## Ershov note\n\n- {body}\n\nSource: {source.path}:{line_number}\n"
             return DreamProposal(
                 id=f"skill-{source.sha256[:8]}-{line_number}",
                 target_kind="skill",
@@ -218,7 +218,7 @@ class OfflineMarkerProvider:
         notes: list[str],
     ) -> str:
         lines = [
-            "# Hermes Mnemos Report",
+            "# Hermes Ershov Report",
             "",
             f"- Provider: `{self.name}`",
             f"- Workspace: `{context.workspace_root}`",
@@ -300,7 +300,7 @@ class OpenAICompatibleProvider:
         *,
         payload_hash: str,
     ) -> tuple[str, list[DreamProposal], list[str]]:
-        report = str(payload.get("report", "# Hermes Mnemos Report\n\nNo report provided.\n"))
+        report = str(payload.get("report", "# Hermes Ershov Report\n\nNo report provided.\n"))
         proposals_value = payload.get("proposals", [])
         if proposals_value is None:
             proposals_value = []
@@ -496,7 +496,7 @@ class OpenAICompatibleProvider:
     def _build_prompt(self, sources: list[SourceSnapshot], context: DreamContext) -> str:
         source_block = "\n\n".join(f"### {source.path}\n{source.content}" for source in sources)
         return (
-            "You are Hermes Mnemos, a staged self-improvement engine.\n"
+            "You are Hermes Ershov, a staged self-improvement engine.\n"
             "Return JSON only with keys: report, proposals, notes.\n"
             "Each proposal must include id, target_kind, target_path, mode, summary, provenance, confidence, snippet, proposed_text, approved, risk, priority, reason, source_quote, policy_flags.\n"
             "Risk must be one of low, medium, high. Priority must be one of low, normal, high.\n"

@@ -94,7 +94,7 @@ def render_open_brief(artifact_dir: Path) -> str:
     live_root_text = shlex.quote(str(live_root))
     artifact_text = shlex.quote(str(artifact_dir))
     lines = [
-        "# Hermes Mnemos review",
+        "# Hermes Ershov review",
         "",
         f"Artifact: `{artifact_text}`",
         f"Artifact id: `{artifact.artifact_id}`",
@@ -103,12 +103,12 @@ def render_open_brief(artifact_dir: Path) -> str:
         "",
         "## Next commands",
         "",
-        f"- `mnemos summarize {artifact_text}`",
-        f"- `mnemos approve {artifact_text} all`",
-        f"- `mnemos reject {artifact_text} <proposal-id> --reason \"...\"`",
-        f"- `mnemos diff {artifact_text} --live-root {live_root_text}`",
-        f"- `mnemos validate {artifact_text} --live-root {live_root_text}`",
-        f"- `mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
+        f"- `ershov summarize {artifact_text}`",
+        f"- `ershov approve {artifact_text} all`",
+        f"- `ershov reject {artifact_text} <proposal-id> --reason \"...\"`",
+        f"- `ershov diff {artifact_text} --live-root {live_root_text}`",
+        f"- `ershov validate {artifact_text} --live-root {live_root_text}`",
+        f"- `ershov apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
     ]
     return "\n".join(lines) + "\n"
 
@@ -119,7 +119,7 @@ def render_summary(artifact_dir: Path) -> str:
     artifact_text = shlex.quote(str(artifact_dir))
     live_root_text = shlex.quote(str(Path(artifact.workspace_root)))
     lines = [
-        "# Hermes Mnemos summary",
+        "# Hermes Ershov summary",
         "",
         f"Artifact: `{artifact_text}`",
         f"Artifact id: `{artifact.artifact_id}`",
@@ -153,12 +153,12 @@ def render_summary(artifact_dir: Path) -> str:
             "",
             "## Next commands",
             "",
-            f"- `mnemos review --open {artifact_text}`",
-            f"- `mnemos approve {artifact_text} all`",
-            f"- `mnemos reject {artifact_text} <proposal-id> --reason \"...\"`",
-            f"- `mnemos diff {artifact_text} --live-root {live_root_text}`",
-            f"- `mnemos validate {artifact_text} --live-root {live_root_text}`",
-            f"- `mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
+            f"- `ershov review --open {artifact_text}`",
+            f"- `ershov approve {artifact_text} all`",
+            f"- `ershov reject {artifact_text} <proposal-id> --reason \"...\"`",
+            f"- `ershov diff {artifact_text} --live-root {live_root_text}`",
+            f"- `ershov validate {artifact_text} --live-root {live_root_text}`",
+            f"- `ershov apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>`",
         ]
     )
     return "\n".join(lines) + "\n"

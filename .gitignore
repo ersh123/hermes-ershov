@@ -11,6 +11,6 @@ dist/
 htmlcov/
 *.egg-info/
 *.log
-.mnemos/
+.ershov/
 .hermes/
 .DS_Store

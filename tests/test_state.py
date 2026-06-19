@@ -8,7 +8,7 @@ from pathlib import Path
 
 def test_state_root_can_be_overridden_with_environment(tmp_path: Path) -> None:
     repo_root = Path(__file__).resolve().parents[1]
-    state_root = tmp_path / "mnemos-state"
+    state_root = tmp_path / "ershov-state"
     code = """
 from pathlib import Path
 import sys
@@ -18,7 +18,7 @@ print(state.STATE_ROOT)
 print(state.STATE_JSON)
 """
     env = dict(os.environ)
-    env["HERMES_MNEMOS_STATE_ROOT"] = str(state_root)
+    env["HERMES_ERSHOV_STATE_ROOT"] = str(state_root)
 
     result = subprocess.run(
         [sys.executable, "-c", code],

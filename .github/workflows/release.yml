@@ -39,11 +39,13 @@ jobs:
 
       - name: Smoke wheel
         run: |
-          python -m venv /tmp/mnemos-release-smoke
-          /tmp/mnemos-release-smoke/bin/python -m pip install --upgrade pip
-          /tmp/mnemos-release-smoke/bin/python -m pip install dist/*.whl
-          /tmp/mnemos-release-smoke/bin/mnemos --help
-          /tmp/mnemos-release-smoke/bin/python -m hermes_mnemos --help
+          python -m venv /tmp/ershov-release-smoke
+          /tmp/ershov-release-smoke/bin/python -m pip install --upgrade pip
+          /tmp/ershov-release-smoke/bin/python -m pip install dist/*.whl
+          /tmp/ershov-release-smoke/bin/ershov --help
+          /tmp/ershov-release-smoke/bin/mnemos --help
+          /tmp/ershov-release-smoke/bin/python -m hermes_ershov --help
+          /tmp/ershov-release-smoke/bin/python -m hermes_mnemos --help
 
       - name: Upload release assets
         if: github.event_name == 'release'

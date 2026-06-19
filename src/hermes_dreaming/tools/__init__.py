@@ -1,1 +1,1 @@
-"""Hermes Mnemos tools."""
+"""Hermes Ershov tools."""

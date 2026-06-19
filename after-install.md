@@ -1,9 +1,9 @@
-# hermes-mnemos installed
+# hermes-ershov installed
 
 The plugin is live inside Hermes. Start with:
 
 ```bash
-hermes mnemos review --help
+hermes ershov review --help
 ```
 
 Next:

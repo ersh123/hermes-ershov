@@ -84,7 +84,7 @@ def test_create_dream_artifact_writes_failure_artifact_for_invalid_provider_outp
     assert result.artifact_dir.exists()
     assert (result.artifact_dir / "manifest.json").exists()
     assert (result.artifact_dir / "proposals.jsonl").read_text(encoding="utf-8") == ""
-    assert (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8").startswith("# Hermes Mnemos Report")
+    assert (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8").startswith("# Hermes Ershov Report")
     report = (result.artifact_dir / "REPORT.md").read_text(encoding="utf-8")
     assert "Provider/preflight failure" in report
     assert "Payload hash" in report

@@ -354,8 +354,8 @@ def _build_proposal_views(artifact: DreamArtifact, artifact_dir: Path, previous_
                 policy_flags=list(proposal.policy_flags),
                 provenance=list(proposal.provenance),
                 score=score,
-                approve_command=f"mnemos approve {artifact_text} {proposal.id}",
-                reject_command=f'mnemos reject {artifact_text} {proposal.id} --reason "..."',
+                approve_command=f"ershov approve {artifact_text} {proposal.id}",
+                reject_command=f'ershov reject {artifact_text} {proposal.id} --reason "..."',
                 theme_key=_proposal_theme_key(proposal),
                 rejection_reason=proposal.rejection_reason,
             )
@@ -420,8 +420,8 @@ def _next_step_text(artifact: DreamArtifact) -> str:
 
 def _proposal_descriptor(proposal: DreamProposal, *, score: int, artifact_dir: Path) -> list[str]:
     artifact_text = _safe_quote(artifact_dir)
-    approve_cmd = f"mnemos approve {artifact_text} {proposal.id}"
-    reject_cmd = f'mnemos reject {artifact_text} {proposal.id} --reason "..."'
+    approve_cmd = f"ershov approve {artifact_text} {proposal.id}"
+    reject_cmd = f'ershov reject {artifact_text} {proposal.id} --reason "..."'
     lines = [
         f"- `{proposal.id}` [{proposal_state(proposal)}] `{proposal.target_kind}` -> `{proposal.target_path}`",
         f"  - summary: {proposal.summary}",
@@ -632,7 +632,7 @@ def render_digest(result: DigestResult) -> str:
     target_kind_breakdown = Counter(proposal.target_kind for proposal in artifact.proposals)
     theme_labels = sorted({_proposal_theme_key(proposal) for proposal in artifact.proposals})
     lines = [
-        "# Hermes Mnemos digest",
+        "# Hermes Ershov digest",
         "",
         f"- Artifact: `{artifact.artifact_id}`",
         f"- Created: `{artifact.created_at}`",
@@ -679,13 +679,13 @@ def render_digest(result: DigestResult) -> str:
     artifact_text = _safe_quote(artifact_dir)
     live_root_text = _safe_quote(live_root)
     artifact_root_text = _safe_quote(result.artifact_root)
-    summarize_cmd = f"mnemos summarize {artifact_text}"
-    approve_all_cmd = f"mnemos approve {artifact_text} all"
-    reject_one_cmd = f'mnemos reject {artifact_text} <proposal-id> --reason "..."'
-    diff_cmd = f"mnemos diff {artifact_text} --live-root {live_root_text}"
-    validate_cmd = f"mnemos validate {artifact_text} --live-root {live_root_text}"
-    apply_cmd = f"mnemos apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>"
-    status_cmd = f"mnemos status --artifact-root {artifact_root_text}"
+    summarize_cmd = f"ershov summarize {artifact_text}"
+    approve_all_cmd = f"ershov approve {artifact_text} all"
+    reject_one_cmd = f'ershov reject {artifact_text} <proposal-id> --reason "..."'
+    diff_cmd = f"ershov diff {artifact_text} --live-root {live_root_text}"
+    validate_cmd = f"ershov validate {artifact_text} --live-root {live_root_text}"
+    apply_cmd = f"ershov apply {artifact_text} --live-root {live_root_text} --backup-root <backup-root>"
+    status_cmd = f"ershov status --artifact-root {artifact_root_text}"
 
     lines.extend([
         "## Action loop",
@@ -829,7 +829,7 @@ def _render_inbox_digest_rows(rows: list[Any]) -> list[str]:
         lines.append(f"  - age: {getattr(row, 'age', 'unknown age')}")
         lines.append(f"  - reason: {getattr(row, 'top_reason', 'none')}")
         lines.append(f"  - policy flags: {flags}")
-        lines.append(f"  - next: `{getattr(row, 'next_command', 'mnemos summarize <artifact>')}`")
+        lines.append(f"  - next: `{getattr(row, 'next_command', 'ershov summarize <artifact>')}`")
     if not lines:
         lines.append("- none")
     return lines
@@ -837,7 +837,7 @@ def _render_inbox_digest_rows(rows: list[Any]) -> list[str]:
 
 def render_inbox_digest(result: InboxDigestResult) -> str:
     lines = [
-        "# Hermes Mnemos inbox digest",
+        "# Hermes Ershov inbox digest",
         "",
         f"- Artifact root: `{result.artifact_root}`",
         f"- Total artifacts: `{result.total_artifacts}`",

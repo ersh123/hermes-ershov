@@ -50,7 +50,7 @@ def render_harvest_bundle(
     max_chars: int = 8000,
 ) -> tuple[str, int]:
     lines = [
-        "# Hermes Mnemos recent session harvest",
+        "# Hermes Ershov recent session harvest",
         "",
         "This local source bundle was generated from recent Hermes sessions.",
         "It is bounded and redacted before providers see it.",

@@ -10,10 +10,11 @@ if SRC.exists() and str(SRC) not in sys.path:
     sys.path.insert(0, str(SRC))
 
 
-PRIMARY_COMMAND = "mnemos"
+PRIMARY_COMMAND = "ershov"
+LEGACY_MNEMOS_COMMAND = "mnemos"
 LEGACY_NIGHTMEM_COMMAND = "nightmem"
 LEGACY_COMMAND = "dreaming"
-PRODUCT_NAME = "Hermes Mnemos"
+PRODUCT_NAME = "Hermes Ershov"
 
 
 def _run_night_memory(args: argparse.Namespace) -> int:
@@ -40,15 +41,16 @@ def _setup_dreaming_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "dreaming_args",
         nargs=argparse.REMAINDER,
-        help="Arguments forwarded to the Mnemos CLI.",
+        help="Arguments forwarded to the Ershov CLI.",
     )
 
 
 def register(ctx) -> None:
     for name, help_text in (
-        (PRIMARY_COMMAND, "Run the personal Hermes Mnemos engine"),
-        (LEGACY_NIGHTMEM_COMMAND, "Run the legacy mnemos compatibility command"),
-        (LEGACY_COMMAND, "Run the legacy mnemos compatibility command"),
+        (PRIMARY_COMMAND, "Run the personal Hermes Ershov engine"),
+        (LEGACY_MNEMOS_COMMAND, "Run the legacy ershov compatibility command"),
+        (LEGACY_NIGHTMEM_COMMAND, "Run the legacy ershov compatibility command"),
+        (LEGACY_COMMAND, "Run the legacy ershov compatibility command"),
     ):
         ctx.register_cli_command(
             name=name,
@@ -61,8 +63,9 @@ def register(ctx) -> None:
             ),
         )
 
-    skill_md = ROOT / "skills" / "hermes-mnemos" / "SKILL.md"
+    skill_md = ROOT / "skills" / "hermes-ershov" / "SKILL.md"
     if skill_md.exists():
-        ctx.register_skill("mnemos", skill_md)
+        ctx.register_skill("ershov", skill_md)
+        ctx.register_skill(LEGACY_MNEMOS_COMMAND, skill_md)
         ctx.register_skill(LEGACY_NIGHTMEM_COMMAND, skill_md)
         ctx.register_skill(LEGACY_COMMAND, skill_md)

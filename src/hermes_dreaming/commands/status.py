@@ -115,7 +115,7 @@ def build_status_snapshot(
 
 def render_status(snapshot: StatusSnapshot) -> str:
     lines = [
-        "# Hermes Mnemos status",
+        "# Hermes Ershov status",
         "",
         f"Artifact root: {snapshot.artifact_root}",
         f"Artifacts: {snapshot.artifact_count} total",
@@ -136,7 +136,7 @@ def render_status(snapshot: StatusSnapshot) -> str:
             "Memory usage:",
             f"- state.json: {snapshot.memory_usage['state']} B",
             f"- runs.jsonl: {snapshot.memory_usage['ledger']} B",
-            f"- MNEMOS.md: {snapshot.memory_usage['diary']} B",
+            f"- ERSHOV.md: {snapshot.memory_usage['diary']} B",
         ]
     )
     return "\n".join(lines) + "\n"

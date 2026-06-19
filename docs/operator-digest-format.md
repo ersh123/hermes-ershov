@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This note defines the local digest format for Hermes Mnemos artifacts and the action loop that follows it.
+This note defines the local digest format for Hermes Ershov artifacts and the action loop that follows it.
 It is intentionally Telegram-friendly, but it does not send anything anywhere. It is just the render contract.
 
 The digest must be generated entirely from local artifact data and run history:
@@ -13,7 +13,7 @@ The digest must be generated entirely from local artifact data and run history:
 - `proposals.jsonl`
 - `audit.jsonl`
 - `runs.jsonl`
-- `MNEMOS.md`
+- `ERSHOV.md`
 - `state.json`
 
 No remote state, no hidden cache, no second source of truth.
@@ -47,7 +47,7 @@ Keep it short.
 
 Example:
 
-- `Hermes Mnemos digest`
+- `Hermes Ershov digest`
 - `Artifact: 20260527T221500Z-abc12345`
 - `Status: staged | valid | 4 proposals | 2 approved | 1 rejected | 0 applied`
 - `Priority: 87/100`
@@ -247,12 +247,12 @@ Always quote rejection reasons.
 
 Examples:
 
-- `mnemos summarize '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345'`
-- `mnemos approve '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' all`
-- `mnemos reject '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' p-04 --reason "too broad"`
-- `mnemos diff '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
-- `mnemos validate '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
-- `mnemos apply '/tmp/hermes-mnemos/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root' --backup-root '/tmp/backups'`
+- `ershov summarize '/tmp/hermes-ershov/artifacts/20260527T221500Z-abc12345'`
+- `ershov approve '/tmp/hermes-ershov/artifacts/20260527T221500Z-abc12345' all`
+- `ershov reject '/tmp/hermes-ershov/artifacts/20260527T221500Z-abc12345' p-04 --reason "too broad"`
+- `ershov diff '/tmp/hermes-ershov/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
+- `ershov validate '/tmp/hermes-ershov/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root'`
+- `ershov apply '/tmp/hermes-ershov/artifacts/20260527T221500Z-abc12345' --live-root '/tmp/live root' --backup-root '/tmp/backups'`
 
 ### Approval gate wording
 
@@ -308,7 +308,7 @@ Example:
 Use run history and artifact audits:
 
 - `runs.jsonl` for run outcomes and timestamps
-- `MNEMOS.md` for the human-readable diary trail
+- `ERSHOV.md` for the human-readable diary trail
 - `audit.jsonl` for per-proposal state transitions
 - `manifest.json` for proposal metadata
 

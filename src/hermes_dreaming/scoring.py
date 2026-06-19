@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 """
-Scoring thresholds and run-level limits for Hermes Mnemos memory ops.
+Scoring thresholds and run-level limits for Hermes Ershov memory ops.
 
 The agent computes scores using its own judgement. This module is the
 authoritative source of threshold values that:

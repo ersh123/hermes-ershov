@@ -1,8 +1,8 @@
-# Hermes Mnemos onboarding
+# Hermes Ershov onboarding
 
 Start here if you want the whole loop in one place.
 
-Hermes Mnemos is a staged self-improvement loop. It scans explicit source inputs, stages proposed changes in an artifact directory, and only touches live state after an explicit apply step.
+Hermes Ershov is a staged self-improvement loop. It scans explicit source inputs, stages proposed changes in an artifact directory, and only touches live state after an explicit apply step.
 
 ## The short path in
 
@@ -21,32 +21,32 @@ Hermes Mnemos is a staged self-improvement loop. It scans explicit source inputs
 
 ## First run (new)
 
-The shortest path from "what is this" to a usable artifact is now one command. `mnemos create --from-sessions 5` harvests the last 5 local Hermes sessions, prints redaction stats to stdout, and stages an artifact in one step. No manual `harvest` + `create --source` two-step required.
+The shortest path from "what is this" to a usable artifact is now one command. `ershov create --from-sessions 5` harvests the last 5 local Hermes sessions, prints redaction stats to stdout, and stages an artifact in one step. No manual `harvest` + `create --source` two-step required.
 
 ```bash
-mnemos create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
+ershov create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
 ```
 
 For a no-network run, add `--no-llm` to skip any external provider:
 
 ```bash
-mnemos create --from-sessions 5 --no-llm --live-root ./live --artifact-root ./artifacts
+ershov create --from-sessions 5 --no-llm --live-root ./live --artifact-root ./artifacts
 ```
 
 If you want a more targeted window, use `--from-since 7d` (or `12h` / `2w`):
 
 ```bash
-mnemos create --from-since 7d --no-llm --live-root ./live --artifact-root ./artifacts
+ershov create --from-since 7d --no-llm --live-root ./live --artifact-root ./artifacts
 ```
 
-After staging, the rest of the loop is unchanged: `summarize`, `approve`/`reject`, `validate`, `apply`. To preview the apply without touching live state, add `--dry-run`. To undo a real apply, run `mnemos revert <artifact> --yes`.
+After staging, the rest of the loop is unchanged: `summarize`, `approve`/`reject`, `validate`, `apply`. To preview the apply without touching live state, add `--dry-run`. To undo a real apply, run `ershov revert <artifact> --yes`.
 
 ## Nightly memory loop
 
-For the full nightly flow, run `nightly`. It harvests recent dialogue, stages a review artifact, writes an artifact-local `NIGHTLY.md`, refreshes the latest inbox digest, compacts terminal artifacts, and records the run in `runs.jsonl` / `MNEMOS.md`.
+For the full nightly flow, run `nightly`. It harvests recent dialogue, stages a review artifact, writes an artifact-local `NIGHTLY.md`, refreshes the latest inbox digest, compacts terminal artifacts, and records the run in `runs.jsonl` / `ERSHOV.md`.
 
 ```bash
-mnemos nightly --live-root ./live --artifact-root ./artifacts --no-llm
+ershov nightly --live-root ./live --artifact-root ./artifacts --no-llm
 ```
 
 With an LLM provider, set the provider key in the runtime environment and omit `--no-llm`. The nightly loop still does not apply live memory by itself; you approve and apply explicitly after review.
@@ -54,17 +54,17 @@ With an LLM provider, set the provider key in the runtime environment and omit `
 To schedule the loop inside Hermes, use the cron bridge:
 
 ```bash
-mnemos install-cron --mode nightly-memory --schedule "0 3 * * *"
+ershov install-cron --mode nightly-memory --schedule "0 3 * * *"
 ```
 
 On VPS/systemd stacks, prefer the gateway-independent timer:
 
 ```bash
-mnemos install-systemd --on-calendar "*-*-* 03:00:00"
+ershov install-systemd --on-calendar "*-*-* 03:00:00"
 ```
 
 The systemd installer writes non-secret runtime knobs only. Put provider keys in
-`~/.config/hermes-mnemos/nightly.secrets.env`; reinstalling the timer does not
+`~/.config/hermes-ershov/nightly.secrets.env`; reinstalling the timer does not
 touch that file.
 
 ## What to expect

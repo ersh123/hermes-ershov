@@ -125,7 +125,7 @@ def test_handler_live_success_updates_state(tmp_path: Path, monkeypatch):
 
     state_path = tmp_path / "state.json"
     ledger_path = tmp_path / "runs.jsonl"
-    diary_path = tmp_path / "MNEMOS.md"
+    diary_path = tmp_path / "ERSHOV.md"
     monkeypatch.setattr(state_module, "STATE_JSON", state_path)
     monkeypatch.setattr(state_module, "RUN_LEDGER_JSONL", ledger_path)
     monkeypatch.setattr(state_module, "DREAMS_MD_PATH", diary_path)

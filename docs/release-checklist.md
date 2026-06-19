@@ -1,4 +1,4 @@
-# Hermes Mnemos Release Checklist
+# Hermes Ershov Release Checklist
 
 This is a pre-release checklist only.
 
@@ -31,13 +31,13 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] `pytest -q`
 - [ ] `python -m pip install build` if needed
 - [ ] `python -m build --wheel`
-- [ ] Smoke the CLI with `mnemos status`
-- [ ] Smoke `mnemos create`, `review`, `diff`, `validate`, `apply`, and `discard` on temp fixtures
-- [ ] Smoke `mnemos compact` on terminal artifacts
-- [ ] Smoke `mnemos nightly --no-llm`
-- [ ] Smoke `mnemos install-cron`
-- [ ] Smoke `mnemos install-systemd --dry-run`
-- [ ] Smoke `mnemos update --check` and the real `mnemos update --no-verify` path on a disposable repo
+- [ ] Smoke the CLI with `ershov status`
+- [ ] Smoke `ershov create`, `review`, `diff`, `validate`, `apply`, and `discard` on temp fixtures
+- [ ] Smoke `ershov compact` on terminal artifacts
+- [ ] Smoke `ershov nightly --no-llm`
+- [ ] Smoke `ershov install-cron`
+- [ ] Smoke `ershov install-systemd --dry-run`
+- [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
 
 ## 5. Release gate
 

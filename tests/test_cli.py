@@ -411,7 +411,7 @@ def test_install_cron_cli_forwards_nightly_review_options(tmp_path: Path, monkey
 
     def fake_install_cron(**kwargs):  # type: ignore[no-untyped-def]
         captured.update(kwargs)
-        return "## hermes mnemos install-cron\n\n**Cron job registered.**"
+        return "## hermes ershov install-cron\n\n**Cron job registered.**"
 
     monkeypatch.setattr("hermes_dreaming.cli.install_cron_command", fake_install_cron)
     live_root = tmp_path / "live"

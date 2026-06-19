@@ -1,33 +1,33 @@
-# Hermes Mnemos v0.4.0 — Release Notes
+# Hermes Ershov v0.4.0 — Release Notes
 
 **Headline:** *The trust loop and the friction-killer.*
 
-v0.4.0 makes Mnemos safe to use in anger (revert, dry-run, selective apply) and removes the harvest-to-create two-step (one command, real sessions, redacted).
+v0.4.0 makes Ershov safe to use in anger (revert, dry-run, selective apply) and removes the harvest-to-create two-step (one command, real sessions, redacted).
 
 ## What's new
 
 ### Trust loop
 
-- **`mnemos revert <artifact>`** restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state. Requires the artifact to be in `applied` status; anything else fails loud.
+- **`ershov revert <artifact>`** restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state. Requires the artifact to be in `applied` status; anything else fails loud.
   - Drift detection: if the live file changed after apply, a `drift_detected` audit event is recorded, but the restore still runs from backup.
   - On a missing backup file, revert aborts, leaves live state untouched, and records a `revert_failed` audit event.
   - Writes a `REVERT.md` next to the artifact summarizing what was restored, what was rolled back, what drifted, and what failed.
   - Non-interactive callers (cron, pipe) must pass `--yes`. The CLI exits with code 2 when a confirmation prompt is needed, so scripts can distinguish "needs confirmation" from a real failure.
-- **`mnemos apply --dry-run`** previews the apply path without writing live state or creating backups. The result includes a structured `dry_run_report` (would-apply / would-skip / would-backup lists, and per-filter exclusions).
-- **`mnemos apply --priority {low,normal,high}`** and **`--target-kind {memory,user,skill,fact}`** filter which approved proposals land. Filters compose. Filtered-out proposals stay `approved` so a later apply with a different filter can still land them.
+- **`ershov apply --dry-run`** previews the apply path without writing live state or creating backups. The result includes a structured `dry_run_report` (would-apply / would-skip / would-backup lists, and per-filter exclusions).
+- **`ershov apply --priority {low,normal,high}`** and **`--target-kind {memory,user,skill,fact}`** filter which approved proposals land. Filters compose. Filtered-out proposals stay `approved` so a later apply with a different filter can still land them.
 
 ### Friction-killer
 
-- **`mnemos create --from-sessions N`** auto-harvests N recent local Hermes sessions from the SessionDB, feeds the resulting redacted bundle as a source, and stages the artifact in one step. Always prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging.
-- **`mnemos create --from-since 7d`** (also `12h`, `2w`) is a time-window alternative. The count is derived from the window and capped at 50 sessions.
+- **`ershov create --from-sessions N`** auto-harvests N recent local Hermes sessions from the SessionDB, feeds the resulting redacted bundle as a source, and stages the artifact in one step. Always prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging.
+- **`ershov create --from-since 7d`** (also `12h`, `2w`) is a time-window alternative. The count is derived from the window and capped at 50 sessions.
 - **`--recent N`** is preserved as a back-compat alias for `--from-sessions N`.
 - **`--no-llm`** is a shorthand for `--provider offline-marker` on `create` and `review`. Useful for cron jobs that should never reach an external LLM by accident.
 
 ### Discovery and inbox
 
-- **`mnemos providers list`** prints a table with `NAME`, `KIND`, `STATUS` (always | optional | missing), and `NOTES` for the built-in providers. No external services are pinged.
-- **`mnemos inbox --apply-ready`** filters to artifacts where every non-rejected proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. Composes with `--state` and `--priority`.
-- The **inbox digest** (`mnemos digest --inbox`) now surfaces a "Ready to apply" section and an `Apply-ready count` field at the top.
+- **`ershov providers list`** prints a table with `NAME`, `KIND`, `STATUS` (always | optional | missing), and `NOTES` for the built-in providers. No external services are pinged.
+- **`ershov inbox --apply-ready`** filters to artifacts where every non-rejected proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. Composes with `--state` and `--priority`.
+- The **inbox digest** (`ershov digest --inbox`) now surfaces a "Ready to apply" section and an `Apply-ready count` field at the top.
 
 ### Hardening
 
@@ -63,7 +63,7 @@ A third field, `dry_run_report`, is attached in-memory only during a single appl
 
 ## Bottom line
 
-This release delivers the two things that turn Mnemos from "demo-able" to "operator's default nightly loop":
+This release delivers the two things that turn Ershov from "demo-able" to "operator's default nightly loop":
 
 1. **You can undo an apply.** Revert is the trust headline.
 2. **You can stage from real sessions in one command.** `--from-sessions` is the friction-killer.

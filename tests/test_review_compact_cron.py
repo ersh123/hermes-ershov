@@ -156,7 +156,7 @@ def test_install_cron_registers_digest_job_and_writes_script(tmp_path: Path, mon
 
     assert "registered" in result.lower()
     call_kwargs = mock_cron.create_job.call_args.kwargs
-    assert call_kwargs["prompt"] == "Hermes Mnemos daily digest"
+    assert call_kwargs["prompt"] == "Hermes Ershov daily digest"
     assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
     assert call_kwargs["name"] == JOB_NAME
     assert call_kwargs["deliver"] == "local"
@@ -166,7 +166,7 @@ def test_install_cron_registers_digest_job_and_writes_script(tmp_path: Path, mon
 
     script_path = home / "scripts" / SCRIPT_NAME
     assert script_path.exists()
-    assert "Hermes Mnemos daily digest" in script_path.read_text(encoding="utf-8")
+    assert "Hermes Ershov daily digest" in script_path.read_text(encoding="utf-8")
 
 
 def test_install_cron_registers_inbox_digest_job_and_writes_inbox_script(tmp_path: Path, monkeypatch) -> None:
@@ -185,7 +185,7 @@ def test_install_cron_registers_inbox_digest_job_and_writes_inbox_script(tmp_pat
 
     assert "registered" in result.lower()
     call_kwargs = mock_cron.create_job.call_args.kwargs
-    assert call_kwargs["prompt"] == "Hermes Mnemos inbox digest"
+    assert call_kwargs["prompt"] == "Hermes Ershov inbox digest"
     assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
     assert call_kwargs["name"] == JOB_NAME
     assert call_kwargs["deliver"] == "local"
@@ -230,7 +230,7 @@ def test_install_cron_registers_nightly_review_job_and_writes_review_script(tmp_
 
     assert "registered" in result.lower()
     call_kwargs = mock_cron.create_job.call_args.kwargs
-    assert call_kwargs["prompt"] == "Hermes Mnemos nightly memory"
+    assert call_kwargs["prompt"] == "Hermes Ershov nightly memory"
     assert call_kwargs["schedule"] == DEFAULT_SCHEDULE
     assert call_kwargs["name"] == JOB_NAME
     assert call_kwargs["deliver"] == "local"
@@ -241,7 +241,7 @@ def test_install_cron_registers_nightly_review_job_and_writes_review_script(tmp_
     script_path = home / "scripts" / NIGHTLY_REVIEW_SCRIPT_NAME
     script_text = script_path.read_text(encoding="utf-8")
     assert script_path.exists()
-    assert "Hermes Mnemos nightly memory" in script_text
+    assert "Hermes Ershov nightly memory" in script_text
     assert '"nightly"' in script_text
     assert '"--recent"' in script_text
     assert '"--archive-root"' in script_text
@@ -264,7 +264,7 @@ def test_install_cron_reuses_existing_job_when_config_matches(tmp_path: Path, mo
             "schedule_display": "At 03:00 every day",
             "enabled": True,
             "next_run_at": "2099-01-02T03:00:00+00:00",
-            "prompt": "Hermes Mnemos daily digest",
+            "prompt": "Hermes Ershov daily digest",
             "schedule": DEFAULT_SCHEDULE,
             "deliver": "local",
             "script": SCRIPT_NAME,
@@ -291,7 +291,7 @@ def test_install_cron_refreshes_legacy_prompt_job(tmp_path: Path, monkeypatch) -
             "schedule_display": "At 03:00 every day",
             "enabled": True,
             "next_run_at": "2099-01-02T03:00:00+00:00",
-            "prompt": "/mnemos review",
+            "prompt": "/ershov review",
             "schedule": DEFAULT_SCHEDULE,
             "deliver": "local",
             "no_agent": False,
@@ -303,7 +303,7 @@ def test_install_cron_refreshes_legacy_prompt_job(tmp_path: Path, monkeypatch) -
         "schedule_display": "At 03:00 every day",
         "enabled": True,
         "next_run_at": "2099-01-03T03:00:00+00:00",
-        "prompt": "Hermes Mnemos daily digest",
+        "prompt": "Hermes Ershov daily digest",
         "schedule": DEFAULT_SCHEDULE,
         "deliver": "local",
         "script": SCRIPT_NAME,
@@ -318,7 +318,7 @@ def test_install_cron_refreshes_legacy_prompt_job(tmp_path: Path, monkeypatch) -
     mock_cron.create_job.assert_not_called()
     mock_cron.update_job.assert_called_once()
     update_kwargs = mock_cron.update_job.call_args.args[1]
-    assert update_kwargs["prompt"] == "Hermes Mnemos daily digest"
+    assert update_kwargs["prompt"] == "Hermes Ershov daily digest"
     assert update_kwargs["deliver"] == "local"
     assert update_kwargs["script"] == SCRIPT_NAME
     assert update_kwargs["no_agent"] is True

@@ -63,7 +63,7 @@ def _record_nightly_run(result: NightlyMemoryResult) -> None:
         },
         state_path=result.state_root / "state.json",
         ledger_path=result.state_root / "runs.jsonl",
-        diary_path=result.state_root / "MNEMOS.md",
+        diary_path=result.state_root / "ERSHOV.md",
     )
 
 
@@ -159,7 +159,7 @@ def run_nightly_memory(
 def render_nightly_memory(result: NightlyMemoryResult) -> str:
     compacted = len(result.compact_result.moved) if result.compact_result is not None else 0
     lines = [
-        "# Hermes Mnemos nightly memory",
+        "# Hermes Ershov nightly memory",
         "",
         f"- Artifact: `{result.artifact_id}`",
         f"- Status: `{result.artifact_status}`",
@@ -177,13 +177,13 @@ def render_nightly_memory(result: NightlyMemoryResult) -> str:
         "## Safety",
         "",
         "- Live memory writes: disabled.",
-        "- Apply requires explicit `mnemos approve` / `mnemos apply`.",
+        "- Apply requires explicit `ershov approve` / `ershov apply`.",
         "- Provider keys are read from the runtime environment, not persisted in the nightly script.",
         "",
         "## Next",
         "",
-        f"- Review: `mnemos summarize {result.artifact_dir}`",
-        f"- Inbox: `mnemos inbox --artifact-root {result.artifact_root}`",
+        f"- Review: `ershov summarize {result.artifact_dir}`",
+        f"- Inbox: `ershov inbox --artifact-root {result.artifact_root}`",
     ]
     if result.validation_errors:
         lines.extend(["", "## Validation errors", ""])

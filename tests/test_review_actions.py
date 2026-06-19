@@ -82,9 +82,9 @@ def test_approve_reject_summarize_and_open_command_flow(tmp_path: Path, capsys) 
     assert main(["review", "--open", str(artifact_dir)]) == 0
     open_output = capsys.readouterr().out
     assert f"Artifact: `{artifact_dir}`" in open_output
-    assert "mnemos approve" in open_output
-    assert "mnemos reject" in open_output
-    assert "mnemos validate" in open_output
+    assert "ershov approve" in open_output
+    assert "ershov reject" in open_output
+    assert "ershov validate" in open_output
 
     assert main(["approve", str(artifact_dir), "proposal-memory"]) == 0
     repeat_approve_output = capsys.readouterr().out
@@ -138,7 +138,7 @@ def test_summarize_uses_quoted_live_root_examples_for_spaced_paths(tmp_path: Pat
     summary_output = capsys.readouterr().out
     quoted_live_root = shlex.quote(str(live_root))
     assert f"--live-root {quoted_live_root}" in summary_output
-    assert f"mnemos apply {shlex.quote(str(artifact_dir))} --live-root {quoted_live_root}" in summary_output
+    assert f"ershov apply {shlex.quote(str(artifact_dir))} --live-root {quoted_live_root}" in summary_output
 
 
 def test_reject_artifact_enforces_non_empty_reason_at_command_layer(tmp_path: Path) -> None:

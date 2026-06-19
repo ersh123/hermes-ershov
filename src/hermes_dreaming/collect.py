@@ -6,7 +6,7 @@ from typing import Iterable, Iterator
 from .artifact import SourceSnapshot, text_sha256
 
 TEXT_SUFFIXES = {".md", ".txt", ".rst", ".json", ".jsonl", ".yaml", ".yml", ".py"}
-SKIP_DIR_NAMES = {".git", ".mnemos", "artifacts", "archive", "discarded", "backups"}
+SKIP_DIR_NAMES = {".git", ".ershov", "artifacts", "archive", "discarded", "backups"}
 
 
 def infer_kind(path: Path) -> str:

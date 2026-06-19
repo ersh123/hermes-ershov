@@ -3,7 +3,7 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hermes-mnemos"
+name = "hermes-ershov"
 version = "0.4.0"
 description = "Staged nightly memory engine for Hermes operators"
 readme = "README.md"
@@ -36,18 +36,19 @@ llm = [
 ]
 
 [project.scripts]
+ershov = "hermes_dreaming.cli:main"
 mnemos = "hermes_dreaming.cli:main"
 nightmem = "hermes_dreaming.cli:main"
 dreaming = "hermes_dreaming.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/ersh123/hermes-mnemos"
-Repository = "https://github.com/ersh123/hermes-mnemos"
-Issues = "https://github.com/ersh123/hermes-mnemos/issues"
-Security = "https://github.com/ersh123/hermes-mnemos/security/advisories/new"
+Homepage = "https://github.com/ersh123/hermes-ershov"
+Repository = "https://github.com/ersh123/hermes-ershov"
+Issues = "https://github.com/ersh123/hermes-ershov/issues"
+Security = "https://github.com/ersh123/hermes-ershov/security/advisories/new"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/hermes_dreaming", "src/hermes_mnemos"]
+packages = ["src/hermes_dreaming", "src/hermes_ershov", "src/hermes_mnemos"]
 
 [tool.pytest.ini_options]
 addopts = "-q"

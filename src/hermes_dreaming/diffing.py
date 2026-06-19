@@ -47,7 +47,7 @@ def render_artifact_diff(artifact: DreamArtifact, *, live_root: Path | None = No
         return _legacy_review_output(artifact)
 
     lines: list[str] = [
-        "# Hermes Mnemos Diff",
+        "# Hermes Ershov Diff",
         "",
         f"- Artifact: `{artifact.artifact_id}`",
         f"- Status: `{artifact.status}`",

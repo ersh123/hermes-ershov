@@ -1,6 +1,6 @@
-# What Mnemos can and cannot mutate
+# What Ershov can and cannot mutate
 
-Hermes Mnemos is staged self-improvement. It can make durable changes, but only through a reviewable artifact and an explicit apply step.
+Hermes Ershov is staged self-improvement. It can make durable changes, but only through a reviewable artifact and an explicit apply step.
 
 ## It can mutate
 
@@ -42,16 +42,16 @@ In the current offline fixture, the demo shows four target kinds:
 
 ## Revert in plain English
 
-`mnemos revert <artifact>` does three things, in this order:
+`ershov revert <artifact>` does three things, in this order:
 
 1. Loads the artifact and checks that it is in the `applied` state. Anything else fails loud.
 2. For each path in `artifact.backup_paths`, copies the recorded backup back to its original live location. If the live file was missing at apply time, the file is recreated from the backup. Drift between the live file and the pre-apply snapshot is recorded as a `drift_detected` audit event, but the restore still runs.
 3. Marks the artifact's `applied` proposals back to `approved` and writes a `REVERT.md` summary next to the artifact describing what was restored and what failed.
 
-Revert does **not** re-run validation. It is a restore from backup, not a re-apply. If you want to re-apply the same proposals, run `mnemos apply <artifact>` again with the same filters. If you want to apply a subset, pass `--priority` or `--target-kind`.
+Revert does **not** re-run validation. It is a restore from backup, not a re-apply. If you want to re-apply the same proposals, run `ershov apply <artifact>` again with the same filters. If you want to apply a subset, pass `--priority` or `--target-kind`.
 
 Non-interactive callers (cron, pipe) must pass `--yes`. The CLI exits with code 2 when a confirmation prompt is needed, so scripts can distinguish "needs confirmation" from a real failure.
 
 ## Practical rule
 
-If you would not be comfortable restoring it from a backup, do not point Mnemos at it. Keep the live root boring, explicit, and easy to inspect on disk.
+If you would not be comfortable restoring it from a backup, do not point Ershov at it. Keep the live root boring, explicit, and easy to inspect on disk.

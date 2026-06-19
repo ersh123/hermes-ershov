@@ -9,13 +9,13 @@ except Exception:  # pragma: no cover - fallback for direct source inspection
     def get_hermes_home() -> Path:
         return Path.home() / ".hermes"
 
-JOB_NAME = "hermes-mnemos"
+JOB_NAME = "hermes-ershov"
 DEFAULT_SCHEDULE = "0 3 * * *"
-SCRIPT_NAME = "hermes_mnemos_status_digest.py"
-NIGHTLY_REVIEW_SCRIPT_NAME = "hermes_mnemos_nightly.py"
-_PROMPT = "Hermes Mnemos daily digest"
-_INBOX_PROMPT = "Hermes Mnemos inbox digest"
-_REVIEW_PROMPT = "Hermes Mnemos nightly memory"
+SCRIPT_NAME = "hermes_ershov_status_digest.py"
+NIGHTLY_REVIEW_SCRIPT_NAME = "hermes_ershov_nightly.py"
+_PROMPT = "Hermes Ershov daily digest"
+_INBOX_PROMPT = "Hermes Ershov inbox digest"
+_REVIEW_PROMPT = "Hermes Ershov nightly memory"
 
 
 _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
@@ -119,14 +119,17 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
     def main() -> int:
         state_root = Path(
             os.environ.get(
-                "HERMES_MNEMOS_STATE_ROOT",
+                "HERMES_ERSHOV_STATE_ROOT",
                 os.environ.get(
-                    "HERMES_NIGHT_MEMORY_STATE_ROOT",
-                    os.environ.get("HERMES_DREAMING_STATE_ROOT", str(Path.home() / ".hermes" / "mnemos")),
+                    "HERMES_MNEMOS_STATE_ROOT",
+                    os.environ.get(
+                        "HERMES_NIGHT_MEMORY_STATE_ROOT",
+                        os.environ.get("HERMES_DREAMING_STATE_ROOT", str(Path.home() / ".hermes" / "ershov")),
+                    ),
                 ),
             )
         )
-        artifact_root = REPO_ROOT / ".mnemos" / "artifacts"
+        artifact_root = REPO_ROOT / ".ershov" / "artifacts"
         state = _read_json(state_root / "state.json")
         runs = _read_jsonl(state_root / "runs.jsonl")
         git_lines = _git_status(REPO_ROOT)
@@ -149,7 +152,7 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
                     last_successful_run = record
                     break
 
-        print("## Hermes Mnemos daily digest")
+        print("## Hermes Ershov daily digest")
         print("")
         print(f"- Repo: `{REPO_ROOT}`")
         print(f"- Artifact root: `{artifact_root}`")
@@ -160,18 +163,18 @@ _DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
         for line in git_lines:
             print(f"- `{line}`")
         print("")
-        print("## Mnemos runtime")
+        print("## Ershov runtime")
         print("")
         print(f"- Runs: `{run_count}` total, `{successful_runs}` successful")
         print(f"- Last run: `{_format_run(last_run)}`")
         print(f"- Last successful run: `{_format_run(last_successful_run)}`")
         print(f"- Ledger bytes: `{(state_root / 'runs.jsonl').stat().st_size if (state_root / 'runs.jsonl').exists() else 0}`")
-        print(f"- Diary bytes: `{(state_root / 'MNEMOS.md').stat().st_size if (state_root / 'MNEMOS.md').exists() else 0}`")
+        print(f"- Diary bytes: `{(state_root / 'ERSHOV.md').stat().st_size if (state_root / 'ERSHOV.md').exists() else 0}`")
         print("")
         print("## Staged artifacts")
         print("")
         if not artifact_root.exists():
-            print("- No `.mnemos/artifacts` directory under the repo root.")
+            print("- No `.ershov/artifacts` directory under the repo root.")
         elif not artifact_counts:
             print("- No artifacts staged yet.")
         else:
@@ -204,7 +207,7 @@ _INBOX_DIGEST_SCRIPT_TEMPLATE = textwrap.dedent(
     REPO_ROOT = Path(__REPO_ROOT__)
 
     def main() -> int:
-        cmd = [sys.executable, "-m", "hermes_mnemos", "digest", "--inbox", "--artifact-root", str(REPO_ROOT / ".mnemos" / "artifacts")]
+        cmd = [sys.executable, "-m", "hermes_ershov", "digest", "--inbox", "--artifact-root", str(REPO_ROOT / ".ershov" / "artifacts")]
         result = subprocess.run(cmd, cwd=str(REPO_ROOT), text=True, capture_output=True, check=False)
         if result.stdout:
             print(result.stdout.rstrip())
@@ -251,19 +254,19 @@ _NIGHTLY_REVIEW_SCRIPT_TEMPLATE = textwrap.dedent(
 
 
     def main() -> int:
-        live_root = Path(os.environ.get("HERMES_MNEMOS_LIVE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_LIVE_ROOT", os.environ.get("HERMES_DREAMING_LIVE_ROOT", str(DEFAULT_LIVE_ROOT)))))
-        artifact_root = Path(os.environ.get("HERMES_MNEMOS_ARTIFACT_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_ARTIFACT_ROOT", os.environ.get("HERMES_DREAMING_ARTIFACT_ROOT", str(DEFAULT_ARTIFACT_ROOT)))))
-        archive_root = Path(os.environ.get("HERMES_MNEMOS_ARCHIVE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_ARCHIVE_ROOT", os.environ.get("HERMES_DREAMING_ARCHIVE_ROOT", str(DEFAULT_ARCHIVE_ROOT)))))
-        state_root = Path(os.environ.get("HERMES_MNEMOS_STATE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_STATE_ROOT", os.environ.get("HERMES_DREAMING_STATE_ROOT", str(DEFAULT_STATE_ROOT)))))
-        provider = os.environ.get("HERMES_MNEMOS_PROVIDER", os.environ.get("HERMES_NIGHT_MEMORY_PROVIDER", os.environ.get("HERMES_DREAMING_PROVIDER", DEFAULT_PROVIDER)))
-        model = os.environ.get("HERMES_MNEMOS_MODEL", os.environ.get("HERMES_NIGHT_MEMORY_MODEL", os.environ.get("HERMES_DREAMING_MODEL", DEFAULT_MODEL)))
-        base_url = os.environ.get("HERMES_MNEMOS_BASE_URL", os.environ.get("HERMES_NIGHT_MEMORY_BASE_URL", os.environ.get("HERMES_DREAMING_BASE_URL", DEFAULT_BASE_URL)))
-        recent = _positive_int("HERMES_MNEMOS_RECENT_SESSIONS", _positive_int("HERMES_NIGHT_MEMORY_RECENT_SESSIONS", _positive_int("HERMES_DREAMING_RECENT_SESSIONS", DEFAULT_RECENT)))
+        live_root = Path(os.environ.get("HERMES_ERSHOV_LIVE_ROOT", os.environ.get("HERMES_MNEMOS_LIVE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_LIVE_ROOT", os.environ.get("HERMES_DREAMING_LIVE_ROOT", str(DEFAULT_LIVE_ROOT))))))
+        artifact_root = Path(os.environ.get("HERMES_ERSHOV_ARTIFACT_ROOT", os.environ.get("HERMES_MNEMOS_ARTIFACT_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_ARTIFACT_ROOT", os.environ.get("HERMES_DREAMING_ARTIFACT_ROOT", str(DEFAULT_ARTIFACT_ROOT))))))
+        archive_root = Path(os.environ.get("HERMES_ERSHOV_ARCHIVE_ROOT", os.environ.get("HERMES_MNEMOS_ARCHIVE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_ARCHIVE_ROOT", os.environ.get("HERMES_DREAMING_ARCHIVE_ROOT", str(DEFAULT_ARCHIVE_ROOT))))))
+        state_root = Path(os.environ.get("HERMES_ERSHOV_STATE_ROOT", os.environ.get("HERMES_MNEMOS_STATE_ROOT", os.environ.get("HERMES_NIGHT_MEMORY_STATE_ROOT", os.environ.get("HERMES_DREAMING_STATE_ROOT", str(DEFAULT_STATE_ROOT))))))
+        provider = os.environ.get("HERMES_ERSHOV_PROVIDER", os.environ.get("HERMES_MNEMOS_PROVIDER", os.environ.get("HERMES_NIGHT_MEMORY_PROVIDER", os.environ.get("HERMES_DREAMING_PROVIDER", DEFAULT_PROVIDER))))
+        model = os.environ.get("HERMES_ERSHOV_MODEL", os.environ.get("HERMES_MNEMOS_MODEL", os.environ.get("HERMES_NIGHT_MEMORY_MODEL", os.environ.get("HERMES_DREAMING_MODEL", DEFAULT_MODEL))))
+        base_url = os.environ.get("HERMES_ERSHOV_BASE_URL", os.environ.get("HERMES_MNEMOS_BASE_URL", os.environ.get("HERMES_NIGHT_MEMORY_BASE_URL", os.environ.get("HERMES_DREAMING_BASE_URL", DEFAULT_BASE_URL))))
+        recent = _positive_int("HERMES_ERSHOV_RECENT_SESSIONS", _positive_int("HERMES_MNEMOS_RECENT_SESSIONS", _positive_int("HERMES_NIGHT_MEMORY_RECENT_SESSIONS", _positive_int("HERMES_DREAMING_RECENT_SESSIONS", DEFAULT_RECENT))))
 
         cmd = [
             sys.executable,
             "-m",
-            "hermes_mnemos",
+            "hermes_ershov",
             "nightly",
             "--recent",
             str(recent),
@@ -287,7 +290,7 @@ _NIGHTLY_REVIEW_SCRIPT_TEMPLATE = textwrap.dedent(
         src_path = str(REPO_ROOT / "src")
         env["PYTHONPATH"] = src_path + (os.pathsep + env["PYTHONPATH"] if env.get("PYTHONPATH") else "")
 
-        print("## Hermes Mnemos nightly memory")
+        print("## Hermes Ershov nightly memory")
         print("")
         print(f"- Repo: `{REPO_ROOT}`")
         print(f"- Live root: `{live_root}`")
@@ -336,15 +339,15 @@ def _default_live_root() -> Path:
 
 
 def _default_artifact_root() -> Path:
-    return _repo_root() / ".mnemos" / "artifacts"
+    return _repo_root() / ".ershov" / "artifacts"
 
 
 def _default_archive_root() -> Path:
-    return _repo_root() / ".mnemos" / "archive"
+    return _repo_root() / ".ershov" / "archive"
 
 
 def _default_state_root() -> Path:
-    return Path(get_hermes_home()) / "mnemos"
+    return Path(get_hermes_home()) / "ershov"
 
 
 def render_nightly_script(
@@ -454,7 +457,7 @@ def _render_job_block(header: str, job: dict, schedule_display: str) -> str:
         else "Each night Hermes will run a deterministic status digest, so you get an actual report instead of a polite little tombstone."
     )
     return (
-        "## hermes mnemos install-cron\n\n"
+        "## hermes ershov install-cron\n\n"
         f"**{header}.**\n\n"
         f"- Job ID:    `{job['id']}`\n"
         f"- Name:      `{JOB_NAME}`\n"
@@ -480,22 +483,22 @@ def handle(
     archive_root: Path | None = None,
     state_root: Path | None = None,
 ) -> str:
-    """Register or refresh the nightly Hermes Mnemos digest cron job."""
+    """Register or refresh the nightly Hermes Ershov digest cron job."""
 
     try:
         from cron.jobs import create_job, list_jobs, update_job
     except ImportError:
         return (
-            "## hermes mnemos install-cron\n\n"
+            "## hermes ershov install-cron\n\n"
             "**Error:** Hermes cron module not available in this environment.\n\n"
             "Start Hermes in an environment that exposes `cron.jobs`, then retry."
         )
 
     schedule = (schedule or DEFAULT_SCHEDULE).strip()
     if mode not in {"status-digest", "inbox-digest", "nightly-review", "nightly-memory"}:
-        return "## hermes mnemos install-cron\n\n**Error:** unsupported mode."
+        return "## hermes ershov install-cron\n\n**Error:** unsupported mode."
     if recent <= 0:
-        return "## hermes mnemos install-cron\n\n**Error:** recent must be greater than 0."
+        return "## hermes ershov install-cron\n\n**Error:** recent must be greater than 0."
     _ensure_digest_script(
         mode=mode,
         recent=recent,
@@ -518,7 +521,7 @@ def handle(
         updated = update_job(existing["id"], desired)
         if not updated:
             return (
-                "## hermes mnemos install-cron\n\n"
+                "## hermes ershov install-cron\n\n"
                 f"**Error updating cron job `{existing['id']}`.**\n\n"
                 "The job exists, but Hermes could not refresh it. Check the cron registry and retry."
             )
@@ -529,7 +532,7 @@ def handle(
         job = create_job(**desired)
     except Exception as exc:
         return (
-            "## hermes mnemos install-cron\n\n"
+            "## hermes ershov install-cron\n\n"
             f"**Error creating cron job:** {exc}\n\n"
             f"Check that the schedule expression `{schedule}` is valid "
             "(for example, `0 3 * * *` for nightly at 03:00)."

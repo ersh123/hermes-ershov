@@ -43,7 +43,8 @@ from .validation import validate_artifact
 
 def _discover_update_repo_root() -> Path:
     env_root = (
-        os.environ.get("HERMES_MNEMOS_REPO_ROOT")
+        os.environ.get("HERMES_ERSHOV_REPO_ROOT")
+        or os.environ.get("HERMES_MNEMOS_REPO_ROOT")
         or os.environ.get("HERMES_NIGHT_MEMORY_REPO_ROOT")
         or os.environ.get("HERMES_DREAMING_REPO_ROOT")
     )
@@ -52,7 +53,7 @@ def _discover_update_repo_root() -> Path:
         if (candidate / "pyproject.toml").exists() and (candidate / "plugin.yaml").exists():
             return candidate
 
-    canonical = Path("/home/niko/projects/hermes-mnemos")
+    canonical = Path("/home/niko/projects/hermes-ershov")
     if (canonical / "pyproject.toml").exists() and (canonical / "plugin.yaml").exists():
         return canonical
 
@@ -64,7 +65,7 @@ def _add_creation_arguments(parser: argparse.ArgumentParser, *, required_source:
     parser.add_argument(
         "--artifact-root",
         type=Path,
-        default=Path.cwd() / ".mnemos" / "artifacts",
+        default=Path.cwd() / ".ershov" / "artifacts",
         help="Where artifacts are stored",
     )
     parser.add_argument("--source", action="append", required=False, type=Path, help="Source file or directory to scan")
@@ -91,7 +92,7 @@ def _add_creation_arguments(parser: argparse.ArgumentParser, *, required_source:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="mnemos", description="Hermes Mnemos")
+    parser = argparse.ArgumentParser(prog="ershov", description="Hermes Ershov")
     sub = parser.add_subparsers(dest="command", required=True)
 
     create = sub.add_parser("create", help="Create a staged memory artifact")
@@ -101,7 +102,7 @@ def build_parser() -> argparse.ArgumentParser:
     harvest.add_argument("--recent", type=int, default=10, help="Number of recent sessions to harvest")
     harvest.add_argument("--out", type=Path, default=None, help="Output path for the harvested source bundle")
     harvest.add_argument("--db-path", type=Path, default=None, help="Optional Hermes session DB path for tests or alternate homes")
-    harvest.add_argument("--state-path", type=Path, default=None, help="Optional Mnemos state path for pointer-log fallback")
+    harvest.add_argument("--state-path", type=Path, default=None, help="Optional Ershov state path for pointer-log fallback")
     harvest.add_argument("--max-chars", type=int, default=8000, help="Maximum characters in the harvested bundle")
     harvest.add_argument(
         "--mode",
@@ -111,7 +112,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     inbox = sub.add_parser("inbox", help="Show the staged artifact review queue")
-    inbox.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".mnemos" / "artifacts", help="Where artifacts are stored")
+    inbox.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".ershov" / "artifacts", help="Where artifacts are stored")
     inbox.add_argument("--state", default=None, help="Comma-separated inbox states to include")
     inbox.add_argument("--priority", default=None, help="Comma-separated priority values to include")
     inbox.add_argument("--limit", type=int, default=None, help="Maximum inbox rows to show")
@@ -154,7 +155,7 @@ def build_parser() -> argparse.ArgumentParser:
     apply.add_argument(
         "--backup-root",
         type=Path,
-        default=Path.cwd() / ".mnemos" / "backups",
+        default=Path.cwd() / ".ershov" / "backups",
         help="Where backups are stored",
     )
     apply.add_argument("--approve", action="append", default=[], help="Compatibility shortcut: approve a proposal id or 'all' before applying")
@@ -174,7 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
     revert = sub.add_parser("revert", help="Restore an applied artifact's live files from the recorded backups")
     revert.add_argument("artifact", type=Path, help="Artifact directory")
     revert.add_argument("--live-root", type=Path, default=None, help="Root of the live workspace (defaults to artifact.workspace_root)")
-    revert.add_argument("--backup-root", type=Path, default=None, help="Where backups are stored (defaults to <live-root>/.mnemos/backups)")
+    revert.add_argument("--backup-root", type=Path, default=None, help="Where backups are stored (defaults to <live-root>/.ershov/backups)")
     revert.add_argument("--yes", dest="yes", action="store_true", help="Skip the confirmation prompt (required for non-interactive use)")
 
     discard = sub.add_parser("discard", help="Discard a staged artifact")
@@ -182,7 +183,7 @@ def build_parser() -> argparse.ArgumentParser:
     discard.add_argument(
         "--archive-root",
         type=Path,
-        default=Path.cwd() / ".mnemos" / "discarded",
+        default=Path.cwd() / ".ershov" / "discarded",
         help="Where discarded artifacts are archived",
     )
 
@@ -190,13 +191,13 @@ def build_parser() -> argparse.ArgumentParser:
     compact.add_argument(
         "--artifact-root",
         type=Path,
-        default=Path.cwd() / ".mnemos" / "artifacts",
+        default=Path.cwd() / ".ershov" / "artifacts",
         help="Where artifacts are stored",
     )
     compact.add_argument(
         "--archive-root",
         type=Path,
-        default=Path.cwd() / ".mnemos" / "archive",
+        default=Path.cwd() / ".ershov" / "archive",
         help="Where compacted artifacts are archived",
     )
 
@@ -239,7 +240,7 @@ def build_parser() -> argparse.ArgumentParser:
     nightly.add_argument(
         "--artifact-root",
         type=Path,
-        default=Path.cwd() / ".mnemos" / "artifacts",
+        default=Path.cwd() / ".ershov" / "artifacts",
         help="Where staged artifacts are stored",
     )
     nightly.add_argument(
@@ -248,7 +249,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Where terminal artifacts are archived (defaults to sibling archive directory)",
     )
-    nightly.add_argument("--state-root", type=Path, default=None, help="Mnemos state root for runs.jsonl and MNEMOS.md")
+    nightly.add_argument("--state-root", type=Path, default=None, help="Ershov state root for runs.jsonl and ERSHOV.md")
     nightly.add_argument("--recent", type=int, default=14, help="Recent sessions to harvest")
     nightly.add_argument("--from-sessions", dest="from_sessions", type=int, default=None, help="Alias for --recent")
     nightly.add_argument("--provider", default="deepseek", help="Analysis provider for nightly memory")
@@ -261,7 +262,7 @@ def build_parser() -> argparse.ArgumentParser:
     digest = sub.add_parser("digest", help="Render a local operator digest for an artifact or inbox")
     digest.add_argument("artifact", nargs="?", type=Path, help="Artifact directory")
     digest.add_argument("--artifact-root", type=Path, default=None, help="Root containing related artifact runs")
-    digest.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl and MNEMOS.md")
+    digest.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl and ERSHOV.md")
     digest.add_argument("--weekly", action="store_true", help="Include the weekly rollup section")
     digest.add_argument("--inbox", action="store_true", help="Render a queue-level digest instead of a single-artifact digest")
     digest.add_argument("--state", default=None, help="Comma-separated inbox states when --inbox is used")
@@ -269,14 +270,14 @@ def build_parser() -> argparse.ArgumentParser:
     digest.add_argument("--limit", type=int, default=20, help="Maximum inbox rows when --inbox is used")
 
     status = sub.add_parser("status", help="List known artifacts")
-    status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".mnemos" / "artifacts", help="Where artifacts are stored")
+    status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".ershov" / "artifacts", help="Where artifacts are stored")
 
     report_card = sub.add_parser("report-card", help="Render a redacted shareable artifact summary")
     report_card.add_argument("artifact", type=Path, help="Artifact directory")
     report_card.add_argument("--output", type=Path, default=None, help="Write the Markdown report card to a file")
     report_card.add_argument("--json", type=Path, default=None, help="Write a JSON companion to a file")
 
-    update = sub.add_parser("update", help="Safely fast-forward the installed Hermes Mnemos checkout")
+    update = sub.add_parser("update", help="Safely fast-forward the installed Hermes Ershov checkout")
     update.add_argument("--remote", default="origin", help="Git remote to update from")
     update.add_argument("--branch", default="main", help="Branch to fast-forward onto")
     update.add_argument("--check", action="store_true", help="Report update status without pulling")
@@ -390,7 +391,7 @@ def _render_inbox_digest(result) -> str:
     high_priority = [row for row in result.rows if row.highest_priority == "high"]
     high_risk = [row for row in result.rows if row.highest_risk == "high"]
     lines = [
-        "# Hermes Mnemos inbox digest",
+        "# Hermes Ershov inbox digest",
         "",
         f"- Artifact root: `{result.artifact_root}`",
         f"- Active rows shown: `{len(result.rows)}`",
@@ -419,7 +420,7 @@ def _render_inbox_digest(result) -> str:
 
 
 def _run_creation_like(command: str, args: argparse.Namespace, *, dry_run: bool, parser: argparse.ArgumentParser | None = None) -> int:
-    source_paths = _resolve_creation_sources(args, parser or argparse.ArgumentParser(prog="mnemos"), command=command)
+    source_paths = _resolve_creation_sources(args, parser or argparse.ArgumentParser(prog="ershov"), command=command)
     provider_name = args.provider
     if getattr(args, "no_llm", False):
         provider_name = "offline-marker"
@@ -856,7 +857,7 @@ def main(argv: list[str] | None = None) -> int:
             _record_cli_run(
                 "install-systemd",
                 success=True,
-                summary="installed Hermes Mnemos systemd timer" if result.enabled else "rendered Hermes Mnemos systemd timer",
+                summary="installed Hermes Ershov systemd timer" if result.enabled else "rendered Hermes Ershov systemd timer",
             )
         return 0
 
@@ -883,7 +884,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "digest":
         if args.inbox:
-            artifact_root = args.artifact_root or (Path.cwd() / ".mnemos" / "artifacts")
+            artifact_root = args.artifact_root or (Path.cwd() / ".ershov" / "artifacts")
             inbox_digest = build_inbox_digest(
                 artifact_root,
                 state_filter=parse_filter(args.state),

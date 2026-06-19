@@ -8,7 +8,7 @@ Strategy:
   3. Final fallback: pointer log from ``state.json`` (session IDs only).
 
 The public API returns compact, deterministic digests suitable for prompt
-injection into the Hermes Mnemos curation loop.
+injection into the Hermes Ershov curation loop.
 """
 
 import json
@@ -124,7 +124,7 @@ def _db_path(db_path: Path | None = None) -> Path:
 def _state_path(state_path: Path | None = None) -> Path:
     if state_path is not None:
         return Path(state_path)
-    return Path.home() / ".hermes" / "mnemos" / "state.json"
+    return Path.home() / ".hermes" / "ershov" / "state.json"
 
 
 # ---------------------------------------------------------------------------
@@ -146,7 +146,7 @@ def _read_via_session_db(limit: int, *, include_assistant: bool = False) -> list
             try:
                 messages = db.get_messages(sid)
             except Exception as exc:  # pragma: no cover - best-effort fallback
-                logger.debug("mnemos: get_messages(%s) failed: %s", sid[:8], exc)
+                logger.debug("ershov: get_messages(%s) failed: %s", sid[:8], exc)
             digests.append(
                 SessionDigest(
                     session_id=sid,
@@ -160,7 +160,7 @@ def _read_via_session_db(limit: int, *, include_assistant: bool = False) -> list
             )
         return digests
     except Exception as exc:
-        logger.debug("mnemos: SessionDB read failed: %s", exc)
+        logger.debug("ershov: SessionDB read failed: %s", exc)
         return None
 
 
@@ -214,7 +214,7 @@ def _read_via_sqlite(limit: int, *, db_path: Path | None = None, include_assista
                 )
         return digests
     except Exception as exc:
-        logger.debug("mnemos: direct SQLite read failed: %s", exc)
+        logger.debug("ershov: direct SQLite read failed: %s", exc)
         return None
 
 
@@ -268,7 +268,7 @@ def list_recent(
         _record_pointer_ids(result, state_path=state_path)
         return result
 
-    logger.warning("mnemos: all session read paths failed; using pointer log only")
+    logger.warning("ershov: all session read paths failed; using pointer log only")
     return _read_via_pointer_log(limit) if state_path is None else _read_via_pointer_log(limit, state_path=state_path)
 
 

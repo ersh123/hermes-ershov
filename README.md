@@ -1,11 +1,11 @@
-# hermes-mnemos
+# hermes-ershov
 
-[![CI](https://github.com/ersh123/hermes-mnemos/actions/workflows/ci.yml/badge.svg)](https://github.com/ersh123/hermes-mnemos/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/ersh123/hermes-mnemos/actions/workflows/codeql.yml/badge.svg)](https://github.com/ersh123/hermes-mnemos/actions/workflows/codeql.yml)
+[![CI](https://github.com/ersh123/hermes-ershov/actions/workflows/ci.yml/badge.svg)](https://github.com/ersh123/hermes-ershov/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ersh123/hermes-ershov/actions/workflows/codeql.yml/badge.svg)](https://github.com/ersh123/hermes-ershov/actions/workflows/codeql.yml)
 
-![Hermes Mnemos hero banner](assets/readme/hermes-mnemos-hero.png)
+![Hermes Ershov hero banner](assets/readme/hermes-ershov-hero.png)
 
-Hermes Mnemos is a staged nightly memory engine for Hermes operators.
+Hermes Ershov is a staged nightly memory engine for Hermes operators.
 It turns recent sessions and explicit notes into reviewable memory proposals, then keeps live memory untouched until an explicit approve/apply step.
 
 What makes it useful:
@@ -15,7 +15,7 @@ What makes it useful:
 - no silent live-memory mutation
 - offline mode for deterministic demos and tests
 - LLM connectors for DeepSeek, OpenRouter, OpenAI-compatible endpoints, and Ollama
-- local run ledger plus `MNEMOS.md` diary for auditability
+- local run ledger plus `ERSHOV.md` diary for auditability
 
 ## Hermes plugin
 
@@ -24,30 +24,30 @@ This repo now ships as a proper Hermes plugin too.
 Install from GitHub with:
 
 ```bash
-hermes plugins install ersh123/hermes-mnemos --enable
+hermes plugins install ersh123/hermes-ershov --enable
 ```
 
 For a local checkout during development:
 
 ```bash
-hermes plugins install file:///path/to/hermes-mnemos --enable
+hermes plugins install file:///path/to/hermes-ershov --enable
 ```
 
 Once installed, use:
 
 ```bash
-hermes mnemos review --help
+hermes ershov review --help
 ```
 
 Update the installed checkout with:
 
 ```bash
-hermes mnemos update
+hermes ershov update
 ```
 
-Use `hermes mnemos update --check` if you only want the status check.
+Use `hermes ershov update --check` if you only want the status check.
 
-The plugin also bundles a Hermes skill named `mnemos`. Load that bare name inside Hermes if you want the guided staged workflow.
+The plugin also bundles a Hermes skill named `ershov`. Load that bare name inside Hermes if you want the guided staged workflow.
 
 ## Onboarding docs
 
@@ -55,13 +55,13 @@ The plugin also bundles a Hermes skill named `mnemos`. Load that bare name insid
 - `docs/install-update.md` covers plugin install and safe fast-forward updates.
 - `docs/quickstart.md` is the copy/paste offline demo.
 - `docs/personas.md` shows how different operators use the same loop.
-- `docs/safety.md` spells out what Mnemos can and cannot mutate.
+- `docs/safety.md` spells out what Ershov can and cannot mutate.
 
 ## Current status
 
 - **Full feature set:** create, review/open, nightly, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, install-systemd, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
-- **Run ledger + MNEMOS.md diary** for auditability
+- **Run ledger + ERSHOV.md diary** for auditability
 - **Hermes-native plugin:** install once, use everywhere
 - **Recent-session reader** with fallback chain (SessionDB → SQLite → pointer-log)
 - **Nightly memory pipeline** for dialogue harvest, staged review artifacts, digests, inbox digest, compaction, and run-ledger audit
@@ -89,17 +89,17 @@ The default `offline-marker` provider needs no key and never calls the network. 
 ```bash
 # DeepSeek, OpenAI-compatible endpoint
 export DEEPSEEK_API_KEY="..."
-mnemos review --provider deepseek --model deepseek-v4-flash --source ./sources --live-root ./live --artifact-root ./artifacts
+ershov review --provider deepseek --model deepseek-v4-flash --source ./sources --live-root ./live --artifact-root ./artifacts
 
 # OpenRouter, auto-routed model selection
 export OPENROUTER_API_KEY="..."
-mnemos review --provider openrouter --model openrouter/auto --source ./sources --live-root ./live --artifact-root ./artifacts
+ershov review --provider openrouter --model openrouter/auto --source ./sources --live-root ./live --artifact-root ./artifacts
 
 # Any OpenAI-compatible endpoint
-mnemos review --provider openai-compatible --api-key "$OPENAI_API_KEY" --base-url https://api.openai.com/v1 --model gpt-4o-mini --source ./sources
+ershov review --provider openai-compatible --api-key "$OPENAI_API_KEY" --base-url https://api.openai.com/v1 --model gpt-4o-mini --source ./sources
 
 # Local Ollama, no cloud key
-mnemos review --provider ollama --model qwen2.5:3b --base-url http://127.0.0.1:11434 --source ./sources
+ershov review --provider ollama --model qwen2.5:3b --base-url http://127.0.0.1:11434 --source ./sources
 ```
 
 Provider calls fail closed before writeback: source bundles are preflighted for secret-like content, model output must be valid JSON, provenance must point at scanned source lines, and every proposal is staged as unapproved.
@@ -109,81 +109,81 @@ Provider calls fail closed before writeback: source bundles are preflighted for 
 ```bash
 # Create an artifact from sources
 
-mnemos create --live-root ./live --artifact-root ./artifacts --source ./sources
+ershov create --live-root ./live --artifact-root ./artifacts --source ./sources
 
 # Review: create and validate without applying
 
-mnemos review --live-root ./live --artifact-root ./artifacts --source ./sources
+ershov review --live-root ./live --artifact-root ./artifacts --source ./sources
 
 # Open an existing artifact and print next steps
 
-mnemos review --open ./artifacts/<artifact-id>
+ershov review --open ./artifacts/<artifact-id>
 
-mnemos summarize ./artifacts/<artifact-id>
-mnemos approve ./artifacts/<artifact-id> all
-mnemos reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
+ershov summarize ./artifacts/<artifact-id>
+ershov approve ./artifacts/<artifact-id> all
+ershov reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
 
 # Inspect an artifact
 
-mnemos diff ./artifacts/<artifact-id> --live-root ./live
+ershov diff ./artifacts/<artifact-id> --live-root ./live
 
 # Validate a staged artifact
 
-mnemos validate ./artifacts/<artifact-id> --live-root ./live
+ershov validate ./artifacts/<artifact-id> --live-root ./live
 
 # Apply approved changes
 
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 # Preview the apply without writing live state or creating backups
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
 # Apply only high-priority memory and user updates, skip skills and facts
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
 # Undo an apply: restore live files from the recorded backups
-mnemos revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
+ershov revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
 # Discard a staged artifact
-mnemos discard ./artifacts/<artifact-id> --archive-root ./archive
+ershov discard ./artifacts/<artifact-id> --archive-root ./archive
 # Show artifacts that are approved and ready to apply
-mnemos inbox --artifact-root ./artifacts --apply-ready
+ershov inbox --artifact-root ./artifacts --apply-ready
 # List available analysis providers
-mnemos providers list
+ershov providers list
 # Stage from the last 5 local sessions in one step (replaces manual harvest + create)
-mnemos create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
+ershov create --from-sessions 5 --live-root ./live --artifact-root ./artifacts
 
 # Run the full nightly memory pipeline locally
-mnemos nightly --live-root ./live --artifact-root ./artifacts --no-llm
+ershov nightly --live-root ./live --artifact-root ./artifacts --no-llm
 
-mnemos discard ./artifacts/<artifact-id> --archive-root ./archive
+ershov discard ./artifacts/<artifact-id> --archive-root ./archive
 
 # Compact terminal (applied/discarded) artifacts to an archive
 
-mnemos compact --artifact-root ./artifacts --archive-root ./archive
+ershov compact --artifact-root ./artifacts --archive-root ./archive
 
 # Install a nightly memory cron job
 
-mnemos install-cron --mode nightly-memory --schedule "0 3 * * *"
+ershov install-cron --mode nightly-memory --schedule "0 3 * * *"
 
 # Or install a user systemd timer that runs outside the Hermes gateway process
 
-mnemos install-systemd --on-calendar "*-*-* 03:00:00"
+ershov install-systemd --on-calendar "*-*-* 03:00:00"
 
 # Render a local operator digest
 
-mnemos digest ./artifacts/<artifact-id> --weekly
+ershov digest ./artifacts/<artifact-id> --weekly
 
 # Show artifact status
 
-mnemos status --artifact-root ./artifacts
+ershov status --artifact-root ./artifacts
 
 # Safely update the installed checkout
 
-mnemos update
-mnemos update --check
+ershov update
+ershov update --check
 ```
 
 ## Quickstart demo fixture
 
 If you want the shortest path to "oh, I get it," use `examples/quickstart/`. It is an offline fixture, so no API key or external model access is required.
-If the `mnemos` entrypoint is not installed yet, swap in `python -m hermes_mnemos` for the same commands.
+If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ershov` for the same commands.
 
 - Fixture notes: `examples/quickstart/README.md`
 - Onboarding path: `docs/onboarding.md`
@@ -196,9 +196,9 @@ If the `mnemos` entrypoint is not installed yet, swap in `python -m hermes_mnemo
 - `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`.
 - `digest` renders a local operator brief to stdout only. It can include `--weekly` rollups, but it does not send anything to Telegram. If you want delivery later, wrap the command in a separate transport layer that consumes stdout.
 - `create` and `review` accept repeatable `--source`, `--from-sessions N` (or `--recent N` alias), `--from-since 7d`, and `--no-llm` (shorthand for `--provider offline-marker`). Harvest stats (`sessions`, `redactions`) print to stdout before staging. `review --open` prints the artifact path and the next commands.
-- `nightly` runs the full local mnemos loop: dialogue harvest, staged artifact creation, artifact `NIGHTLY.md`, latest inbox digest, terminal artifact compaction, and run-ledger / `MNEMOS.md` update. It never applies live memory automatically.
+- `nightly` runs the full local ershov loop: dialogue harvest, staged artifact creation, artifact `NIGHTLY.md`, latest inbox digest, terminal artifact compaction, and run-ledger / `ERSHOV.md` update. It never applies live memory automatically.
 - `install-systemd` writes a user-level systemd service/timer for nightly memory. This is the safer VPS path when the Hermes gateway itself may be down: the timer runs the no-agent `nightly` script outside the gateway process and does not restart Hermes.
-- Provider secrets are not written by `install-systemd`; put them in `~/.config/hermes-mnemos/nightly.secrets.env` when the timer needs cloud model access.
+- Provider secrets are not written by `install-systemd`; put them in `~/.config/hermes-ershov/nightly.secrets.env` when the timer needs cloud model access.
 - `apply` accepts `--dry-run` for previews, `--priority low,normal,high` to filter proposals, and `--target-kind memory,user,skill,fact` to filter by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
 - `revert` restores live files from the recorded backups and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Drift detection records an audit event when the live file changed after apply, but the restore still runs.
 - `inbox` supports `--apply-ready` to show only artifacts where every proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. The inbox digest also surfaces a "Ready to apply" section.

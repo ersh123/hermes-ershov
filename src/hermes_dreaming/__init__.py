@@ -1,4 +1,4 @@
-"""Hermes Mnemos, staged personal memory ops for Hermes."""
+"""Hermes Ershov, staged personal memory ops for Hermes."""
 
 from __future__ import annotations
 
@@ -14,10 +14,11 @@ from .artifact import DreamArtifact, DreamProposal, SourceSnapshot
 __all__ = ["DreamArtifact", "DreamProposal", "SourceSnapshot", "__version__", "register", "session_reader"]
 __version__ = "0.4.0"
 
-PRIMARY_COMMAND = "mnemos"
+PRIMARY_COMMAND = "ershov"
+LEGACY_MNEMOS_COMMAND = "mnemos"
 LEGACY_NIGHTMEM_COMMAND = "nightmem"
 LEGACY_COMMAND = "dreaming"
-PRODUCT_NAME = "Hermes Mnemos"
+PRODUCT_NAME = "Hermes Ershov"
 
 
 def _repo_root() -> Path:
@@ -25,14 +26,14 @@ def _repo_root() -> Path:
 
     here = Path(__file__).resolve()
     for parent in here.parents:
-        skill_path = parent / "skills" / "hermes-mnemos" / "SKILL.md"
+        skill_path = parent / "skills" / "hermes-ershov" / "SKILL.md"
         if skill_path.exists():
             return parent
     return here.parents[2]
 
 
 def _skill_path() -> Path:
-    return _repo_root() / "skills" / "hermes-mnemos" / "SKILL.md"
+    return _repo_root() / "skills" / "hermes-ershov" / "SKILL.md"
 
 
 def _normalize_dreaming_args(raw_args: list[str] | tuple[str, ...] | None) -> list[str]:
@@ -62,7 +63,7 @@ def _setup_dreaming_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "dreaming_args",
         nargs=argparse.REMAINDER,
-        help="Arguments forwarded to the Mnemos CLI.",
+        help="Arguments forwarded to the Ershov CLI.",
     )
 
 
@@ -85,9 +86,9 @@ def _run_dreaming_slash(raw_args: str) -> str:
 
 def _register_cli_alias(ctx, *, name: str, legacy: bool = False) -> None:
     help_text = (
-        "Run the legacy hermes-mnemos compatibility command"
+        "Run the legacy hermes-ershov compatibility command"
         if legacy
-        else "Run the personal Hermes Mnemos engine"
+        else "Run the personal Hermes Ershov engine"
     )
 
     ctx.register_cli_command(
@@ -117,17 +118,20 @@ def _register_slash_alias(ctx, *, name: str, legacy: bool = False) -> None:
 
 
 def register(ctx) -> None:
-    """Register the Hermes Mnemos CLI commands, slash commands, and skill."""
+    """Register the Hermes Ershov CLI commands, slash commands, and skill."""
 
     _register_cli_alias(ctx, name=PRIMARY_COMMAND)
+    _register_cli_alias(ctx, name=LEGACY_MNEMOS_COMMAND, legacy=True)
     _register_cli_alias(ctx, name=LEGACY_NIGHTMEM_COMMAND, legacy=True)
     _register_cli_alias(ctx, name=LEGACY_COMMAND, legacy=True)
     _register_slash_alias(ctx, name=PRIMARY_COMMAND)
+    _register_slash_alias(ctx, name=LEGACY_MNEMOS_COMMAND, legacy=True)
     _register_slash_alias(ctx, name=LEGACY_NIGHTMEM_COMMAND, legacy=True)
     _register_slash_alias(ctx, name=LEGACY_COMMAND, legacy=True)
 
     skill_md = _skill_path()
     if skill_md.exists():
-        ctx.register_skill("mnemos", skill_md)
+        ctx.register_skill("ershov", skill_md)
+        ctx.register_skill(LEGACY_MNEMOS_COMMAND, skill_md)
         ctx.register_skill(LEGACY_NIGHTMEM_COMMAND, skill_md)
         ctx.register_skill(LEGACY_COMMAND, skill_md)

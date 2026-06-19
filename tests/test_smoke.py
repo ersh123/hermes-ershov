@@ -9,4 +9,4 @@ def test_version() -> None:
 def test_status_command(capsys) -> None:
     assert main(["status"]) == 0
     out = capsys.readouterr().out.strip()
-    assert "mnemos" in out.lower()
+    assert "ershov" in out.lower()

@@ -13,10 +13,10 @@ if str(SRC) not in sys.path:
 
 @pytest.fixture(autouse=True)
 def isolate_dreaming_state(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    """Keep tests from writing the operator's real ~/.hermes/mnemos ledger."""
+    """Keep tests from writing the operator's real ~/.hermes/ershov ledger."""
 
-    state_root = tmp_path / "hermes-mnemos-state"
+    state_root = tmp_path / "hermes-ershov-state"
     monkeypatch.setattr("hermes_dreaming.state.STATE_ROOT", state_root)
     monkeypatch.setattr("hermes_dreaming.state.STATE_JSON", state_root / "state.json")
     monkeypatch.setattr("hermes_dreaming.state.RUN_LEDGER_JSONL", state_root / "runs.jsonl")
-    monkeypatch.setattr("hermes_dreaming.state.DREAMS_MD_PATH", state_root / "MNEMOS.md")
+    monkeypatch.setattr("hermes_dreaming.state.DREAMS_MD_PATH", state_root / "ERSHOV.md")

@@ -1,4 +1,4 @@
-# Hermes Mnemos v0.4.0 — Handoff
+# Hermes Ershov v0.4.0 — Handoff
 
 This is the short follow-up note for the v0.4.0 release lane.
 
@@ -13,11 +13,11 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - Plugin version: `0.4.0`
 - GitHub release: NOT YET TAGGED — Niko's explicit release gate required
-- PR #3 (`codex/mnemos-exit-code-macos-path`) status: still separate, must not be merged as part of this sprint
+- PR #3 (`codex/ershov-exit-code-macos-path`) status: still separate, must not be merged as part of this sprint
 
 ## What shipped
 
-- **Trust loop**: `mnemos revert`, `apply --dry-run`, `apply --priority`, `apply --target-kind`
+- **Trust loop**: `ershov revert`, `apply --dry-run`, `apply --priority`, `apply --target-kind`
 - **Friction-killer**: `create --from-sessions N`, `create --from-since 7d` (with `--recent` alias), `--no-llm`
 - **Discovery**: `providers list`, `inbox --apply-ready`, inbox digest "Ready to apply" section
 - **Hardening**: `reject --reason` enforced at the command layer
@@ -38,7 +38,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 - `python -m pytest -q` (112 tests pass)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
-- Temp-only Mnemos smoke with `HERMES_MNEMOS_STATE_ROOT`:
+- Temp-only Ershov smoke with `HERMES_ERSHOV_STATE_ROOT`:
   - apply→revert roundtrip on a real fixture
   - revert on a non-applied artifact raises and leaves live state untouched
   - revert with a missing backup fails loud

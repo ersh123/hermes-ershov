@@ -1,15 +1,15 @@
 ---
-name: hermes-mnemos
+name: hermes-ershov
 description: Use when Hermes needs staged self-improvement, explicit reviewable artifacts, or safe apply/discard workflows for memory, user, skill, or fact updates.
 ---
 
-# Hermes Mnemos
+# Hermes Ershov
 
 Use this plugin when you want staged, reviewable self-improvement instead of silent writes.
 
 ## Core idea
 
-Hermes Mnemos scans explicit source inputs, stages proposed changes in an artifact directory, and only writes to live state after an explicit apply step. It is designed for local-first, reviewable updates.
+Hermes Ershov scans explicit source inputs, stages proposed changes in an artifact directory, and only writes to live state after an explicit apply step. It is designed for local-first, reviewable updates.
 
 ## When to use
 
@@ -21,22 +21,22 @@ Hermes Mnemos scans explicit source inputs, stages proposed changes in an artifa
 ## Main commands
 
 ```bash
-mnemos create --live-root ./live --artifact-root ./artifacts --source ./sources
-mnemos review --live-root ./live --artifact-root ./artifacts --source ./sources
-mnemos review --open ./artifacts/<artifact-id>
-mnemos summarize ./artifacts/<artifact-id>
-mnemos approve ./artifacts/<artifact-id> all
-mnemos reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
-mnemos diff ./artifacts/<artifact-id> --live-root ./live
-mnemos validate ./artifacts/<artifact-id> --live-root ./live
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
-mnemos discard ./artifacts/<artifact-id> --archive-root ./archive
-mnemos compact --artifact-root ./artifacts --archive-root ./archive
-mnemos nightly --live-root ./live --artifact-root ./artifacts --no-llm
-mnemos install-cron --mode nightly-memory --schedule "0 3 * * *"
-mnemos install-systemd --on-calendar "*-*-* 03:00:00"
-mnemos status --artifact-root ./artifacts
-mnemos update
+ershov create --live-root ./live --artifact-root ./artifacts --source ./sources
+ershov review --live-root ./live --artifact-root ./artifacts --source ./sources
+ershov review --open ./artifacts/<artifact-id>
+ershov summarize ./artifacts/<artifact-id>
+ershov approve ./artifacts/<artifact-id> all
+ershov reject ./artifacts/<artifact-id> <proposal-id> --reason "too broad"
+ershov diff ./artifacts/<artifact-id> --live-root ./live
+ershov validate ./artifacts/<artifact-id> --live-root ./live
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
+ershov discard ./artifacts/<artifact-id> --archive-root ./archive
+ershov compact --artifact-root ./artifacts --archive-root ./archive
+ershov nightly --live-root ./live --artifact-root ./artifacts --no-llm
+ershov install-cron --mode nightly-memory --schedule "0 3 * * *"
+ershov install-systemd --on-calendar "*-*-* 03:00:00"
+ershov status --artifact-root ./artifacts
+ershov update
 ```
 
 ## Safe usage pattern
@@ -54,7 +54,7 @@ If you want the safest short workflow, use `review` first, then `diff`, `validat
 
 For unattended nightly runs, use `nightly`: it harvests recent dialogue, stages an artifact, writes digests, compacts terminal artifacts, and records the run ledger. It never applies live memory automatically.
 On VPS/systemd stacks, prefer `install-systemd` so the nightly memory loop runs outside the Hermes gateway process.
-For systemd model keys, use `~/.config/hermes-mnemos/nightly.secrets.env`; the installer does not write secrets.
+For systemd model keys, use `~/.config/hermes-ershov/nightly.secrets.env`; the installer does not write secrets.
 
 ## Memory marker format
 

@@ -196,7 +196,7 @@ def test_digest_renders_local_priorities_deltas_and_weekly_rollup(tmp_path: Path
 
     state_path = state_root / "state.json"
     ledger_path = state_root / "runs.jsonl"
-    diary_path = state_root / "MNEMOS.md"
+    diary_path = state_root / "ERSHOV.md"
     record_run(
         {
             "command": "create",
@@ -242,12 +242,12 @@ def test_digest_renders_local_priorities_deltas_and_weekly_rollup(tmp_path: Path
     )
     output = capsys.readouterr().out
 
-    assert "Hermes Mnemos digest" in output
+    assert "Hermes Ershov digest" in output
     assert "Priority:" in output
     assert "Previous successful memory run: `artifact-previous`" in output
     assert "Next step: approve or reject proposals" in output
-    assert f"mnemos approve {shlex.quote(str(current_dir))} p-user" in output
-    assert f"mnemos reject {shlex.quote(str(current_dir))} p-memory --reason \"...\"" in output
+    assert f"ershov approve {shlex.quote(str(current_dir))} p-user" in output
+    assert f"ershov reject {shlex.quote(str(current_dir))} p-memory --reason \"...\"" in output
     assert "What changed since last memory run" in output
     assert "Changed:" in output
     assert "Repeated:" in output
@@ -335,7 +335,7 @@ def test_digest_inbox_mode_renders_attention_blocks_and_counts(tmp_path: Path, c
     )
     output = capsys.readouterr().out
 
-    assert "Hermes Mnemos inbox digest" in output
+    assert "Hermes Ershov inbox digest" in output
     assert "- Total artifacts: `2`" in output
     assert "- Active artifacts: `2`" in output
     assert "- High risk count: `1`" in output

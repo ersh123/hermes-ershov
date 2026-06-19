@@ -79,7 +79,7 @@ def test_offline_marker_accepts_memory_and_legacy_dream_markers(tmp_path: Path) 
 
     report, proposals, notes = OfflineMarkerProvider().generate([source], _context(tmp_path))
 
-    assert "Hermes Mnemos Report" in report
+    assert "Hermes Ershov Report" in report
     assert notes == []
     assert [proposal.target_kind for proposal in proposals] == ["memory", "user"]
     assert all("MEMORY marker" in proposal.reason for proposal in proposals)

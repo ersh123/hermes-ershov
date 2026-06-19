@@ -1,15 +1,15 @@
-# Hermes Mnemos MVP Implementation Plan
+# Hermes Ershov MVP Implementation Plan
 
 ## Purpose
 
-Hermes Mnemos is a standalone, artifact-first self-improvement engine for staged memory, user, skill, and fact updates.
+Hermes Ershov is a standalone, artifact-first self-improvement engine for staged memory, user, skill, and fact updates.
 
 The repo has one job: read explicit local inputs, stage reviewable proposals, and apply only approved changes through a guarded write path.
 
 ## What shipped
 The current MVP includes:
 
-- `mnemos create`, `diff`, `validate`, `apply`, `discard`, `report-card`, `status`, `revert`, `providers list`
+- `ershov create`, `diff`, `validate`, `apply`, `discard`, `report-card`, `status`, `revert`, `providers list`
 - `apply --dry-run`, `apply --priority`, `apply --target-kind` for selective and preview-only applies
 - `inbox --apply-ready` to surface artifacts that are unblocked
 - `create --from-sessions N` / `--from-since 7d` (and the `--recent` alias) for friction-killer session harvesting with redacted bundle output
@@ -34,7 +34,7 @@ The current MVP includes:
 - reproducible tests
 
 ### Out of scope
-- background mnemos or idle-time auto consolidation
+- background ershov or idle-time auto consolidation
 - implicit mutation during analysis
 - gateway or dashboard integration
 - broad sync to arbitrary external systems
@@ -66,54 +66,54 @@ src/hermes_dreaming/
 
 ## Command surface
 
-### `mnemos create`
+### `ershov create`
 Creates a staged artifact from one or more `--source` roots, or from local sessions via `--from-sessions N` / `--from-since 7d` (with `--recent N` as a back-compat alias). Always prints `harvest:`, `sessions:`, and `redactions:` to stdout before staging when harvest ran. `--no-llm` is a shorthand for `--provider offline-marker`.
 
 Defaults:
 - `--live-root` defaults to the current directory
-- `--artifact-root` defaults to `./.mnemos/artifacts`
+- `--artifact-root` defaults to `./.ershov/artifacts`
 - `--provider` defaults to `offline-marker`
 
-### `mnemos apply`
+### `ershov apply`
 Applies approved proposals, writes backups first, and updates the artifact status. `--approve` remains as a compatibility shortcut that records approvals before apply. New flags:
 - `--dry-run` previews the apply without writing live state or creating backups. Returns a structured report.
 - `--priority low,normal,high` filters which approved proposals land by priority.
 - `--target-kind memory,user,skill,fact` filters by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
 
-### `mnemos revert`
+### `ershov revert`
 Restores live files from the recorded backups and rolls the artifact back to a `reverted` state. Requires the artifact to be in `applied` status. Drift detection records a `drift_detected` audit event when the live file changed after apply, but the restore still runs from backup. Writes `REVERT.md` next to the artifact with a summary. Non-interactive callers must pass `--yes`.
 
-### `mnemos review`
+### `ershov review`
 Creates a staged artifact from one or more `--source` roots, or opens an existing artifact with `--open` to print the artifact path and next commands.
 
-### `mnemos summarize`
+### `ershov summarize`
 Prints a concise decision brief for an existing artifact, including proposal state counts and recent audit entries.
 
-### `mnemos approve`
+### `ershov approve`
 Records approvals in artifact metadata without applying anything to live state.
 
-### `mnemos reject`
+### `ershov reject`
 Records rejected proposals and a reason in artifact metadata without applying anything to live state.
 
-### `mnemos diff`
+### `ershov diff`
 Prints live-target unified diffs for each proposal when a live root is available, otherwise falls back to the staged report and proposal summary.
 
-### `mnemos report-card`
+### `ershov report-card`
 Prints a redacted shareable summary for an existing artifact, with an optional JSON companion.
 
-### `mnemos validate`
+### `ershov validate`
 Runs the validation gate without mutating live state.
 
-### `mnemos apply`
+### `ershov apply`
 Applies approved proposals, writes backups first, and updates the artifact status. `--approve` remains as a compatibility shortcut that records approvals before apply.
 
-### `mnemos discard`
+### `ershov discard`
 Marks the artifact discarded and moves it into the archive root without touching live files.
 
-### `mnemos status`
+### `ershov status`
 Lists known artifacts in the artifact root.
 
-### `mnemos providers list`
+### `ershov providers list`
 Prints a table of the three built-in providers (`offline-marker`, `openai-compatible`, `ollama`) with their `STATUS` (always, optional, missing) and `NOTES`. Does not ping external services.
 
 ## Artifact format

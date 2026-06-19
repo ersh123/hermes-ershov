@@ -55,7 +55,7 @@ def test_install_systemd_writes_nightly_units_without_secrets(tmp_path: Path, mo
     assert '"nightly"' in script_text
     assert "--state-root" in script_text
     assert "--archive-root" in script_text
-    assert 'HERMES_MNEMOS_RECENT_SESSIONS="9"' in env_text
+    assert 'HERMES_ERSHOV_RECENT_SESSIONS="9"' in env_text
     assert "deepseek-v4-flash" in env_text
     assert "DEEPSEEK_API_KEY" not in service_text
     assert "DEEPSEEK_API_KEY" not in script_text
@@ -173,4 +173,4 @@ def test_install_systemd_cli_forwards_options(tmp_path: Path, monkeypatch, capsy
     assert captured["base_url"] == ""
     assert captured["enable"] is False
     assert captured["dry_run"] is True
-    assert "# Hermes Mnemos systemd timer" in capsys.readouterr().out
+    assert "# Hermes Ershov systemd timer" in capsys.readouterr().out

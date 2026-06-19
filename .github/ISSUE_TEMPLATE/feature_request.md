@@ -10,7 +10,7 @@ What problem are you trying to solve?
 
 ## Proposed solution
 
-What would you like Hermes Mnemos to do?
+What would you like Hermes Ershov to do?
 
 ## Alternatives considered
 

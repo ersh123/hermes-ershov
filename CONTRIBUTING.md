@@ -1,6 +1,6 @@
-# Contributing to Hermes Mnemos
+# Contributing to Hermes Ershov
 
-Hermes Mnemos is shipped, but contributor support is still being tightened up.
+Hermes Ershov is shipped, but contributor support is still being tightened up.
 Please follow the safety and review expectations below before opening a pull request.
 
 ## Before you start
@@ -24,8 +24,8 @@ python -m build --wheel
 Useful smoke checks:
 
 ```bash
-mnemos --help
-mnemos status
+ershov --help
+ershov status
 ```
 
 ## Repo rules
@@ -33,7 +33,7 @@ mnemos status
 - Do not tag, publish, or release anything without Niko's explicit approval.
 - Only repo admins can create releases or tags unless Niko explicitly grants write access.
 - Keep live roots and artifact roots separate.
-- `.mnemos/` is runtime output, not source.
+- `.ershov/` is runtime output, not source.
 - If you touch memory, user, skill, or fact writeback behavior, include provenance and tests.
 - Do not put secrets, private tokens, passwords, or personal data into docs, fixtures, examples, or proposal text.
 - If you change apply, discard, validation, or backup behavior, add or update tests.

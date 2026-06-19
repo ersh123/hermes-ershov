@@ -13,9 +13,9 @@ except Exception:  # pragma: no cover - fallback for direct source inspection
 
 from .install_cron import _repo_root, render_nightly_script
 
-SERVICE_NAME = "hermes-mnemos-nightly.service"
-TIMER_NAME = "hermes-mnemos-nightly.timer"
-SCRIPT_NAME = "hermes_mnemos_nightly.py"
+SERVICE_NAME = "hermes-ershov-nightly.service"
+TIMER_NAME = "hermes-ershov-nightly.timer"
+SCRIPT_NAME = "hermes_ershov_nightly.py"
 ENV_FILE_NAME = "nightly.env"
 SECRET_ENV_FILE_NAME = "nightly.secrets.env"
 DEFAULT_ON_CALENDAR = "*-*-* 03:00:00"
@@ -46,7 +46,7 @@ def _default_script_dir() -> Path:
 
 
 def _default_env_dir() -> Path:
-    return Path.home() / ".config" / "hermes-mnemos"
+    return Path.home() / ".config" / "hermes-ershov"
 
 
 def _env_quote(value: object) -> str:
@@ -89,17 +89,17 @@ def _render_env_file(
     recent: int,
 ) -> str:
     lines = [
-        "# Hermes Mnemos nightly memory runtime knobs.",
+        "# Hermes Ershov nightly memory runtime knobs.",
         "# Store provider secrets outside this generated file when possible.",
         f"HERMES_HOME={_env_quote(hermes_home)}",
-        f"HERMES_MNEMOS_LIVE_ROOT={_env_quote(live_root)}",
-        f"HERMES_MNEMOS_ARTIFACT_ROOT={_env_quote(artifact_root)}",
-        f"HERMES_MNEMOS_ARCHIVE_ROOT={_env_quote(archive_root)}",
-        f"HERMES_MNEMOS_STATE_ROOT={_env_quote(state_root)}",
-        f"HERMES_MNEMOS_PROVIDER={_env_quote(provider)}",
-        f"HERMES_MNEMOS_MODEL={_env_quote(model or '')}",
-        f"HERMES_MNEMOS_BASE_URL={_env_quote(base_url or '')}",
-        f"HERMES_MNEMOS_RECENT_SESSIONS={_env_quote(recent)}",
+        f"HERMES_ERSHOV_LIVE_ROOT={_env_quote(live_root)}",
+        f"HERMES_ERSHOV_ARTIFACT_ROOT={_env_quote(artifact_root)}",
+        f"HERMES_ERSHOV_ARCHIVE_ROOT={_env_quote(archive_root)}",
+        f"HERMES_ERSHOV_STATE_ROOT={_env_quote(state_root)}",
+        f"HERMES_ERSHOV_PROVIDER={_env_quote(provider)}",
+        f"HERMES_ERSHOV_MODEL={_env_quote(model or '')}",
+        f"HERMES_ERSHOV_BASE_URL={_env_quote(base_url or '')}",
+        f"HERMES_ERSHOV_RECENT_SESSIONS={_env_quote(recent)}",
         "",
     ]
     return "\n".join(lines)
@@ -108,7 +108,7 @@ def _render_env_file(
 def _render_service(*, script_path: Path, env_path: Path, secret_env_path: Path, repo_root: Path) -> str:
     return (
         "[Unit]\n"
-        "Description=Hermes Mnemos nightly memory\n"
+        "Description=Hermes Ershov nightly memory\n"
         "After=network-online.target\n"
         "Wants=network-online.target\n\n"
         "[Service]\n"
@@ -127,7 +127,7 @@ def _render_service(*, script_path: Path, env_path: Path, secret_env_path: Path,
 def _render_timer(*, on_calendar: str, randomized_delay: str) -> str:
     return (
         "[Unit]\n"
-        "Description=Run Hermes Mnemos nightly memory\n\n"
+        "Description=Run Hermes Ershov nightly memory\n\n"
         "[Timer]\n"
         f"OnCalendar={on_calendar}\n"
         "Persistent=true\n"
@@ -190,9 +190,9 @@ def handle(
     repo_root = _repo_root()
     hermes_home = Path(get_hermes_home())
     resolved_live_root = Path(live_root) if live_root is not None else hermes_home / "memories"
-    resolved_artifact_root = Path(artifact_root) if artifact_root is not None else repo_root / ".mnemos" / "artifacts"
-    resolved_archive_root = Path(archive_root) if archive_root is not None else repo_root / ".mnemos" / "archive"
-    resolved_state_root = Path(state_root) if state_root is not None else hermes_home / "mnemos"
+    resolved_artifact_root = Path(artifact_root) if artifact_root is not None else repo_root / ".ershov" / "artifacts"
+    resolved_archive_root = Path(archive_root) if archive_root is not None else repo_root / ".ershov" / "archive"
+    resolved_state_root = Path(state_root) if state_root is not None else hermes_home / "ershov"
     resolved_systemd_dir = Path(systemd_dir) if systemd_dir is not None else _default_systemd_dir()
     resolved_script_dir = Path(script_dir) if script_dir is not None else _default_script_dir()
     resolved_env_dir = Path(env_dir) if env_dir is not None else _default_env_dir()
@@ -266,7 +266,7 @@ def handle(
 def render_result(result: SystemdInstallResult) -> str:
     action = "Dry run" if result.dry_run else ("Installed and enabled" if result.enabled else "Installed")
     lines = [
-        "# Hermes Mnemos systemd timer",
+        "# Hermes Ershov systemd timer",
         "",
         f"- Status: `{action}`",
         f"- Service: `{result.service_path}`",

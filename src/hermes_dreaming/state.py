@@ -8,6 +8,9 @@ from typing import Any
 
 
 def _default_state_root() -> Path:
+    configured = os.environ.get("HERMES_ERSHOV_STATE_ROOT")
+    if configured:
+        return Path(configured).expanduser()
     configured = os.environ.get("HERMES_MNEMOS_STATE_ROOT")
     if configured:
         return Path(configured).expanduser()
@@ -17,13 +20,13 @@ def _default_state_root() -> Path:
     configured = os.environ.get("HERMES_DREAMING_STATE_ROOT")
     if configured:
         return Path(configured).expanduser()
-    return Path.home() / ".hermes" / "mnemos"
+    return Path.home() / ".hermes" / "ershov"
 
 
 STATE_ROOT = _default_state_root()
 STATE_JSON = STATE_ROOT / "state.json"
 RUN_LEDGER_JSONL = STATE_ROOT / "runs.jsonl"
-DREAMS_MD_PATH = STATE_ROOT / "MNEMOS.md"
+DREAMS_MD_PATH = STATE_ROOT / "ERSHOV.md"
 
 
 def _now_iso() -> str:

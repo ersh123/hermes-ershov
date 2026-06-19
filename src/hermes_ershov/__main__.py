@@ -1,4 +1,4 @@
-"""Run the Hermes Ershov CLI with ``python -m hermes_mnemos``."""
+"""Run the Hermes Ershov CLI with ``python -m hermes_ershov``."""
 
 from hermes_dreaming.cli import main
 

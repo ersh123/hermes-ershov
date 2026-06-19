@@ -1,12 +1,12 @@
-# Hermes Mnemos persona examples
+# Hermes Ershov persona examples
 
 These are not separate modes. They are the same staged review loop pointed at different source bundles and live roots.
 
-If you are inside Hermes, swap `mnemos` for `hermes mnemos` and keep the same flow.
+If you are inside Hermes, swap `ershov` for `hermes ershov` and keep the same flow.
 
 ## Solo builder
 
-Use Mnemos when you want to turn your own notes into durable memory without mutating live state mid-thought.
+Use Ershov when you want to turn your own notes into durable memory without mutating live state mid-thought.
 
 Good inputs:
 
@@ -24,16 +24,16 @@ Good output:
 Example flow:
 
 ```bash
-mnemos review --live-root ./live --artifact-root ./artifacts --source ./sources
+ershov review --live-root ./live --artifact-root ./artifacts --source ./sources
 # inspect the artifact
-mnemos summarize ./artifacts/<artifact-id>
+ershov summarize ./artifacts/<artifact-id>
 # choose the right branch
-mnemos approve ./artifacts/<artifact-id> all
+ershov approve ./artifacts/<artifact-id> all
 # or
-mnemos reject ./artifacts/<artifact-id> p-02 --reason "too broad"
-mnemos diff ./artifacts/<artifact-id> --live-root ./live
-mnemos validate ./artifacts/<artifact-id> --live-root ./live
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
+ershov reject ./artifacts/<artifact-id> p-02 --reason "too broad"
+ershov diff ./artifacts/<artifact-id> --live-root ./live
+ershov validate ./artifacts/<artifact-id> --live-root ./live
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 ```
 
 What to reject:
@@ -43,7 +43,7 @@ What to reject:
 
 ## Social-media operator
 
-Use Mnemos when you want to turn content experiments into durable operator rules.
+Use Ershov when you want to turn content experiments into durable operator rules.
 
 Good inputs:
 
@@ -61,12 +61,12 @@ Good output:
 Example flow:
 
 ```bash
-mnemos review --live-root ./live --artifact-root ./artifacts --source ./sources/social-notes.md
-mnemos summarize ./artifacts/<artifact-id>
-mnemos approve ./artifacts/<artifact-id> all
-mnemos diff ./artifacts/<artifact-id> --live-root ./live
-mnemos validate ./artifacts/<artifact-id> --live-root ./live
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
+ershov review --live-root ./live --artifact-root ./artifacts --source ./sources/social-notes.md
+ershov summarize ./artifacts/<artifact-id>
+ershov approve ./artifacts/<artifact-id> all
+ershov diff ./artifacts/<artifact-id> --live-root ./live
+ershov validate ./artifacts/<artifact-id> --live-root ./live
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 ```
 
 What to reject:
@@ -76,7 +76,7 @@ What to reject:
 
 ## Coding-agent maintainer
 
-Use Mnemos when a review, test run, or CLI check surfaced a rule that should stick.
+Use Ershov when a review, test run, or CLI check surfaced a rule that should stick.
 
 Good inputs:
 
@@ -94,15 +94,15 @@ Good output:
 Example flow:
 
 ```bash
-mnemos review --live-root ./live --artifact-root ./artifacts --source ./reviews/provider-review.md --source ./reviews/review-ux.md
-mnemos summarize ./artifacts/<artifact-id>
+ershov review --live-root ./live --artifact-root ./artifacts --source ./reviews/provider-review.md --source ./reviews/review-ux.md
+ershov summarize ./artifacts/<artifact-id>
 # If the review is clean, approve the whole batch.
-mnemos approve ./artifacts/<artifact-id> all
+ershov approve ./artifacts/<artifact-id> all
 # If one proposal is wrong, reject it instead and re-run summarize.
-# mnemos reject ./artifacts/<artifact-id> p-04 --reason "unsupported claim"
-mnemos diff ./artifacts/<artifact-id> --live-root ./live
-mnemos validate ./artifacts/<artifact-id> --live-root ./live
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
+# ershov reject ./artifacts/<artifact-id> p-04 --reason "unsupported claim"
+ershov diff ./artifacts/<artifact-id> --live-root ./live
+ershov validate ./artifacts/<artifact-id> --live-root ./live
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups
 ```
 
 What to reject:
@@ -112,11 +112,11 @@ What to reject:
 
 ## Nightly operator
 
-Use Mnemos as the queue that closes the loop every morning. The nightly cron posts an inbox digest; you skim it, decide, and act.
+Use Ershov as the queue that closes the loop every morning. The nightly cron posts an inbox digest; you skim it, decide, and act.
 
 Good inputs:
 
-- the inbox digest from last night (`mnemos digest --inbox` in the cron mode)
+- the inbox digest from last night (`ershov digest --inbox` in the cron mode)
 - one source of truth for what changed (recent sessions, weekly notes)
 - a small, low-risk change you can stage without much review
 
@@ -130,15 +130,15 @@ Example flow:
 
 ```bash
 # After reading the inbox digest, filter to the rows that are actually apply-ready
-mnemos inbox --apply-ready
+ershov inbox --apply-ready
 # If something is there, preview the apply first
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --dry-run
 # If the dry-run looks right, apply it
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
 # If you applied something that turned out wrong, undo it
-mnemos revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
+ershov revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
 # If you only want high-priority memory/user updates today, filter the apply
-mnemos apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
+ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
 ```
 
 What to reject:
@@ -149,4 +149,4 @@ What to reject:
 
 ## Rule of thumb
 
-If the source bundle would embarrass you in a code review, tighten it first. Mnemos is for durable, source-grounded updates, not for turning vague advice into fake certainty.
+If the source bundle would embarrass you in a code review, tighten it first. Ershov is for durable, source-grounded updates, not for turning vague advice into fake certainty.

@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible problem in Hermes Mnemos
+about: Report a reproducible problem in Hermes Ershov
 labels: bug
 ---
 

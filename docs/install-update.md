@@ -1,26 +1,26 @@
-# Install and update Hermes Mnemos
+# Install and update Hermes Ershov
 
-Hermes Mnemos ships as a Hermes plugin. Install it through Hermes, then use the `hermes mnemos ...` commands inside your Hermes session.
+Hermes Ershov ships as a Hermes plugin. Install it through Hermes, then use the `hermes ershov ...` commands inside your Hermes session.
 
 ## Install from GitHub
 
 ```bash
-hermes plugins install ersh123/hermes-mnemos --enable
+hermes plugins install ersh123/hermes-ershov --enable
 ```
 
 ## Install from a local checkout
 
 ```bash
-hermes plugins install file:///path/to/hermes-mnemos --enable
+hermes plugins install file:///path/to/hermes-ershov --enable
 ```
 
 ## Confirm the plugin is available
 
 ```bash
-hermes mnemos review --help
+hermes ershov review --help
 ```
 
-If you are outside Hermes, the repo still exposes the same CLI as the `mnemos` console script, and `python -m hermes_mnemos` works as a fallback during local development.
+If you are outside Hermes, the repo still exposes the same CLI as the `ershov` console script, and `python -m hermes_ershov` works as a fallback during local development.
 
 ## Install nightly memory outside the gateway
 
@@ -28,22 +28,22 @@ For VPS deployments, prefer a user systemd timer when you want the nightly memor
 loop to survive Hermes gateway restarts or crashes:
 
 ```bash
-mnemos install-systemd --on-calendar "*-*-* 03:00:00"
+ershov install-systemd --on-calendar "*-*-* 03:00:00"
 ```
 
-The timer runs `mnemos nightly` through a generated no-agent script. It stages
+The timer runs `ershov nightly` through a generated no-agent script. It stages
 artifacts, writes digests, compacts terminal artifacts, and updates the run
 ledger. It does not apply live memory automatically and does not restart Hermes.
 Provider secrets are not written by the installer. If the timer needs DeepSeek,
-put the key in `~/.config/hermes-mnemos/nightly.secrets.env`; the generated
+put the key in `~/.config/hermes-ershov/nightly.secrets.env`; the generated
 service reads that file if it exists and leaves it untouched on reinstall.
 
 ## Update the installed checkout
 
 ```bash
-hermes mnemos update
-hermes mnemos update --check
-hermes mnemos update --no-verify
+hermes ershov update
+hermes ershov update --check
+hermes ershov update --no-verify
 ```
 
 The update command is conservative on purpose:
@@ -57,12 +57,12 @@ The update command is conservative on purpose:
 You can override the remote or branch if your install tracks something else:
 
 ```bash
-hermes mnemos update --remote upstream --branch release
+hermes ershov update --remote upstream --branch release
 ```
 
 ## When to use the update check
 
-Use `hermes mnemos update --check` before a real pull if you just want to see whether the install is behind.
+Use `hermes ershov update --check` before a real pull if you just want to see whether the install is behind.
 Use the real update when you are ready to fast-forward the checkout and run verification.
 
 For the offline walkthrough, jump to `docs/quickstart.md`.

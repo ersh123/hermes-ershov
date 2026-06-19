@@ -28,9 +28,9 @@ What it does not have yet:
 
 ## What the upstream comparison repo does
 
-In `/tmp/hermes-mnemos-compare`, the live-memory seam is split cleanly:
+In `/tmp/hermes-ershov-compare`, the live-memory seam is split cleanly:
 
-- `hermes_dreaming/paths.py` defines the canonical Hermes memory paths, mnemos state root, backups, runs, and sidecars
+- `hermes_dreaming/paths.py` defines the canonical Hermes memory paths, ershov state root, backups, runs, and sidecars
 - `hermes_dreaming/memory_io.py` reads and mutates `MEMORY.md` / `USER.md` with atomic temp-file writes
 - `hermes_dreaming/tools/apply_memory_op.py` is the only mutator, and it owns the lock, backup snapshot, idempotence hash, score gates, and state updates
 - `hermes_dreaming/sidecar.py` keeps append-only candidate/decision/promotion logs

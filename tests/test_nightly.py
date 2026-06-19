@@ -107,9 +107,9 @@ def test_run_nightly_memory_stages_reports_compacts_and_records_ledger(tmp_path:
     assert result.source_bundle.exists()
     assert result.digest_path.exists()
     assert result.inbox_digest_path.exists()
-    assert "Hermes Mnemos digest" in result.digest_path.read_text(encoding="utf-8")
+    assert "Hermes Ershov digest" in result.digest_path.read_text(encoding="utf-8")
     inbox_digest = result.inbox_digest_path.read_text(encoding="utf-8")
-    assert "Hermes Mnemos inbox digest" in inbox_digest
+    assert "Hermes Ershov inbox digest" in inbox_digest
     assert "old-applied" not in inbox_digest
     assert not old_dir.exists()
     assert (archive_root / "old-applied").exists()
@@ -183,7 +183,7 @@ def test_nightly_cli_runs_full_pipeline(tmp_path: Path, monkeypatch, capsys) -> 
     )
 
     output = capsys.readouterr().out
-    assert "# Hermes Mnemos nightly memory" in output
+    assert "# Hermes Ershov nightly memory" in output
     assert "Live memory writes: disabled" in output
     assert "Sessions harvested: `1`" in output
     assert read_run_ledger(ledger_path=state_root / "runs.jsonl")[0]["command"] == "nightly"
