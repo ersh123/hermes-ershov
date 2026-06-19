@@ -1,7 +1,9 @@
 # Final Sanity Report
 
 ## Verdict
-Ready to ship, with one small housekeeping fix applied during QA: runtime outputs under `.ershov/` are now ignored by git.
+Ready for public beta / release-candidate review, with one small housekeeping fix applied during QA: runtime outputs under `.ershov/` are now ignored by git.
+
+Stable-release wording still waits for a real scheduled systemd run followed by a passing `hermes ershov soak --strict-systemd`.
 
 ## Checks Run
 - `pytest -q` → passed
@@ -18,4 +20,4 @@ Ready to ship, with one small housekeeping fix applied during QA: runtime output
 - Running the package as `python -m hermes_ershov` from the raw source tree needs `PYTHONPATH=src`; the intended release path is the installed `ershov` console script.
 
 ## Ship Readiness
-Yes, the repo is in ship-ready shape for the current MVP contract.
+The repo is in release-candidate shape for the current MVP contract. Do not call it stable until the scheduled-run soak gate passes.

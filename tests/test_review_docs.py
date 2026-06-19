@@ -29,3 +29,13 @@ def test_historical_stop_reviews_show_current_status() -> None:
             offenders.append(str(path.relative_to(path.parents[1])))
 
     assert offenders == []
+
+
+def test_final_sanity_uses_current_release_posture() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    text = (repo_root / "reviews" / "final-sanity.md").read_text(encoding="utf-8")
+
+    assert "Ready to ship" not in text
+    assert "ship-ready" not in text
+    assert "public beta / release-candidate review" in text
+    assert "hermes ershov soak --strict-systemd" in text
