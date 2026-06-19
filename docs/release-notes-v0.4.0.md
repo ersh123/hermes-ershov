@@ -55,6 +55,7 @@ A third field, `dry_run_report`, is attached in-memory only during a single appl
 ## Verification
 
 - `pytest -q` passes (144 tests).
+- `python scripts/hermes_plugin_smoke.py` passes and exercises the root Hermes plugin wrapper with a controlled SessionDB nightly run.
 - `python -m build --wheel` succeeds.
 - `git diff --check` clean.
 - Smoke-tested on temp fixtures for: `revert` (roundtrip, drift, missing backup, partial failure), `apply --dry-run` (preview without writes), `apply --priority` and `--target-kind` (filters), `inbox --apply-ready`, `providers list`, `--from-sessions` with redaction stats, `nightly --no-llm` no-op/staged paths, deterministic SessionDB override, plugin wrapper failure propagation, and `soak` pass/fail gates.

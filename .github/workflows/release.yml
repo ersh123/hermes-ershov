@@ -33,6 +33,7 @@ jobs:
           git diff --check
           python -m compileall -q src
           pytest -q
+          python scripts/hermes_plugin_smoke.py
 
       - name: Build distributions
         run: python -m build

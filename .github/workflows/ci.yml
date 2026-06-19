@@ -47,6 +47,9 @@ jobs:
       - name: Run tests
         run: pytest -q
 
+      - name: Smoke Hermes plugin wrapper
+        run: python scripts/hermes_plugin_smoke.py
+
       - name: Build package
         run: python -m build
 

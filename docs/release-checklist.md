@@ -37,6 +37,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Smoke `ershov nightly --no-llm`
 - [ ] Smoke `ershov nightly --no-llm` with no eligible markers: exits `no-op`, creates no invalid empty artifact
 - [ ] Smoke `HERMES_ERSHOV_SESSION_DB=/tmp/state.db ershov nightly --no-llm` with controlled marker input through the installed CLI
+- [ ] Smoke the root Hermes plugin wrapper: `python scripts/hermes_plugin_smoke.py`
 - [ ] Smoke `ershov install-cron`
 - [ ] Smoke `ershov install-systemd --dry-run`
 - [ ] After a real scheduled run, smoke `ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer`
