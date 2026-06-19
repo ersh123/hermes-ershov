@@ -139,3 +139,64 @@ def test_create_dream_artifact_preflights_secret_sources_before_provider_call(
     assert "source preflight blocked provider call" in report
     sources_file = (result.artifact_dir / "sources.jsonl").read_text(encoding="utf-8")
     assert "ghp_" not in sources_file
+
+
+def test_create_dream_artifact_stamps_provider_proposals(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    (live_root / "facts.jsonl").write_text("", encoding="utf-8")
+    source_root = tmp_path / "sources"
+    source_root.mkdir()
+    (source_root / "session.md").write_text(
+        'MEMORY: fact: {"value":"direct","key":"tone"}\n',
+        encoding="utf-8",
+    )
+
+    result = create_dream_artifact(
+        DreamRunConfig(
+            live_root=live_root,
+            artifact_root=tmp_path / "artifacts",
+            source_paths=[source_root],
+        )
+    )
+
+    assert result.artifact.status == "staged"
+    assert result.validation_errors == []
+    proposal = result.artifact.proposals[0]
+    assert proposal.proposed_text == '{"key": "tone", "value": "direct"}'
+    assert proposal.idempotence_key
+    assert proposal.policy_version
+
+
+def test_create_dream_artifact_enforces_staged_run_budget(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    (live_root / "skills").mkdir(parents=True)
+    (live_root / "memory.md").write_text("# MEMORY\n", encoding="utf-8")
+    (live_root / "user.md").write_text("# USER\n", encoding="utf-8")
+    (live_root / "facts.jsonl").write_text("", encoding="utf-8")
+    (live_root / "skills" / "review.md").write_text("# Review\n", encoding="utf-8")
+    source_root = tmp_path / "sources"
+    source_root.mkdir()
+    (source_root / "session.md").write_text(
+        "\n".join(
+            [
+                "MEMORY: memory: Keep updates short and concrete.",
+                "MEMORY: user: Prefer concise status updates.",
+                'MEMORY: fact: {"key": "tone", "value": "direct"}',
+                "MEMORY: skill: path=skills/review.md | Preserve review gates and backups.",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    result = create_dream_artifact(
+        DreamRunConfig(
+            live_root=live_root,
+            artifact_root=tmp_path / "artifacts",
+            source_paths=[source_root],
+        )
+    )
+
+    assert result.artifact.status == "invalid"
+    assert any("run exceeds max changes" in error for error in result.validation_errors)
+    assert len(result.artifact.proposals) == 4

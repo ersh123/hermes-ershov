@@ -8,10 +8,10 @@ import re
 from pathlib import Path
 from uuid import uuid4
 
-from .artifact import DreamArtifact, write_artifact
+from .artifact import DreamArtifact, DreamProposal, write_artifact
 from .collect import collect_sources
 from .commands.harvest import build_recent_source_snapshot
-from .policy import stamp_proposal
+from .policy import run_budget_summary, stamp_proposal
 from .providers import DreamContext, build_provider
 from .triage import ProposalView, aggregate_policy_flags, proposal_view, sorted_proposals
 from .validation import validate_artifact, validate_source_snapshots
@@ -67,6 +67,23 @@ def _now_iso() -> str:
 
 def generate_artifact_id() -> str:
     return f"{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}-{uuid4().hex[:8]}"
+
+
+def _stamp_provider_proposals(proposals: list[DreamProposal]) -> list[DreamProposal]:
+    return [stamp_proposal(proposal) for proposal in proposals]
+
+
+def _proposal_run_budget_error(proposals: list[DreamProposal]) -> str | None:
+    if not proposals:
+        return None
+    return run_budget_summary(
+        changes=len(proposals),
+        # Staged proposals do not encode live add/replace/remove intent. The
+        # live op path enforces max_adds; staged artifacts enforce review size.
+        adds=0,
+        new_chars=sum(len(proposal.proposed_text.strip()) for proposal in proposals),
+        targets=len({proposal.target_path for proposal in proposals}),
+    )
 
 
 def build_report(artifact: DreamArtifact) -> str:
@@ -327,6 +344,7 @@ def create_dream_artifact(config: DreamRunConfig) -> DreamCreationResult:
     provider_payload_hash: str | None = None
     try:
         report_body, proposals, _notes = provider.generate(source_snapshots, context)
+        proposals = _stamp_provider_proposals(proposals)
     except Exception as exc:
         provider_failure = str(exc)
         provider_payload_hash = getattr(exc, "payload_hash", None)
@@ -356,6 +374,9 @@ def create_dream_artifact(config: DreamRunConfig) -> DreamCreationResult:
         artifact.validation_errors = validation_errors
     else:
         validation_errors = validate_artifact(artifact, live_root=live_root)
+        budget_error = _proposal_run_budget_error(artifact.proposals)
+        if budget_error:
+            validation_errors.append(budget_error)
         artifact.validation_errors = validation_errors
         if validation_errors:
             artifact.status = "invalid"

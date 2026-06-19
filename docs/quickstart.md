@@ -52,7 +52,7 @@ ershov status --artifact-root "$ARTIFACT_ROOT"
 ```text
 artifact: /tmp/hermes-ershov-quickstart/artifacts/2026...-<id>
 status: staged
-proposals: 4
+proposals: 3
 mode: dry-run
 validation: valid
 ```
@@ -63,7 +63,6 @@ validation: valid
 
 - `fact -> facts.jsonl`
 - `memory -> memory.md`
-- `skill -> skills/review.md`
 - `user -> user.md`
 
 `ershov validate` should print `artifact is valid`.

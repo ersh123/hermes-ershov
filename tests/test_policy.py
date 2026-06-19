@@ -37,6 +37,37 @@ def test_stamp_proposal_normalizes_text_and_stable_key() -> None:
     assert stamped.idempotence_key == stamped_again.idempotence_key
 
 
+def test_stamp_proposal_canonicalizes_fact_json_for_stable_key() -> None:
+    first = stamp_proposal(
+        DreamProposal(
+            id="fact-a",
+            target_kind="fact",
+            target_path="facts.jsonl",
+            mode="jsonl_append",
+            summary="Append a fact",
+            provenance=["sessions/1.md:3"],
+            proposed_text='{"value":"direct","key":"tone"}',
+            approved=False,
+        )
+    )
+    second = stamp_proposal(
+        DreamProposal(
+            id="fact-b",
+            target_kind="fact",
+            target_path="facts.jsonl",
+            mode="jsonl_append",
+            summary="Append a fact",
+            provenance=["sessions/1.md:3"],
+            proposed_text='{"key":"tone","value":"direct"}',
+            approved=False,
+        )
+    )
+
+    assert first.proposed_text == '{"key": "tone", "value": "direct"}'
+    assert second.proposed_text == first.proposed_text
+    assert second.idempotence_key == first.idempotence_key
+
+
 def test_validate_proposals_accepts_skill_and_fact_targets() -> None:
     proposals = [
         DreamProposal(

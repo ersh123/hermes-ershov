@@ -216,6 +216,10 @@ def build_idempotence_key(
 
 def stamp_proposal(proposal: DreamProposal, *, policy_version: str = POLICY_VERSION) -> DreamProposal:
     normalized = normalize_text(proposal.proposed_text)
+    if proposal.target_kind == "fact":
+        canonical, _parsed = _canonical_json_text(normalized)
+        if canonical is not None:
+            normalized = canonical
     key = build_idempotence_key(
         target_kind=proposal.target_kind,
         target_path=proposal.target_path,
