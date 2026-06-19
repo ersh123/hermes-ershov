@@ -170,7 +170,11 @@ def test_release_docs_use_current_test_count() -> None:
         assert "263 tests" not in text, path
         assert "264 tests" not in text, path
         assert "265 tests" not in text, path
-        assert "266 tests" in text, path
+        assert "266 tests" not in text, path
+        assert "267 tests" not in text, path
+        assert "268 tests" not in text, path
+        assert "269 tests" not in text, path
+        assert "270 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -303,7 +307,10 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "GitHub artifact attestations",
         "GitHub Release asset attestations",
         "SPDX release SBOM generation",
+        "release-manifest.json",
+        "release subject names, kinds, sizes, SHA256 digests",
         "SHA256SUMS",
+        "release manifest subject digests",
         "public release integrity runbook",
         "docs/release-integrity.md",
         "sha256sum -c",
@@ -329,6 +336,8 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "https://docs.github.com/code-security/supply-chain-security/understanding-your-software-supply-chain/verifying-the-integrity-of-a-release",
         "https://cli.github.com/manual/gh_release_verify-asset",
         "https://cli.github.com/manual/gh_attestation_verify",
+        "https://slsa.dev/spec/v1.2/build-provenance",
+        "https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/statement.md",
         "https://spdx.github.io/spdx-spec/v2.3/package-information/",
         "https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging",
         "--min-successful 3 --strict-systemd",
@@ -359,10 +368,13 @@ def test_release_integrity_runbook_is_public_and_honest() -> None:
         "wheel: `hermes_ershov-<version>-py3-none-any.whl`",
         "source distribution: `hermes_ershov-<version>.tar.gz`",
         "SPDX SBOM: `hermes-ershov-sbom.spdx.json`",
+        "release manifest: `release-manifest.json`",
         "checksum manifest: `SHA256SUMS`",
         "scripts/generate_release_sbom.py",
+        "scripts/generate_release_manifest.py",
         "scripts/generate_release_checksums.py",
         "scripts/verify_release_artifacts.py",
+        "subject names, kinds, sizes, SHA256 digests",
         "(cd dist && sha256sum -c SHA256SUMS)",
         '(cd "$OUT" && sha256sum -c SHA256SUMS)',
         "gh release download",
@@ -376,5 +388,7 @@ def test_release_integrity_runbook_is_public_and_honest() -> None:
         "https://cli.github.com/manual/gh_release_verify-asset",
         "https://cli.github.com/manual/gh_attestation_verify",
         "https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds",
+        "https://slsa.dev/spec/v1.2/build-provenance",
+        "https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/statement.md",
     ):
         assert phrase in integrity

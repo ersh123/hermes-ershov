@@ -12,11 +12,12 @@ A release asset bundle must include exactly these integrity artifacts:
 - wheel: `hermes_ershov-<version>-py3-none-any.whl`
 - source distribution: `hermes_ershov-<version>.tar.gz`
 - SPDX SBOM: `hermes-ershov-sbom.spdx.json`
+- release manifest: `release-manifest.json`
 - checksum manifest: `SHA256SUMS`
 
 The verifier rejects missing files, unexpected digest drift, unsafe names,
-wheel/sdist metadata mismatch, SBOM package gaps, missing package URLs, and
-root dependency relationship drift.
+wheel/sdist metadata mismatch, release-manifest subject drift, SBOM package
+gaps, missing package URLs, and root dependency relationship drift.
 
 ## Maintainer check before upload
 
@@ -25,13 +26,16 @@ Build and verify locally before a release-facing workflow run:
 ```bash
 uv run --locked --extra dev python -m build
 uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json
+uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist
 uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist
 uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist
 (cd dist && sha256sum -c SHA256SUMS)
 ```
 
-`scripts/verify_release_artifacts.py` is the project-specific gate. `sha256sum
--c` is the portable consumer-facing checksum check.
+`release-manifest.json` records subject names, kinds, sizes, SHA256 digests,
+source commit/ref, and GitHub Actions run hints. `scripts/verify_release_artifacts.py`
+is the project-specific gate. `sha256sum -c` is the portable consumer-facing
+checksum check.
 
 ## Consumer check after release
 
@@ -46,6 +50,7 @@ gh release download "$TAG" \
   --pattern "hermes_ershov-*.whl" \
   --pattern "hermes_ershov-*.tar.gz" \
   --pattern "hermes-ershov-sbom.spdx.json" \
+  --pattern "release-manifest.json" \
   --pattern "SHA256SUMS" \
   --dir "$OUT"
 
@@ -60,6 +65,7 @@ asset against the release:
 gh release verify-asset "$TAG" --repo ersh123/hermes-ershov "$OUT"/hermes_ershov-*.whl
 gh release verify-asset "$TAG" --repo ersh123/hermes-ershov "$OUT"/hermes_ershov-*.tar.gz
 gh release verify-asset "$TAG" --repo ersh123/hermes-ershov "$OUT"/hermes-ershov-sbom.spdx.json
+gh release verify-asset "$TAG" --repo ersh123/hermes-ershov "$OUT"/release-manifest.json
 ```
 
 For lower-level provenance checks, use GitHub artifact attestations:
@@ -68,6 +74,7 @@ For lower-level provenance checks, use GitHub artifact attestations:
 gh attestation verify "$OUT"/hermes_ershov-*.whl --repo ersh123/hermes-ershov
 gh attestation verify "$OUT"/hermes_ershov-*.tar.gz --repo ersh123/hermes-ershov
 gh attestation verify "$OUT"/hermes-ershov-sbom.spdx.json --repo ersh123/hermes-ershov
+gh attestation verify "$OUT"/release-manifest.json --repo ersh123/hermes-ershov
 ```
 
 ## What this does not prove
@@ -92,3 +99,5 @@ This runbook follows the current public guidance for:
 - GitHub CLI release asset verification: https://cli.github.com/manual/gh_release_verify-asset
 - GitHub CLI artifact attestation verification: https://cli.github.com/manual/gh_attestation_verify
 - GitHub artifact attestations: https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+- SLSA build provenance subject/digest model: https://slsa.dev/spec/v1.2/build-provenance
+- in-toto Statement subject/digest model: https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/statement.md

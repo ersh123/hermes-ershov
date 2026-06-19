@@ -23,6 +23,8 @@ The matrix follows the current public docs for:
 - GitHub release integrity verification: https://docs.github.com/code-security/supply-chain-security/understanding-your-software-supply-chain/verifying-the-integrity-of-a-release
 - GitHub CLI release asset verification: https://cli.github.com/manual/gh_release_verify-asset
 - GitHub CLI artifact attestation verification: https://cli.github.com/manual/gh_attestation_verify
+- SLSA build provenance subject/digest model: https://slsa.dev/spec/v1.2/build-provenance
+- in-toto Statement subject/digest model: https://github.com/in-toto/attestation/blob/v1.0/spec/v1.0/statement.md
 - SPDX package information: https://spdx.github.io/spdx-spec/v2.3/package-information/
 - OpenSSF Scorecard Packaging: https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging
 
@@ -85,9 +87,10 @@ GitHub Actions runs the same release-shaped matrix:
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
 - ClusterFuzzLite PR/manual fuzzing for the Python safety harness through `.clusterfuzzlite/` and `fuzzers/ershov_safety_fuzzer.py`
 - SPDX release SBOM generation into `dist/hermes-ershov-sbom.spdx.json`
-- `SHA256SUMS` generation for the wheel, source distribution, and SPDX SBOM release assets
-- release artifact verification for wheel metadata, source distribution metadata, SBOM package coverage, purl refs, locked SHA256 checksums, and root dependency relationships
-- public release integrity runbook in `docs/release-integrity.md`, including `sha256sum -c`, `gh release verify-asset`, `gh attestation verify`, SBOM, and stable-soak boundaries
+- `release-manifest.json` generation for release subject names, kinds, sizes, SHA256 digests, source commit/ref, and GitHub Actions run hints
+- `SHA256SUMS` generation for the wheel, source distribution, SPDX SBOM, and release manifest assets
+- release artifact verification for wheel metadata, source distribution metadata, release manifest subject digests, SBOM package coverage, purl refs, locked SHA256 checksums, and root dependency relationships
+- public release integrity runbook in `docs/release-integrity.md`, including `sha256sum -c`, `gh release verify-asset`, `gh attestation verify`, release manifest, SBOM, and stable-soak boundaries
 - GitHub Release asset attestations on release-event uploads
 - PyPI Trusted Publishing through OIDC on GitHub `release` events only, with GitHub artifact attestations for the built distributions
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps

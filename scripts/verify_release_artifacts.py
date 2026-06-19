@@ -20,6 +20,8 @@ EXPECTED_CONSOLE_SCRIPTS = {
 }
 SBOM_NAME = "hermes-ershov-sbom.spdx.json"
 CHECKSUM_MANIFEST = "SHA256SUMS"
+RELEASE_MANIFEST = "release-manifest.json"
+REPO_URL = "https://github.com/ersh123/hermes-ershov"
 
 
 class VerificationError(Exception):
@@ -76,6 +78,18 @@ def _read_checksum_manifest(path: Path) -> dict[str, str]:
     if not entries:
         raise VerificationError(f"{path.name} is empty")
     return entries
+
+
+def _assert_safe_release_filename(filename: str, *, label: str) -> None:
+    if "/" in filename or "\\" in filename or filename in {".", ".."}:
+        raise VerificationError(f"{label} has unsafe filename {filename!r}")
+
+
+def _assert_sha256(value: Any, *, label: str) -> str:
+    digest = str(value)
+    if len(digest) != 64 or any(char not in "0123456789abcdef" for char in digest):
+        raise VerificationError(f"{label} has invalid SHA256 digest")
+    return digest
 
 
 def _read_zip_text(zip_path: Path, suffix: str) -> str:
@@ -289,6 +303,109 @@ def _assert_sbom(
                 raise VerificationError(f"SBOM package {key[0]}@{key[1]} missing locked SHA256 checksum")
 
 
+def _assert_release_manifest(
+    manifest_path: Path,
+    *,
+    project_name: str,
+    project_version: str,
+    artifacts: dict[str, Path],
+) -> list[str]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if manifest.get("schema_version") != 1:
+        raise VerificationError(f"release manifest schema_version mismatch: {manifest.get('schema_version')!r}")
+    if manifest.get("generator") != "hermes-ershov-release-manifest":
+        raise VerificationError(f"release manifest generator mismatch: {manifest.get('generator')!r}")
+
+    project = manifest.get("project")
+    if not isinstance(project, dict):
+        raise VerificationError("release manifest project must be an object")
+    if project.get("name") != project_name:
+        raise VerificationError(f"release manifest project.name mismatch: {project.get('name')!r}")
+    if project.get("version") != project_version:
+        raise VerificationError(f"release manifest project.version mismatch: {project.get('version')!r}")
+
+    source = manifest.get("source")
+    if not isinstance(source, dict):
+        raise VerificationError("release manifest source must be an object")
+    if source.get("repository") != REPO_URL:
+        raise VerificationError(f"release manifest repository mismatch: {source.get('repository')!r}")
+    for field in ("ref", "commit"):
+        value = source.get(field)
+        if not isinstance(value, str) or not value:
+            raise VerificationError(f"release manifest source.{field} must be a non-empty string")
+
+    build = manifest.get("build")
+    if not isinstance(build, dict):
+        raise VerificationError("release manifest build must be an object")
+    for field in ("workflow", "run_id", "run_attempt"):
+        value = build.get(field)
+        if not isinstance(value, str) or not value:
+            raise VerificationError(f"release manifest build.{field} must be a non-empty string")
+
+    sbom = manifest.get("sbom")
+    if not isinstance(sbom, dict) or sbom.get("name") != SBOM_NAME:
+        raise VerificationError("release manifest sbom.name mismatch")
+
+    subjects = manifest.get("subjects")
+    if not isinstance(subjects, list):
+        raise VerificationError("release manifest subjects must be a list")
+    expected_names = set(artifacts)
+    seen_names: set[str] = set()
+    expected_kinds = {
+        "wheel": "wheel",
+        "sdist": "sdist",
+        SBOM_NAME: "spdx-sbom",
+    }
+    for subject in subjects:
+        if not isinstance(subject, dict):
+            raise VerificationError("release manifest subjects must contain objects")
+        name = str(subject.get("name"))
+        _assert_safe_release_filename(name, label="release manifest subject")
+        if name in seen_names:
+            raise VerificationError(f"release manifest duplicates subject {name!r}")
+        seen_names.add(name)
+        if name not in artifacts:
+            raise VerificationError(f"release manifest has unexpected subject {name!r}")
+        expected_kind = expected_kinds.get(name)
+        if expected_kind is None and name.endswith(".whl"):
+            expected_kind = "wheel"
+        if expected_kind is None and name.endswith(".tar.gz"):
+            expected_kind = "sdist"
+        if subject.get("kind") != expected_kind:
+            raise VerificationError(f"release manifest subject {name!r} kind mismatch: {subject.get('kind')!r}")
+        digest = subject.get("digest")
+        if not isinstance(digest, dict):
+            raise VerificationError(f"release manifest subject {name!r} digest must be an object")
+        if _assert_sha256(digest.get("sha256"), label=f"release manifest subject {name!r}") != _sha256(
+            artifacts[name]
+        ):
+            raise VerificationError(f"release manifest digest mismatch for {name}")
+        if subject.get("size") != artifacts[name].stat().st_size:
+            raise VerificationError(f"release manifest size mismatch for {name}")
+    if seen_names != expected_names:
+        missing = sorted(expected_names - seen_names)
+        extra = sorted(seen_names - expected_names)
+        raise VerificationError(f"release manifest subject set mismatch: missing={missing}, extra={extra}")
+
+    checksum_manifest = manifest.get("checksum_manifest")
+    if not isinstance(checksum_manifest, dict):
+        raise VerificationError("release manifest checksum_manifest must be an object")
+    if checksum_manifest.get("name") != CHECKSUM_MANIFEST:
+        raise VerificationError("release manifest checksum_manifest.name mismatch")
+    if checksum_manifest.get("generated_after_manifest") is not True:
+        raise VerificationError("release manifest checksum_manifest.generated_after_manifest must be true")
+    covers = checksum_manifest.get("covers")
+    if not isinstance(covers, list) or any(not isinstance(item, str) for item in covers):
+        raise VerificationError("release manifest checksum_manifest.covers must be a string list")
+    expected_covers = sorted([manifest_path.name, *expected_names])
+    if sorted(covers) != expected_covers:
+        raise VerificationError(
+            f"release manifest checksum cover set mismatch: expected={expected_covers}, actual={sorted(covers)}"
+        )
+
+    return sorted(seen_names)
+
+
 def verify_release_artifacts(*, dist_dir: Path, pyproject_path: Path, lock_path: Path) -> list[str]:
     project_name, project_version = _project_metadata(pyproject_path)
     normalized_name = _normalized_distribution_name(project_name)
@@ -296,19 +413,30 @@ def verify_release_artifacts(*, dist_dir: Path, pyproject_path: Path, lock_path:
     wheel = _single_file(dist_dir, f"{normalized_name}-{project_version}-*.whl", "wheel")
     sdist = _single_file(dist_dir, f"{normalized_name}-{project_version}.tar.gz", "sdist")
     sbom = _single_file(dist_dir, SBOM_NAME, "SPDX SBOM")
+    release_manifest = _single_file(dist_dir, RELEASE_MANIFEST, "release manifest")
     checksum_manifest = _single_file(dist_dir, CHECKSUM_MANIFEST, "checksum manifest")
 
     _assert_wheel(wheel, project_name=project_name, project_version=project_version)
     _assert_sdist(sdist, project_name=project_name, project_version=project_version)
     _assert_sbom(sbom, project_name=project_name, project_version=project_version, lock_path=lock_path)
+    manifest_subjects = _assert_release_manifest(
+        release_manifest,
+        project_name=project_name,
+        project_version=project_version,
+        artifacts={
+            wheel.name: wheel,
+            sdist.name: sdist,
+            sbom.name: sbom,
+        },
+    )
 
-    expected_files = {wheel.name, sdist.name, sbom.name}
+    expected_files = {wheel.name, sdist.name, sbom.name, release_manifest.name}
     checksum_entries = _read_checksum_manifest(checksum_manifest)
     if set(checksum_entries) != expected_files:
         missing = sorted(expected_files - set(checksum_entries))
         extra = sorted(set(checksum_entries) - expected_files)
         raise VerificationError(f"{CHECKSUM_MANIFEST} file set mismatch: missing={missing}, extra={extra}")
-    for path in (wheel, sdist, sbom):
+    for path in (wheel, sdist, sbom, release_manifest):
         actual = _sha256(path)
         if checksum_entries[path.name] != actual:
             raise VerificationError(f"{CHECKSUM_MANIFEST} digest mismatch for {path.name}")
@@ -317,6 +445,7 @@ def verify_release_artifacts(*, dist_dir: Path, pyproject_path: Path, lock_path:
         f"wheel {wheel.name} sha256={_sha256(wheel)}",
         f"sdist {sdist.name} sha256={_sha256(sdist)}",
         f"sbom {sbom.name} sha256={_sha256(sbom)}",
+        f"manifest {release_manifest.name} subjects={len(manifest_subjects)} sha256={_sha256(release_manifest)}",
         f"checksums {checksum_manifest.name} entries={len(checksum_entries)}",
     ]
 

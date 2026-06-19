@@ -28,6 +28,7 @@ def test_release_workflow_build_job_uses_ci_strength_gates() -> None:
         "python scripts/hermes_plugin_smoke.py",
         "python -m build",
         "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json",
+        "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist",
         "uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist",
         "uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist",
         "ershov providers doctor --provider offline-marker --strict",

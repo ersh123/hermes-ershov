@@ -36,6 +36,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] `uv sync --locked --extra dev`
 - [ ] `python -m build`
 - [ ] `python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json`
+- [ ] `python scripts/generate_release_manifest.py --dist dist`
 - [ ] `python scripts/generate_release_checksums.py --dist dist`
 - [ ] `python scripts/verify_release_artifacts.py --dist dist`
 - [ ] `(cd dist && sha256sum -c SHA256SUMS)`
@@ -57,8 +58,8 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix
 - [ ] Confirm local markdown links/images pass the docs guard
-- [ ] Confirm the release workflow exports an SPDX SBOM and only uploads attested assets on a GitHub `release` event, without publishing to package indexes
-- [ ] Confirm GitHub Release consumers can verify `SHA256SUMS`, `gh release verify-asset`, and `gh attestation verify` using `docs/release-integrity.md`
+- [ ] Confirm the release workflow exports an SPDX SBOM and release manifest, and only uploads attested assets on a GitHub `release` event, without publishing to package indexes
+- [ ] Confirm GitHub Release consumers can verify `release-manifest.json`, `SHA256SUMS`, `gh release verify-asset`, and `gh attestation verify` using `docs/release-integrity.md`
 - [ ] Confirm the publish workflow can only publish to PyPI from a GitHub `release` event through the `pypi` environment, PyPI Trusted Publishing, OIDC, and artifact attestations
 - [ ] Confirm Dependabot is enabled for GitHub Actions and uv-managed Python package metadata
 - [ ] Confirm OpenSSF Scorecard is enabled and uploads SARIF to GitHub code scanning
