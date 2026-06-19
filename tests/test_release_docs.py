@@ -96,6 +96,7 @@ def test_quickstart_uses_temp_live_root_and_dry_run_before_apply() -> None:
     assert "leave `$LIVE_ROOT` and `$BACKUP_ROOT` unchanged" in text
     assert "records backup evidence in `manifest.json`" in text
     assert "remove files that were created by apply" in text
+    assert 'ershov revert "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --yes --validate' in text
     assert "/tmp/hermes-ershov-quickstart/artifacts" not in text
     assert "/tmp/hermes-ershov-quickstart.<suffix>/artifacts" in text
 
@@ -123,7 +124,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "188 tests" not in text, path
         assert "189 tests" not in text, path
         assert "190 tests" not in text, path
-        assert "191 tests" in text, path
+        assert "191 tests" not in text, path
+        assert "192 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:

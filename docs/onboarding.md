@@ -39,7 +39,7 @@ If you want a more targeted window, use `--from-since 7d` (or `12h` / `2w`):
 ershov create --from-since 7d --no-llm --live-root ./live --artifact-root ./artifacts
 ```
 
-After staging, the rest of the loop is unchanged: `summarize`, `approve`/`reject`, `validate`, `apply`. To preview the apply without touching live state, add `--dry-run`. To undo a real apply, run `ershov revert <artifact> --yes`.
+After staging, the rest of the loop is unchanged: `summarize`, `approve`/`reject`, `validate`, `apply`. To preview the apply without touching live state, add `--dry-run`. To undo a real apply with a post-restore validation check, run `ershov revert <artifact> --yes --validate`.
 
 ## Nightly memory loop
 

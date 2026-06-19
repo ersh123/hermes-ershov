@@ -136,7 +136,7 @@ ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backup
 # If the dry-run looks right, apply it
 ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --approve all
 # If you applied something that turned out wrong, undo it
-ershov revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
+ershov revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes --validate
 # If you only want high-priority memory/user updates today, filter the apply
 ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
 ```

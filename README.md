@@ -140,7 +140,7 @@ ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backup
 # Apply only high-priority memory and user updates, skip skills and facts
 ershov apply ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --priority high --target-kind memory,user
 # Undo an apply: restore live files from the recorded backups
-ershov revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes
+ershov revert ./artifacts/<artifact-id> --live-root ./live --backup-root ./backups --yes --validate
 # Discard a staged artifact
 ershov discard ./artifacts/<artifact-id> --archive-root ./archive
 # Show artifacts that are approved and ready to apply
@@ -209,7 +209,7 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 - Provider secrets are not written by `install-systemd`; put them in `~/.config/hermes-ershov/nightly.secrets.env` when the timer needs cloud model access.
 - `apply` accepts `--dry-run` for previews, `--priority low,normal,high` to filter proposals, and `--target-kind memory,user,skill,fact` to filter by destination. Filters compose; filtered-out proposals stay approved so a later apply with a different filter can still land them.
 - `apply` records backup evidence in the artifact manifest before live writes: existing files get backup paths, and files created by apply get `backup_records` tombstones. `--dry-run` deliberately creates no backups and writes no live files, so it is safe as the first trust check.
-- `revert` restores existing live files from recorded backups, removes files that were created by apply, and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Drift detection records an audit event when the live file changed after apply, but the restore still runs.
+- `revert` restores existing live files from recorded backups, removes files that were created by apply, and rolls the artifact back from `applied` to `reverted`. Requires `--yes` for non-interactive use. Add `--validate` to run the existing artifact validator after restore; validation results are written to the revert audit and `REVERT.md`. Drift detection records an audit event when the live file changed after apply, but the restore still runs.
 - `inbox` supports `--apply-ready` to show only artifacts where every proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. The inbox digest also surfaces a "Ready to apply" section.
 - `providers list` introspects the built-in providers (offline-marker, openai-compatible, deepseek, openrouter, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create`, `review`, and `nightly`.
 - OpenAI-compatible, DeepSeek, OpenRouter, and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.

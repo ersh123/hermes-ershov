@@ -96,19 +96,29 @@ def test_apply_then_revert_roundtrip_restores_live_state(tmp_path: Path) -> None
     loaded.backup_paths = [str(backup_path)]
     write_artifact(loaded, artifact_dir)
 
-    reverted = revert_artifact(artifact_dir, live_root=live_root, backup_root=backup_root, yes=True)
+    reverted = revert_artifact(
+        artifact_dir,
+        live_root=live_root,
+        backup_root=backup_root,
+        yes=True,
+        validate_after=True,
+    )
 
     assert reverted.status == "reverted"
     assert reverted.reverted_at is not None
+    assert reverted.validation_errors == []
     assert memory.read_text(encoding="utf-8") == "# MEMORY\n\n- Existing note\n"
     assert (artifact_dir / REVERT_FILE).exists()
     revert_md = (artifact_dir / REVERT_FILE).read_text(encoding="utf-8")
     assert "Restored files" in revert_md
     assert "Rolled-back proposals" in revert_md
+    assert "Post-revert validation" in revert_md
+    assert "- passed" in revert_md
     # Applied proposal was rolled back to approved state.
     assert reverted.proposals[0].approved is True
     assert reverted.proposals[0].applied is False
     assert any(event["action"] == "reverted" for event in reverted.revert_audit_events)
+    assert any(event["action"] == "revert_validation_passed" for event in reverted.revert_audit_events)
 
 
 def test_apply_then_revert_removes_file_created_by_apply(tmp_path: Path) -> None:
@@ -220,6 +230,49 @@ def test_revert_fails_loud_on_missing_backup_and_leaves_live_state(tmp_path: Pat
     assert any(event["action"] == "revert_failed" for event in loaded.revert_audit_events)
 
 
+def test_revert_validate_after_records_failure_after_restore(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    memory = live_root / "memory.md"
+    memory.write_text("# MEMORY\n\n- Existing note\n- Bad applied text\n", encoding="utf-8")
+
+    proposal = _memory_proposal(tmp_path)
+    proposal.summary = ""
+    proposal.applied = True
+    artifact_dir = _write_artifact(
+        tmp_path,
+        live_root=live_root,
+        proposals=[proposal],
+        applied=True,
+    )
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(parents=True, exist_ok=True)
+    backup_path = backup_root / "memory.md"
+    backup_path.write_text("# MEMORY\n\n- Existing note\n", encoding="utf-8")
+    loaded = load_artifact(artifact_dir)
+    loaded.backup_paths = [str(backup_path)]
+    write_artifact(loaded, artifact_dir)
+
+    with pytest.raises(DreamRevertError, match="post-revert validation failed"):
+        revert_artifact(
+            artifact_dir,
+            live_root=live_root,
+            backup_root=backup_root,
+            yes=True,
+            validate_after=True,
+        )
+
+    assert memory.read_text(encoding="utf-8") == "# MEMORY\n\n- Existing note\n"
+    manifest = load_artifact(artifact_dir)
+    assert manifest.status == "reverted"
+    assert manifest.validation_errors == ["proposal proposal-memory.md is missing a summary"]
+    assert any(event["action"] == "revert_validation_failed" for event in manifest.revert_audit_events)
+    revert_md = (artifact_dir / REVERT_FILE).read_text(encoding="utf-8")
+    assert "Post-revert validation" in revert_md
+    assert "- failed" in revert_md
+    assert "proposal proposal-memory.md is missing a summary" in revert_md
+
+
 def test_revert_records_drift_event_when_live_drifted_after_apply(tmp_path: Path) -> None:
     live_root = tmp_path / "live"
     live_root.mkdir()
@@ -324,9 +377,11 @@ def test_cli_revert_end_to_end_with_yes(tmp_path: Path, capsys) -> None:
             "--backup-root",
             str(backup_root),
             "--yes",
+            "--validate",
         ]
     )
     output = capsys.readouterr().out
     assert exit_code == 0
     assert "reverted artifact" in output
+    assert "post_revert_validation: passed" in output
     assert memory.read_text(encoding="utf-8") == "# MEMORY\n\n- Existing note\n"

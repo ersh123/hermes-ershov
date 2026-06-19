@@ -214,6 +214,7 @@ def build_parser() -> argparse.ArgumentParser:
     revert.add_argument("--live-root", type=Path, default=None, help="Root of the live workspace (defaults to artifact.workspace_root)")
     revert.add_argument("--backup-root", type=Path, default=None, help="Where backups are stored (defaults to <live-root>/.ershov/backups)")
     revert.add_argument("--yes", dest="yes", action="store_true", help="Skip the confirmation prompt (required for non-interactive use)")
+    revert.add_argument("--validate", dest="validate_after", action="store_true", help="Validate the reverted artifact after restoring live files")
 
     discard = sub.add_parser("discard", help="Discard a staged artifact")
     discard.add_argument("artifact", type=Path, help="Artifact directory")
@@ -792,6 +793,7 @@ def main(argv: list[str] | None = None) -> int:
                 live_root=args.live_root,
                 backup_root=args.backup_root,
                 yes=args.yes,
+                validate_after=args.validate_after,
             )
         except DreamRevertError as exc:
             message = str(exc)
@@ -812,6 +814,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"reverted artifact: {reverted.artifact_id}")
         print(f"status: {reverted.status}")
         print(f"reverted_at: {reverted.reverted_at}")
+        if args.validate_after:
+            print("post_revert_validation: passed")
         _record_cli_run(
             "revert",
             success=True,

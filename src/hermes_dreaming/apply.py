@@ -410,6 +410,7 @@ def revert_artifact(
     live_root: Path | None = None,
     backup_root: Path | None = None,
     yes: bool = False,
+    validate_after: bool = False,
 ) -> DreamArtifact:
     """Restore an applied artifact's live files from the recorded backups.
 
@@ -431,6 +432,9 @@ def revert_artifact(
       restore and write it into the audit event for traceability.
     - Rolls each applied proposal back to approved state.
     - Writes REVERT.md next to the artifact summarizing what happened.
+    - Optionally validates the reverted artifact after restore when
+      ``validate_after=True``. Validation failure is recorded and raised after
+      the rollback has been written.
     - On any backup failure: aborts, leaves live state in place, records a
       revert_failed audit event.
 
@@ -592,6 +596,19 @@ def revert_artifact(
             command="revert",
         )
     audit_events.append(summary_event)
+
+    validation_errors: list[str] | None = None
+    if validate_after and not failures:
+        validation_errors = validate_artifact(artifact, live_root=workspace_root)
+        artifact.validation_errors = validation_errors
+        audit_events.append(
+            _make_revert_event(
+                artifact,
+                action="revert_validation_failed" if validation_errors else "revert_validation_passed",
+                command="revert --validate",
+                failures=validation_errors or None,
+            )
+        )
     artifact.revert_audit_events.extend(audit_events)
     write_artifact(artifact, artifact_dir)
 
@@ -608,12 +625,16 @@ def revert_artifact(
             drift_events=drift_events,
             rolled_back_ids=rolled_back_ids,
             failures=failures,
+            validation_requested=validate_after,
+            validation_errors=validation_errors,
         ),
         encoding="utf-8",
     )
 
     if failures:
         raise DreamRevertError("revert partially failed: " + "; ".join(failures))
+    if validation_errors:
+        raise DreamRevertError("post-revert validation failed: " + "; ".join(validation_errors))
 
     return artifact
 
@@ -714,6 +735,8 @@ def _render_revert_markdown(
     drift_events: list[dict[str, Any]],
     rolled_back_ids: list[str],
     failures: list[str],
+    validation_requested: bool = False,
+    validation_errors: list[str] | None = None,
 ) -> str:
     lines = [
         f"# Hermes Ershov revert — {artifact.artifact_id}",
@@ -762,6 +785,17 @@ def _render_revert_markdown(
             lines.append(f"- {failure}")
     else:
         lines.append("- none")
+    lines.extend(["", "## Post-revert validation", ""])
+    if not validation_requested:
+        lines.append("- not requested")
+    elif validation_errors is None:
+        lines.append("- not run because revert failed before validation")
+    elif validation_errors:
+        lines.append("- failed")
+        for error in validation_errors:
+            lines.append(f"- {error}")
+    else:
+        lines.append("- passed")
     lines.append("")
     return "\n".join(lines)
 

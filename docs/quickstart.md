@@ -76,7 +76,7 @@ validation: valid
 `ershov apply --dry-run` should print `apply: dry-run`, list the proposals that would land, and leave `$LIVE_ROOT` and `$BACKUP_ROOT` unchanged.
 
 `ershov apply` should print `applied artifact: <id>` and `status: applied`.
-The real apply records backup evidence in `manifest.json`, so `ershov revert "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --yes` can restore existing temp live files and remove files that were created by apply during rollback testing.
+The real apply records backup evidence in `manifest.json`, so `ershov revert "$ARTIFACT_DIR" --live-root "$LIVE_ROOT" --backup-root "$BACKUP_ROOT" --yes --validate` can restore existing temp live files, remove files that were created by apply, and run a post-restore validation check during rollback testing.
 
 `ershov status` should finish with an `Artifact state: applied=1` line.
 

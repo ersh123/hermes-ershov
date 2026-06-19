@@ -35,11 +35,12 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 ## Verification gates
 
-- `python -m pytest -q` (191 tests pass)
+- `python -m pytest -q` (192 tests pass)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
 - Temp-only Ershov smoke with `HERMES_ERSHOV_STATE_ROOT`:
   - apply→revert roundtrip on a real fixture
+  - `revert --validate` pass/fail audit paths
   - revert on a non-applied artifact raises and leaves live state untouched
   - revert with a missing backup fails loud
   - revert with live drift still restores from backup and records the event
@@ -55,7 +56,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - [x] `git status -sb` clean (except intentional v0.4.0 changes)
 - [x] `git diff --check` clean
-- [x] `pytest -q` passes (191 tests)
+- [x] `pytest -q` passes (192 tests)
 - [x] `python -m build` succeeds
 - [x] Each new + modified command smoke-tested on temp fixtures
 - [x] CHANGELOG, release notes, handoff all written
