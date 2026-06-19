@@ -8,6 +8,7 @@ from typing import Any
 from .. import dreams_md as dreams_md_module
 from .. import state as state_module
 from ..analyze import list_artifacts
+from .soak import SoakReport
 
 
 @dataclass(slots=True)
@@ -113,7 +114,63 @@ def build_status_snapshot(
     )
 
 
-def render_status(snapshot: StatusSnapshot) -> str:
+def _release_gate_timer_state(report: SoakReport) -> str:
+    if not report.timer.checked:
+        return "not checked"
+    return (
+        f"enabled={report.timer.enabled}, active={report.timer.active}"
+        + (f", load={report.timer.load_state}" if report.timer.load_state is not None else "")
+        + (f", unit={report.timer.unit}" if report.timer.unit is not None else "")
+        + (f", next={report.timer.next_elapse}" if report.timer.next_elapse is not None else "")
+        + (f", error={report.timer.error}" if report.timer.error else "")
+    )
+
+
+def render_release_gate_status(
+    report: SoakReport,
+    *,
+    current_commit: str | None = None,
+    current_dirty: bool | None = None,
+) -> str:
+    extra_reasons: list[str] = []
+    if current_commit is None:
+        extra_reasons.append("current git commit could not be detected")
+    if current_dirty is True:
+        extra_reasons.append("current git checkout is dirty")
+
+    passed = report.passed and not extra_reasons
+    lines = [
+        "",
+        "Stable release gate:",
+        f"- Status: `{'ready' if passed else 'blocked'}`",
+        f"- Current commit: `{current_commit or 'unknown'}`",
+        f"- Current checkout dirty: `{str(current_dirty).lower() if current_dirty is not None else 'unknown'}`",
+        f"- Window: `{report.since_hours}h`",
+        f"- Required successful scheduled runs: `{report.min_successful}`",
+        f"- Required run source: `{report.required_source or 'any'}`",
+        f"- Required git commit: `{report.required_commit or 'any'}`",
+        f"- Require clean checkout evidence: `{str(report.require_clean).lower()}`",
+        f"- Gate-matching successful runs: `{len(report.gate_matched_successful_nightly_runs)}`",
+        f"- Recent failed nightly runs: `{len(report.recent_failed_nightly_runs)}`",
+        f"- Timer: `{_release_gate_timer_state(report)}`",
+    ]
+    reasons = [*report.reasons, *extra_reasons]
+    if reasons:
+        lines.extend(["", "Stable blockers:"])
+        for reason in reasons:
+            lines.append(f"- {reason}")
+    else:
+        lines.extend(["", "Stable blockers:", "- none"])
+    return "\n".join(lines)
+
+
+def render_status(
+    snapshot: StatusSnapshot,
+    *,
+    release_gate: SoakReport | None = None,
+    current_commit: str | None = None,
+    current_dirty: bool | None = None,
+) -> str:
     lines = [
         "# Hermes Ershov status",
         "",
@@ -139,4 +196,6 @@ def render_status(snapshot: StatusSnapshot) -> str:
             f"- ERSHOV.md: {snapshot.memory_usage['diary']} B",
         ]
     )
+    if release_gate is not None:
+        lines.append(render_release_gate_status(release_gate, current_commit=current_commit, current_dirty=current_dirty))
     return "\n".join(lines) + "\n"

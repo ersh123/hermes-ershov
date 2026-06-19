@@ -309,6 +309,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     status = sub.add_parser("status", help="List known artifacts")
     status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".ershov" / "artifacts", help="Where artifacts are stored")
+    status.add_argument("--release-gate", action="store_true", help="Include the strict systemd stable-release gate status")
+    status.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl for --release-gate")
+    status.add_argument("--since-hours", type=int, default=30, help="Lookback window for --release-gate evidence")
+    status.add_argument("--min-successful", type=int, default=1, help="Required successful scheduled runs for --release-gate")
+    status.add_argument("--timer-name", default="hermes-ershov-nightly.timer", help="systemd user timer name for --release-gate")
 
     soak = sub.add_parser("soak", help="Verify nightly-memory soak evidence from the run ledger")
     soak.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl")
@@ -984,7 +989,30 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "status":
         snapshot = build_status_snapshot(artifact_root=args.artifact_root)
-        print(render_status(snapshot).rstrip())
+        release_gate = None
+        current_commit = None
+        current_dirty = None
+        if args.release_gate:
+            current_commit = _current_git_commit()
+            current_dirty = _current_git_dirty()
+            release_gate = build_soak_report(
+                state_root=args.state_root,
+                since_hours=args.since_hours,
+                min_successful=args.min_successful,
+                require_timer=True,
+                required_source="systemd",
+                required_commit=current_commit,
+                require_clean=True,
+                timer_name=args.timer_name,
+            )
+        print(
+            render_status(
+                snapshot,
+                release_gate=release_gate,
+                current_commit=current_commit,
+                current_dirty=current_dirty,
+            ).rstrip()
+        )
         return 0
 
     if args.command == "soak":
