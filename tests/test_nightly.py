@@ -103,6 +103,7 @@ def _broken_harvest(*_args, **_kwargs) -> HarvestResult:  # type: ignore[no-unty
 
 def test_run_nightly_memory_stages_reports_compacts_and_records_ledger(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(nightly_module, "harvest_recent", _fake_harvest)
+    monkeypatch.setattr(nightly_module, "_current_git_commit", lambda: "abc1234")
     live_root = _live_root(tmp_path)
     artifact_root = tmp_path / "artifacts"
     archive_root = tmp_path / "archive"
@@ -145,6 +146,7 @@ def test_run_nightly_memory_stages_reports_compacts_and_records_ledger(tmp_path:
     assert ledger[0]["command"] == "nightly"
     assert ledger[0]["success"] is True
     assert ledger[0]["artifact_id"] == result.artifact_id
+    assert ledger[0]["git_commit"] == "abc1234"
     assert ledger[0]["sessions"] == 1
     assert ledger[0]["redactions"] == 1
     assert json.loads((state_root / "state.json").read_text(encoding="utf-8"))["last_run"]["command"] == "nightly"
@@ -154,6 +156,7 @@ def test_run_nightly_memory_noops_without_offline_markers_and_does_not_create_ar
     tmp_path: Path, monkeypatch
 ) -> None:
     monkeypatch.setattr(nightly_module, "harvest_recent", _empty_harvest)
+    monkeypatch.setattr(nightly_module, "_current_git_commit", lambda: "def5678")
     live_root = _live_root(tmp_path)
     artifact_root = tmp_path / "artifacts"
     state_root = tmp_path / "state"
@@ -192,6 +195,7 @@ def test_run_nightly_memory_noops_without_offline_markers_and_does_not_create_ar
     assert ledger[0]["artifact_dir"] is None
     assert ledger[0]["proposals"] == 0
     assert ledger[0]["run_source"] == "manual"
+    assert ledger[0]["git_commit"] == "def5678"
 
 
 def test_run_nightly_memory_records_sanitized_run_source(tmp_path: Path, monkeypatch) -> None:
@@ -250,6 +254,7 @@ def test_run_nightly_memory_rejects_concurrent_run_before_writes(tmp_path: Path,
 
 def test_run_nightly_memory_records_failed_run_when_pipeline_crashes(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(nightly_module, "harvest_recent", _broken_harvest)
+    monkeypatch.setattr(nightly_module, "_current_git_commit", lambda: "fedcba9")
     monkeypatch.setenv("HERMES_ERSHOV_RUN_SOURCE", "systemd")
     live_root = _live_root(tmp_path)
     artifact_root = tmp_path / "artifacts"
@@ -276,6 +281,7 @@ def test_run_nightly_memory_records_failed_run_when_pipeline_crashes(tmp_path: P
     assert ledger[0]["success"] is False
     assert ledger[0]["artifact_status"] == "failed"
     assert ledger[0]["run_source"] == "systemd"
+    assert ledger[0]["git_commit"] == "fedcba9"
     assert ledger[0]["errors"] == ["RuntimeError: session harvest exploded"]
     assert "failed before completion" in ledger[0]["summary"]
     assert json.loads((state_root / "state.json").read_text(encoding="utf-8"))["last_run"]["success"] is False

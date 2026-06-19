@@ -74,10 +74,11 @@ For deterministic smoke tests, set `HERMES_ERSHOV_SESSION_DB=/path/to/state.db` 
 After a scheduled run has had time to fire, use `soak` as the release gate:
 
 ```bash
-ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer
+COMMIT="$(git -C ~/.hermes/plugins/hermes-ershov rev-parse --short HEAD)"
+ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT"
 ```
 
-It is read-only. It checks `runs.jsonl` for recent successful `nightly` runs, fails on recent nightly failures, and verifies the user systemd timer when `--require-timer` is set.
+It is read-only. It checks `runs.jsonl` for recent successful `nightly` runs, fails on recent nightly failures, verifies the user systemd timer when `--require-timer` is set, and can require the successful run to come from the installed systemd checkout/commit.
 
 ## What to expect
 

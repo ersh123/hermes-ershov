@@ -4,6 +4,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import os
 from pathlib import Path
+import subprocess
 from typing import Iterator
 
 try:
@@ -44,6 +45,7 @@ class NightlyMemoryResult:
     success: bool
     summary: str
     run_source: str
+    git_commit: str | None
 
 
 def _state_root(path: Path | None) -> Path:
@@ -76,6 +78,32 @@ def _run_source_from_env() -> str:
     return normalized[:64] or "manual"
 
 
+def _repo_root() -> Path:
+    here = Path(__file__).resolve()
+    for parent in here.parents:
+        if (parent / "pyproject.toml").exists() and (parent / "plugin.yaml").exists():
+            return parent
+    return here.parents[3]
+
+
+def _current_git_commit(repo_root: Path | None = None) -> str | None:
+    root = repo_root or _repo_root()
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "--short", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    commit = result.stdout.strip()
+    return commit or None
+
+
 @contextmanager
 def _exclusive_nightly_lock(lock_path: Path) -> Iterator[None]:
     if fcntl is None:
@@ -105,6 +133,7 @@ def _write_noop_digest(*, path: Path, result: NightlyMemoryResult) -> None:
         f"- Redactions: `{result.harvest_result.redaction_count}`",
         f"- Proposals: `{result.proposal_count}`",
         f"- Source bundle: `{result.source_bundle}`",
+        f"- Git commit: `{result.git_commit or 'unknown'}`",
         f"- Inbox digest: `{result.inbox_digest_path}`",
         "",
         "## Summary",
@@ -135,6 +164,7 @@ def _record_nightly_run(result: NightlyMemoryResult) -> None:
             "artifact_root": str(result.artifact_root),
             "live_root": str(result.live_root),
             "run_source": result.run_source,
+            "git_commit": result.git_commit,
             "summary": result.summary,
             "sessions": len(result.harvest_result.sessions),
             "redactions": result.harvest_result.redaction_count,
@@ -156,6 +186,7 @@ def _record_nightly_failure(
     live_root: Path,
     artifact_root: Path,
     run_source: str,
+    git_commit: str | None,
     error: BaseException,
 ) -> None:
     error_text = f"{type(error).__name__}: {error}"
@@ -169,6 +200,7 @@ def _record_nightly_failure(
             "artifact_root": str(artifact_root),
             "live_root": str(live_root),
             "run_source": run_source,
+            "git_commit": git_commit,
             "summary": f"nightly failed before completion: {error_text}",
             "sessions": 0,
             "redactions": 0,
@@ -202,6 +234,7 @@ def run_nightly_memory(
 
     resolved_state_root = _state_root(state_root)
     run_source = _run_source_from_env()
+    git_commit = _current_git_commit()
     with _exclusive_nightly_lock(resolved_state_root / "nightly.lock"):
         try:
             return _run_nightly_memory_locked(
@@ -216,6 +249,7 @@ def run_nightly_memory(
                 compact=compact,
                 include_weekly=include_weekly,
                 run_source=run_source,
+                git_commit=git_commit,
             )
         except Exception as exc:
             try:
@@ -224,12 +258,12 @@ def run_nightly_memory(
                     live_root=Path(live_root),
                     artifact_root=Path(artifact_root),
                     run_source=run_source,
+                    git_commit=git_commit,
                     error=exc,
                 )
             except Exception:
                 pass
             raise
-
 
 
 def _run_nightly_memory_locked(
@@ -245,6 +279,7 @@ def _run_nightly_memory_locked(
     compact: bool = True,
     include_weekly: bool = True,
     run_source: str | None = None,
+    git_commit: str | None = None,
 ) -> NightlyMemoryResult:
     if recent <= 0:
         raise ValueError("recent must be greater than 0")
@@ -254,6 +289,7 @@ def _run_nightly_memory_locked(
     archive_root = Path(archive_root) if archive_root is not None else artifact_root.parent / "archive"
     resolved_state_root = _state_root(state_root)
     run_source = run_source or _run_source_from_env()
+    git_commit = git_commit if git_commit is not None else _current_git_commit()
     source_bundle = _source_bundle_path(artifact_root)
 
     harvest = harvest_recent(
@@ -299,6 +335,7 @@ def _run_nightly_memory_locked(
             success=success,
             summary=summary,
             run_source=run_source,
+            git_commit=git_commit,
         )
         _write_noop_digest(path=digest_path, result=result)
         _record_nightly_run(result)
@@ -361,6 +398,7 @@ def _run_nightly_memory_locked(
         success=success,
         summary=summary,
         run_source=run_source,
+        git_commit=git_commit,
     )
     _record_nightly_run(result)
     return result
@@ -378,6 +416,7 @@ def render_nightly_memory(result: NightlyMemoryResult) -> str:
         f"- Artifact root: `{result.artifact_root}`",
         f"- Source bundle: `{result.source_bundle}`",
         f"- Run source: `{result.run_source}`",
+        f"- Git commit: `{result.git_commit or 'unknown'}`",
         f"- Digest: `{result.digest_path}`",
         f"- Inbox digest: `{result.inbox_digest_path}`",
         f"- Sessions harvested: `{len(result.harvest_result.sessions)}`",

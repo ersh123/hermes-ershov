@@ -31,10 +31,12 @@ class SoakReport:
     min_successful: int
     require_timer: bool
     required_source: str | None
+    required_commit: str | None
     allow_failures: bool
     total_nightly_runs: int
     recent_successful_nightly_runs: list[dict[str, Any]]
     source_matched_successful_nightly_runs: list[dict[str, Any]]
+    commit_matched_successful_nightly_runs: list[dict[str, Any]]
     recent_failed_nightly_runs: list[dict[str, Any]]
     timer: TimerProbe
     reasons: list[str]
@@ -70,6 +72,23 @@ def _normalize_source(value: object) -> str:
     text = str(value or "manual").strip().lower()
     normalized = "".join(char if char.isalnum() or char in {"-", "_", "."} else "-" for char in text)
     return normalized[:64] or "manual"
+
+
+def _normalize_commit(value: object) -> str | None:
+    text = str(value or "").strip().lower()
+    if not text:
+        return None
+    normalized = "".join(char for char in text if char.isalnum())
+    return normalized or None
+
+
+def _commit_matches(record: dict[str, Any], *, required_commit: str | None) -> bool:
+    if required_commit is None:
+        return True
+    commit = _normalize_commit(record.get("git_commit"))
+    if commit is None:
+        return False
+    return commit == required_commit or commit.startswith(required_commit) or required_commit.startswith(commit)
 
 
 def _run_systemctl(command: Sequence[str]) -> subprocess.CompletedProcess[str]:
@@ -109,6 +128,7 @@ def build_soak_report(
     min_successful: int = 1,
     require_timer: bool = False,
     required_source: str | None = None,
+    required_commit: str | None = None,
     timer_name: str = TIMER_NAME,
     allow_failures: bool = False,
     now: datetime | None = None,
@@ -119,6 +139,7 @@ def build_soak_report(
     if min_successful <= 0:
         raise ValueError("min-successful must be greater than 0")
     normalized_required_source = _normalize_source(required_source) if required_source is not None else None
+    normalized_required_commit = _normalize_commit(required_commit)
 
     resolved_state_root = Path(state_root) if state_root is not None else state_module.STATE_ROOT
     ledger_path = resolved_state_root / "runs.jsonl"
@@ -134,14 +155,22 @@ def build_soak_report(
         if normalized_required_source is None
         else [record for record in recent_successes if _normalize_source(record.get("run_source")) == normalized_required_source]
     )
+    commit_matched_successes = [
+        record for record in source_matched_successes if _commit_matches(record, required_commit=normalized_required_commit)
+    ]
     recent_failures = [record for record in recent_nightly if not bool(record.get("success"))]
 
     timer = _probe_timer(timer_name=timer_name, runner=runner, checked=require_timer)
     reasons: list[str] = []
-    if len(source_matched_successes) < min_successful:
-        source_suffix = "" if normalized_required_source is None else f" from source '{normalized_required_source}'"
+    if len(commit_matched_successes) < min_successful:
+        filters = []
+        if normalized_required_source is not None:
+            filters.append(f"source '{normalized_required_source}'")
+        if normalized_required_commit is not None:
+            filters.append(f"commit '{normalized_required_commit}'")
+        filter_suffix = "" if not filters else " matching " + " and ".join(filters)
         reasons.append(
-            f"found {len(source_matched_successes)} successful nightly run(s){source_suffix} in the last {since_hours}h; "
+            f"found {len(commit_matched_successes)} successful nightly run(s){filter_suffix} in the last {since_hours}h; "
             f"required {min_successful}"
         )
     if recent_failures and not allow_failures:
@@ -160,10 +189,12 @@ def build_soak_report(
         min_successful=min_successful,
         require_timer=require_timer,
         required_source=normalized_required_source,
+        required_commit=normalized_required_commit,
         allow_failures=allow_failures,
         total_nightly_runs=len(nightly_runs),
         recent_successful_nightly_runs=recent_successes,
         source_matched_successful_nightly_runs=source_matched_successes,
+        commit_matched_successful_nightly_runs=commit_matched_successes,
         recent_failed_nightly_runs=recent_failures,
         timer=timer,
         reasons=reasons,
@@ -176,7 +207,8 @@ def _format_record(record: dict[str, Any]) -> str:
     summary = str(record.get("summary") or "").strip()
     artifact_id = str(record.get("artifact_id") or "none")
     source = _normalize_source(record.get("run_source"))
-    parts = [f"{timestamp}", f"source={source}", f"status={status}", f"artifact={artifact_id}"]
+    commit = _normalize_commit(record.get("git_commit")) or "unknown"
+    parts = [f"{timestamp}", f"source={source}", f"commit={commit}", f"status={status}", f"artifact={artifact_id}"]
     if summary:
         parts.append(summary)
     return " | ".join(parts)
@@ -199,8 +231,10 @@ def render_soak_report(report: SoakReport) -> str:
         f"- Window: `{report.since_hours}h`",
         f"- Required successful nightly runs: `{report.min_successful}`",
         f"- Required run source: `{report.required_source or 'any'}`",
+        f"- Required git commit: `{report.required_commit or 'any'}`",
         f"- Successful nightly runs in window: `{len(report.recent_successful_nightly_runs)}`",
-        f"- Matching successful nightly runs: `{len(report.source_matched_successful_nightly_runs)}`",
+        f"- Source-matching successful nightly runs: `{len(report.source_matched_successful_nightly_runs)}`",
+        f"- Commit-matching successful nightly runs: `{len(report.commit_matched_successful_nightly_runs)}`",
         f"- Failed nightly runs in window: `{len(report.recent_failed_nightly_runs)}`",
         f"- Total nightly runs in ledger: `{report.total_nightly_runs}`",
         f"- Timer required: `{str(report.require_timer).lower()}`",
@@ -209,7 +243,7 @@ def render_soak_report(report: SoakReport) -> str:
         "## Latest successful nightly",
         "",
     ]
-    latest_successes = report.source_matched_successful_nightly_runs
+    latest_successes = report.commit_matched_successful_nightly_runs
     if latest_successes:
         lines.append(f"- {_format_record(latest_successes[-1])}")
     else:

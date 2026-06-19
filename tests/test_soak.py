@@ -25,7 +25,12 @@ def _write_ledger(state_root: Path, records: list[dict[str, object]]) -> None:
 
 
 def _nightly(
-    *, success: bool, hours_ago: int, status: str = "staged", run_source: str = "manual"
+    *,
+    success: bool,
+    hours_ago: int,
+    status: str = "staged",
+    run_source: str = "manual",
+    git_commit: str = "abc1234",
 ) -> dict[str, object]:
     return {
         "command": "nightly",
@@ -34,6 +39,7 @@ def _nightly(
         "artifact_id": "artifact-1" if success else None,
         "artifact_status": status,
         "run_source": run_source,
+        "git_commit": git_commit,
         "summary": "nightly staged proposals" if success else "nightly failed",
     }
 
@@ -120,6 +126,7 @@ def test_soak_report_can_require_successful_run_source(tmp_path: Path) -> None:
     assert report.required_source == "systemd"
     assert len(report.recent_successful_nightly_runs) == 2
     assert len(report.source_matched_successful_nightly_runs) == 1
+    assert len(report.commit_matched_successful_nightly_runs) == 1
     assert "Required run source: `systemd`" in render_soak_report(report)
     assert "source=systemd" in render_soak_report(report)
 
@@ -132,7 +139,51 @@ def test_soak_report_fails_when_required_source_is_missing(tmp_path: Path) -> No
 
     assert report.passed is False
     assert "source 'systemd'" in report.reasons[0]
-    assert "Matching successful nightly runs: `0`" in render_soak_report(report)
+    assert "Source-matching successful nightly runs: `0`" in render_soak_report(report)
+    assert "Commit-matching successful nightly runs: `0`" in render_soak_report(report)
+
+
+def test_soak_report_can_require_successful_git_commit(tmp_path: Path) -> None:
+    state_root = tmp_path / "state"
+    _write_ledger(
+        state_root,
+        [
+            _nightly(success=True, hours_ago=2, run_source="systemd", git_commit="old1111"),
+            _nightly(success=True, hours_ago=1, run_source="systemd", git_commit="new2222"),
+        ],
+    )
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_source="systemd",
+        required_commit="new2222",
+    )
+
+    assert report.passed is True
+    assert report.required_commit == "new2222"
+    assert len(report.recent_successful_nightly_runs) == 2
+    assert len(report.source_matched_successful_nightly_runs) == 2
+    assert len(report.commit_matched_successful_nightly_runs) == 1
+    output = render_soak_report(report)
+    assert "Required git commit: `new2222`" in output
+    assert "commit=new2222" in output
+
+
+def test_soak_report_fails_when_required_git_commit_is_missing(tmp_path: Path) -> None:
+    state_root = tmp_path / "state"
+    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, run_source="systemd", git_commit="old1111")])
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_source="systemd",
+        required_commit="new2222",
+    )
+
+    assert report.passed is False
+    assert "commit 'new2222'" in report.reasons[0]
+    assert "Commit-matching successful nightly runs: `0`" in render_soak_report(report)
 
 
 def test_soak_report_json_is_machine_readable(tmp_path: Path) -> None:
@@ -159,7 +210,7 @@ def test_soak_cli_returns_nonzero_when_gate_fails(tmp_path: Path, capsys) -> Non
 
 def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
     state_root = tmp_path / "state"
-    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, run_source="systemd")])
+    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234")])
 
     assert (
         main(
@@ -171,6 +222,8 @@ def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
                 "72",
                 "--require-source",
                 "systemd",
+                "--require-commit",
+                "abc1234",
                 "--json",
             ]
         )
@@ -180,3 +233,4 @@ def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
     payload = json.loads(capsys.readouterr().out)
     assert payload["passed"] is True
     assert payload["required_source"] == "systemd"
+    assert payload["required_commit"] == "abc1234"
