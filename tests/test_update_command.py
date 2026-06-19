@@ -107,7 +107,47 @@ def test_update_git_commands_have_timeout(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(update_module.subprocess, "run", timeout_run)
 
     with pytest.raises(RuntimeError, match="timed out after 60s"):
-        update_module._run_git(["fetch", "--prune", "origin"], cwd=tmp_path)
+        update_module._run_git(["fetch", "--prune", "origin"], cwd=tmp_path, timeout_seconds=60)
+
+
+def test_update_fetch_retries_one_timeout(monkeypatch, tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run_git(args, *, cwd, timeout_seconds=120):  # type: ignore[no-untyped-def]
+        calls.append(list(args))
+        if len(calls) == 1:
+            raise RuntimeError(f"git fetch --prune origin timed out after {timeout_seconds}s")
+        return subprocess.CompletedProcess(["git", *args], 0, "", "")
+
+    monkeypatch.setattr(update_module, "_run_git", fake_run_git)
+
+    update_module._fetch_remote(cwd=tmp_path, remote="origin", timeout_seconds=120, retries=1)
+
+    assert calls == [["fetch", "--prune", "origin"], ["fetch", "--prune", "origin"]]
+
+
+def test_update_fetch_does_not_retry_non_timeout_errors(monkeypatch, tmp_path: Path) -> None:
+    calls: list[list[str]] = []
+
+    def fake_run_git(args, *, cwd, timeout_seconds=120):  # type: ignore[no-untyped-def]
+        calls.append(list(args))
+        raise RuntimeError("fatal: authentication failed")
+
+    monkeypatch.setattr(update_module, "_run_git", fake_run_git)
+
+    with pytest.raises(RuntimeError, match="authentication failed"):
+        update_module._fetch_remote(cwd=tmp_path, remote="origin", timeout_seconds=120, retries=1)
+
+    assert calls == [["fetch", "--prune", "origin"]]
+
+
+def test_update_rejects_non_positive_git_timeout(tmp_path: Path) -> None:
+    repo, _remote = _init_repo(tmp_path)
+
+    result = handle(repo_root=repo, git_timeout_seconds=0)
+
+    assert result.success is False
+    assert "git-timeout-seconds" in result.message
 
 
 def test_update_verifier_uses_uv_ephemeral_env_for_pyproject(monkeypatch, tmp_path: Path) -> None:
@@ -147,10 +187,26 @@ def test_cli_update_wires_through_parser(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr("hermes_dreaming.cli.update_command", fake_update_command)
     monkeypatch.setattr("hermes_dreaming.cli.render_update_result", lambda result: f"rendered:{result.message}")
 
-    assert main(["update", "--check", "--remote", "upstream", "--branch", "dev", "--no-verify"]) == 0
+    assert (
+        main(
+            [
+                "update",
+                "--check",
+                "--remote",
+                "upstream",
+                "--branch",
+                "dev",
+                "--no-verify",
+                "--git-timeout-seconds",
+                "180",
+            ]
+        )
+        == 0
+    )
     assert captured["remote"] == "upstream"
     assert captured["branch"] == "dev"
     assert captured["check"] is True
     assert captured["verify"] is False
+    assert captured["git_timeout_seconds"] == 180
     assert captured["repo_root"].is_dir()
     assert (captured["repo_root"] / "src" / "hermes_dreaming").exists()

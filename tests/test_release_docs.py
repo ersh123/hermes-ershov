@@ -149,7 +149,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "230 tests" not in text, path
         assert "232 tests" not in text, path
         assert "233 tests" not in text, path
-        assert "235 tests" in text, path
+        assert "235 tests" not in text, path
+        assert "238 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -225,6 +226,10 @@ def test_release_docs_document_provider_doctor_safety() -> None:
     assert "provider-aware `soak`" in (REPO_ROOT / "docs" / "release-notes-v0.4.0.md").read_text(
         encoding="utf-8"
     )
+    assert "--git-timeout-seconds" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "timed-out `git fetch`" in (REPO_ROOT / "docs" / "release-notes-v0.4.0.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_release_docs_label_legacy_revert_evidence_as_degraded() -> None:
@@ -260,6 +265,10 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "required-provider mismatch checks",
         "CodeQL",
         "--min-successful 3 --strict-systemd",
+        "https://docs.pytest.org/en/8.3.x/explanation/goodpractices.html",
+        "https://hypothesis.readthedocs.io/en/latest/stateful.html",
+        "https://docs.github.com/actions/guides/building-and-testing-python",
+        "https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options",
     ):
         assert phrase in testing
     assert "docs/testing.md" in checklist

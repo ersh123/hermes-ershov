@@ -10,7 +10,8 @@ from pathlib import Path
 
 DEFAULT_REMOTE = "origin"
 DEFAULT_BRANCH = "main"
-DEFAULT_GIT_TIMEOUT_SECONDS = 60
+DEFAULT_GIT_TIMEOUT_SECONDS = 120
+DEFAULT_FETCH_RETRIES = 1
 
 
 @dataclass(slots=True)
@@ -59,8 +60,29 @@ def _run_git(
     return proc
 
 
-def _git_output(args: list[str], *, cwd: Path) -> str:
-    return _run_git(args, cwd=cwd).stdout.strip()
+def _git_output(args: list[str], *, cwd: Path, timeout_seconds: int = DEFAULT_GIT_TIMEOUT_SECONDS) -> str:
+    return _run_git(args, cwd=cwd, timeout_seconds=timeout_seconds).stdout.strip()
+
+
+def _fetch_remote(
+    *,
+    cwd: Path,
+    remote: str,
+    timeout_seconds: int = DEFAULT_GIT_TIMEOUT_SECONDS,
+    retries: int = DEFAULT_FETCH_RETRIES,
+) -> None:
+    attempts = max(0, retries) + 1
+    last_error: RuntimeError | None = None
+    for attempt in range(attempts):
+        try:
+            _run_git(["fetch", "--prune", remote], cwd=cwd, timeout_seconds=timeout_seconds)
+            return
+        except RuntimeError as exc:
+            last_error = exc
+            if "timed out after" not in str(exc) or attempt == attempts - 1:
+                raise
+    if last_error is not None:  # pragma: no cover - loop either returns or raises.
+        raise last_error
 
 
 def _verification_command(repo_root: Path, *, cache_dir: Path) -> list[str]:
@@ -118,12 +140,29 @@ def handle(
     branch: str = DEFAULT_BRANCH,
     check: bool = False,
     verify: bool = True,
+    git_timeout_seconds: int = DEFAULT_GIT_TIMEOUT_SECONDS,
 ) -> UpdateResult:
     repo_root = _discover_repo_root(repo_root)
+    if git_timeout_seconds <= 0:
+        return UpdateResult(
+            success=False,
+            repo_root=repo_root,
+            remote=remote,
+            branch=branch,
+            current_rev="unknown",
+            upstream_rev=None,
+            behind=0,
+            ahead=0,
+            dirty=False,
+            checked_only=check,
+            updated=False,
+            verified=False,
+            message="git-timeout-seconds must be greater than 0.",
+        )
 
     try:
-        current_rev = _git_output(["rev-parse", "HEAD"], cwd=repo_root)
-        dirty = bool(_git_output(["status", "--porcelain"], cwd=repo_root))
+        current_rev = _git_output(["rev-parse", "HEAD"], cwd=repo_root, timeout_seconds=git_timeout_seconds)
+        dirty = bool(_git_output(["status", "--porcelain"], cwd=repo_root, timeout_seconds=git_timeout_seconds))
     except Exception as exc:
         return UpdateResult(
             success=False,
@@ -159,10 +198,14 @@ def handle(
         )
 
     try:
-        _run_git(["fetch", "--prune", remote], cwd=repo_root)
+        _fetch_remote(cwd=repo_root, remote=remote, timeout_seconds=git_timeout_seconds)
         upstream_ref = f"{remote}/{branch}"
-        upstream_rev = _git_output(["rev-parse", upstream_ref], cwd=repo_root)
-        ahead_text = _git_output(["rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"], cwd=repo_root)
+        upstream_rev = _git_output(["rev-parse", upstream_ref], cwd=repo_root, timeout_seconds=git_timeout_seconds)
+        ahead_text = _git_output(
+            ["rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"],
+            cwd=repo_root,
+            timeout_seconds=git_timeout_seconds,
+        )
         ahead, behind = (int(part) for part in ahead_text.split())
     except Exception as exc:
         return UpdateResult(
@@ -257,12 +300,16 @@ def handle(
 
     pre_update_rev = current_rev
     try:
-        _run_git(["pull", "--ff-only", remote, branch], cwd=repo_root)
-        updated_rev = _git_output(["rev-parse", "HEAD"], cwd=repo_root)
-        upstream_rev = _git_output(["rev-parse", upstream_ref], cwd=repo_root)
-        refreshed_counts = _git_output(["rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"], cwd=repo_root)
+        _run_git(["pull", "--ff-only", remote, branch], cwd=repo_root, timeout_seconds=git_timeout_seconds)
+        updated_rev = _git_output(["rev-parse", "HEAD"], cwd=repo_root, timeout_seconds=git_timeout_seconds)
+        upstream_rev = _git_output(["rev-parse", upstream_ref], cwd=repo_root, timeout_seconds=git_timeout_seconds)
+        refreshed_counts = _git_output(
+            ["rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"],
+            cwd=repo_root,
+            timeout_seconds=git_timeout_seconds,
+        )
         ahead, behind = (int(part) for part in refreshed_counts.split())
-        dirty = bool(_git_output(["status", "--porcelain"], cwd=repo_root))
+        dirty = bool(_git_output(["status", "--porcelain"], cwd=repo_root, timeout_seconds=git_timeout_seconds))
     except Exception as exc:
         return UpdateResult(
             success=False,
@@ -296,7 +343,7 @@ def handle(
         if verify_proc.returncode != 0:
             rollback_error: str | None = None
             try:
-                _run_git(["reset", "--hard", pre_update_rev], cwd=repo_root)
+                _run_git(["reset", "--hard", pre_update_rev], cwd=repo_root, timeout_seconds=git_timeout_seconds)
             except Exception as rollback_exc:
                 rollback_error = str(rollback_exc)
             stderr = (verify_proc.stderr or "").strip()

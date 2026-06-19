@@ -92,6 +92,7 @@ hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successf
 hermes ershov update
 hermes ershov update --check
 hermes ershov update --no-verify
+hermes ershov update --git-timeout-seconds 180
 ```
 
 The update command is conservative on purpose:
@@ -101,6 +102,7 @@ The update command is conservative on purpose:
 - it refuses a dirty working tree
 - it refuses local-ahead or diverged history
 - it runs pytest after a real update unless you disable verification
+- it retries one timed-out `git fetch`; raise `--git-timeout-seconds` when GitHub or the VPS network is slow
 
 You can override the remote or branch if your install tracks something else:
 

@@ -36,7 +36,7 @@ from .commands.review import (
 )
 from .commands.status import build_status_snapshot, render_status
 from .commands.soak import build_soak_report, render_soak_report, render_soak_report_json
-from .commands.update import handle as update_command, render_update_result
+from .commands.update import DEFAULT_GIT_TIMEOUT_SECONDS, handle as update_command, render_update_result
 from .diffing import render_artifact_diff
 from .providers import (
     doctor_providers,
@@ -405,6 +405,12 @@ def build_parser() -> argparse.ArgumentParser:
     update.add_argument("--branch", default="main", help="Branch to fast-forward onto")
     update.add_argument("--check", action="store_true", help="Report update status without pulling")
     update.add_argument("--no-verify", action="store_true", help="Skip the post-update pytest smoke")
+    update.add_argument(
+        "--git-timeout-seconds",
+        type=int,
+        default=DEFAULT_GIT_TIMEOUT_SECONDS,
+        help="Timeout for each git command during update",
+    )
 
     providers = sub.add_parser("providers", help="Discover available analysis providers")
     providers_sub = providers.add_subparsers(dest="providers_command", required=True)
@@ -1189,6 +1195,7 @@ def main(argv: list[str] | None = None) -> int:
             branch=args.branch,
             check=args.check,
             verify=not args.no_verify,
+            git_timeout_seconds=args.git_timeout_seconds,
         )
         print(render_update_result(result).rstrip())
         _record_cli_run(

@@ -2,6 +2,15 @@
 
 This project treats test coverage as release evidence, not just a percentage.
 
+## Practice baseline
+
+The matrix follows the current public docs for:
+
+- pytest good integration practices: https://docs.pytest.org/en/8.3.x/explanation/goodpractices.html
+- Hypothesis property-based and stateful testing: https://hypothesis.readthedocs.io/en/latest/stateful.html
+- GitHub Actions Python build/test workflows: https://docs.github.com/actions/guides/building-and-testing-python
+- GitHub CodeQL workflow configuration: https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options
+
 ## Local gates
 
 Run these before a release-facing change:
