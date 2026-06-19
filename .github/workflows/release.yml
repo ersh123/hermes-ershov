@@ -48,7 +48,35 @@ jobs:
           /tmp/ershov-release-smoke/bin/ershov providers list
           /tmp/ershov-release-smoke/bin/ershov providers doctor --provider offline-marker --strict
           /tmp/ershov-release-smoke/bin/ershov providers doctor --provider offline-marker --from-systemd --strict
+          mkdir -p /tmp/ershov-release-smoke-state
+          printf '%s\n' 'HERMES_ERSHOV_PROVIDER="offline-marker"' 'DEEPSEEK_API_KEY="sk-release-do-not-print"' > /tmp/ershov-release-nightly.env
+          if /tmp/ershov-release-smoke/bin/ershov providers doctor --provider deepseek --env-file /tmp/ershov-release-nightly.env --fix-plan --strict > /tmp/ershov-release-doctor.txt; then
+            echo "expected deepseek env-file doctor to fail while wheel lacks the llm extra or provider selector mismatches"
+            exit 1
+          fi
+          grep -q 'DEEPSEEK_API_KEY=<secret>' /tmp/ershov-release-doctor.txt
+          if grep -q 'sk-release-do-not-print' /tmp/ershov-release-doctor.txt; then
+            echo "secret leaked from providers doctor fix-plan"
+            exit 1
+          fi
           /tmp/ershov-release-smoke/bin/ershov status --release-gate --state-root /tmp/ershov-release-smoke-state
+          /tmp/ershov-release-smoke/bin/ershov status --release-gate --state-root /tmp/ershov-release-smoke-state --require-provider deepseek --provider-env-file /tmp/ershov-release-nightly.env --fix-plan > /tmp/ershov-release-status.txt
+          grep -q 'Stable fix plan:' /tmp/ershov-release-status.txt
+          grep -q 'DEEPSEEK_API_KEY=<secret>' /tmp/ershov-release-status.txt
+          if grep -q 'sk-release-do-not-print' /tmp/ershov-release-status.txt; then
+            echo "secret leaked from status release-gate fix-plan"
+            exit 1
+          fi
+          if /tmp/ershov-release-smoke/bin/ershov soak --state-root /tmp/ershov-release-smoke-state --since-hours 30 --min-successful 1 --require-timer --require-source systemd --require-commit "$GITHUB_SHA" --require-clean --require-provider deepseek --provider-env-file /tmp/ershov-release-nightly.env --fix-plan > /tmp/ershov-release-soak.txt; then
+            echo "expected installed wheel soak gate to fail without scheduled-run evidence"
+            exit 1
+          fi
+          grep -q '## Fix plan' /tmp/ershov-release-soak.txt
+          grep -q 'DEEPSEEK_API_KEY=<secret>' /tmp/ershov-release-soak.txt
+          if grep -q 'sk-release-do-not-print' /tmp/ershov-release-soak.txt; then
+            echo "secret leaked from soak fix-plan"
+            exit 1
+          fi
           /tmp/ershov-release-smoke/bin/ershov revert --help
           /tmp/ershov-release-smoke/bin/mnemos --help
           /tmp/ershov-release-smoke/bin/nightmem --help

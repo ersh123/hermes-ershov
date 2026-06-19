@@ -22,7 +22,13 @@ def test_release_workflow_build_job_uses_ci_strength_gates() -> None:
         "python scripts/hermes_plugin_smoke.py",
         "python -m build",
         "ershov providers doctor --provider offline-marker --strict",
+        "ershov providers doctor --provider deepseek --env-file /tmp/ershov-release-nightly.env --fix-plan --strict",
         "ershov status --release-gate",
+        "ershov status --release-gate --state-root /tmp/ershov-release-smoke-state --require-provider deepseek --provider-env-file /tmp/ershov-release-nightly.env --fix-plan",
+        "ershov soak --state-root /tmp/ershov-release-smoke-state --since-hours 30 --min-successful 1 --require-timer --require-source systemd",
+        "DEEPSEEK_API_KEY=<secret>",
+        "sk-release-do-not-print",
+        "secret leaked from soak fix-plan",
         "ershov revert --help",
     ):
         assert gate in text

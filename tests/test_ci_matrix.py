@@ -26,7 +26,13 @@ def test_ci_workflow_shows_release_shaped_test_matrix() -> None:
         "/tmp/ershov-wheel-smoke/bin/ershov --help",
         "/tmp/ershov-sdist-smoke/bin/ershov --help",
         "providers doctor --provider offline-marker --strict",
+        "providers doctor --provider deepseek --env-file /tmp/ershov-wheel-nightly.env --fix-plan --strict",
         "status --release-gate",
+        "status --release-gate --state-root /tmp/ershov-wheel-smoke-state --require-provider deepseek --provider-env-file /tmp/ershov-wheel-nightly.env --fix-plan",
+        "soak --state-root /tmp/ershov-wheel-smoke-state --since-hours 30 --min-successful 1 --require-timer --require-source systemd",
+        "DEEPSEEK_API_KEY=<secret>",
+        "sk-ci-do-not-print",
+        "secret leaked from soak fix-plan",
     ):
         assert gate in text
 
