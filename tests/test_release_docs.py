@@ -293,6 +293,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "ClusterFuzzLite wiring",
         "PyPI Trusted Publishing",
         "GitHub artifact attestations",
+        "GitHub Release asset attestations",
         "release-event-only PyPI publishing",
         "SARIF uploaded to code scanning",
         "persist-credentials: false",

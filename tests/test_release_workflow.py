@@ -50,8 +50,14 @@ def test_release_workflow_uploads_assets_only_for_release_event() -> None:
     assert "contents: write" not in build_chunk
     assert "if: github.event_name == 'release'" in upload_chunk
     assert "permissions:\n      contents: write" in upload_chunk
+    assert "id-token: write" not in build_chunk
+    assert "attestations: write" not in build_chunk
+    assert "id-token: write" in upload_chunk
+    assert "attestations: write" in upload_chunk
     assert "uses: actions/upload-artifact@" in build_chunk
     assert "uses: actions/download-artifact@" in upload_chunk
+    assert "uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0" in upload_chunk
+    assert "subject-path: dist/*" in upload_chunk
     assert 'gh release upload "$GITHUB_REF_NAME" dist/* --clobber' in upload_chunk
 
 
@@ -62,7 +68,6 @@ def test_release_workflow_does_not_publish_to_package_indexes_or_create_releases
         "twine",
         "pypa/gh-action-pypi-publish",
         "pypi-token",
-        "id-token: write",
         "gh release create",
     )
     for phrase in forbidden:

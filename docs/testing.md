@@ -80,6 +80,7 @@ GitHub Actions runs the same release-shaped matrix:
 - Dependabot weekly version-update checks for GitHub Actions and uv-managed Python package metadata
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
 - ClusterFuzzLite PR/manual fuzzing for the Python safety harness through `.clusterfuzzlite/` and `fuzzers/ershov_safety_fuzzer.py`
+- GitHub Release asset attestations on release-event uploads
 - PyPI Trusted Publishing through OIDC on GitHub `release` events only, with GitHub artifact attestations for the built distributions
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps
 - workflow action pinning to full commit SHAs with adjacent version comments
@@ -87,7 +88,7 @@ GitHub Actions runs the same release-shaped matrix:
 - workflow install hardening: CI and release workflows avoid `pip install` and use the committed lockfile
 - workflow-level concurrency for repeatable analysis jobs and job-level `timeout-minutes` on every GitHub Actions job
 - job-scoped write permissions for SARIF/code-scanning uploads; top-level workflow permissions stay read-only unless the workflow has no narrower safe option
-- release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
+- release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`, `id-token: write`, and `attestations: write`
 - publish workflow build runs under read-only repository permissions; release-event-only PyPI publishing is isolated to a `pypi` environment job with `id-token: write` and `attestations: write`
 
 ## Coverage shape
