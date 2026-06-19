@@ -41,7 +41,7 @@ In the current offline fixture, the demo shows three target kinds:
 - `reject` requires a non-empty reason at the command layer; the same rule applies to any library or plugin caller
 - `nightly` is an orchestration loop only: it harvests, stages, writes digests, compacts terminal artifacts, and records the run ledger. It never applies live memory.
 - `install-systemd` only installs a timer/service/wrapper for `nightly`; the timer runs outside the Hermes gateway process and does not restart Hermes.
-- `soak` is read-only: it inspects the run ledger and optionally the user systemd timer state, expected timer unit, next scheduled elapse, run source, git commit, and clean-checkout marker. It does not create artifacts, run providers, or mutate live memory.
+- `soak` is read-only: it inspects the run ledger and optionally the user systemd timer state, expected timer unit, next scheduled elapse, run source, git commit, clean-checkout marker, and timer-visible provider readiness. `--fix-plan` prints remediation commands and `<secret>` placeholders only. It does not create artifacts, run providers, print secret values, or mutate live memory.
 - Provider output is not trusted just because it is valid JSON: every proposal needs provenance, and `source_quote` / `snippet` must match the cited source line before staging.
 
 ## Revert in plain English

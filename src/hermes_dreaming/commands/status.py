@@ -8,7 +8,7 @@ from typing import Any
 from .. import dreams_md as dreams_md_module
 from .. import state as state_module
 from ..analyze import list_artifacts
-from .soak import SoakReport
+from .soak import SoakReport, render_provider_probe_fix_plan
 
 
 @dataclass(slots=True)
@@ -164,6 +164,7 @@ def render_release_gate_status(
     *,
     current_commit: str | None = None,
     current_dirty: bool | None = None,
+    include_fix_plan: bool = False,
 ) -> str:
     extra_reasons: list[str] = []
     if current_commit is None:
@@ -195,6 +196,11 @@ def render_release_gate_status(
             lines.append(f"- {reason}")
     else:
         lines.extend(["", "Stable blockers:", "- none"])
+
+    if include_fix_plan:
+        fix_plan = render_provider_probe_fix_plan(report)
+        if fix_plan:
+            lines.extend(["", "Stable fix plan:", fix_plan.rstrip()])
     return "\n".join(lines)
 
 
@@ -204,6 +210,7 @@ def render_status(
     release_gate: SoakReport | None = None,
     current_commit: str | None = None,
     current_dirty: bool | None = None,
+    include_fix_plan: bool = False,
 ) -> str:
     lines = [
         "# Hermes Ershov status",
@@ -234,5 +241,12 @@ def render_status(
         ]
     )
     if release_gate is not None:
-        lines.append(render_release_gate_status(release_gate, current_commit=current_commit, current_dirty=current_dirty))
+        lines.append(
+            render_release_gate_status(
+                release_gate,
+                current_commit=current_commit,
+                current_dirty=current_dirty,
+                include_fix_plan=include_fix_plan,
+            )
+        )
     return "\n".join(lines) + "\n"

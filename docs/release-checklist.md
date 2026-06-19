@@ -46,6 +46,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Smoke `ershov install-cron`
 - [ ] Smoke `ershov install-systemd --dry-run`
 - [ ] After a real scheduled run, smoke the fast RC gate: `hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd`
+- [ ] When provider readiness is blocked, smoke the secret-safe remediation output: `hermes ershov status --release-gate --state-root ~/.hermes/ershov --require-provider deepseek --fix-plan`
 - [ ] Before public stable promotion, smoke the default stable gate: `hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd`
 - [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix

@@ -66,6 +66,8 @@ If this deployment is meant to run DeepSeek, require that provider explicitly:
 
 ```bash
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd --require-provider deepseek
+hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd --require-provider deepseek --fix-plan
+hermes ershov status --release-gate --state-root ~/.hermes/ershov --require-provider deepseek --fix-plan
 ```
 
 Manual starts prove the service command works. `--require-timer` checks that the

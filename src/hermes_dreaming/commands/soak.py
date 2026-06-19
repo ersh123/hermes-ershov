@@ -8,11 +8,12 @@ import subprocess
 from typing import Any, Callable, Sequence
 
 from .. import state as state_module
-from ..providers import ProviderDoctorRow, doctor_providers, load_env_files
+from ..providers import ProviderDoctorRow, doctor_providers, load_env_files, render_provider_fix_plan
 from .install_systemd import SERVICE_NAME, TIMER_NAME, default_env_files
 
 Runner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 MIN_COMMIT_MATCH_CHARS = 7
+FIX_PLAN_PROVIDERS = {"offline-marker", "openai-compatible", "deepseek", "openrouter", "ollama"}
 
 
 @dataclass(slots=True)
@@ -389,7 +390,30 @@ def _format_record(record: dict[str, Any]) -> str:
     return " | ".join(parts)
 
 
-def render_soak_report(report: SoakReport) -> str:
+def _provider_fix_plan_row(report: SoakReport) -> ProviderDoctorRow | None:
+    if not report.provider.checked or report.provider.readiness == "ready":
+        return None
+    provider_name = (report.provider.expected_provider or report.provider.configured_provider or "").strip()
+    if provider_name not in FIX_PLAN_PROVIDERS:
+        return None
+    return ProviderDoctorRow(
+        name=provider_name,
+        kind="provider",
+        readiness=report.provider.readiness or "blocked",
+        checks=report.provider.checks or "",
+        notes=report.provider.notes or "",
+    )
+
+
+def render_provider_probe_fix_plan(report: SoakReport) -> str:
+    row = _provider_fix_plan_row(report)
+    if row is None:
+        return ""
+    env_files = [Path(path) for path in report.provider.env_files]
+    return render_provider_fix_plan([row], env_files=env_files)
+
+
+def render_soak_report(report: SoakReport, *, include_fix_plan: bool = False) -> str:
     timer_state = "not checked"
     if report.timer.checked:
         timer_state = (
@@ -453,6 +477,11 @@ def render_soak_report(report: SoakReport) -> str:
     else:
         for reason in report.reasons:
             lines.append(f"- FAIL: {reason}")
+
+    if include_fix_plan:
+        fix_plan = render_provider_probe_fix_plan(report)
+        if fix_plan:
+            lines.extend(["", "## Fix plan", "", fix_plan.rstrip()])
     return "\n".join(lines).rstrip() + "\n"
 
 

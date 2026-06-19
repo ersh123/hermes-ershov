@@ -329,6 +329,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Where artifacts are stored (default: STATE_ROOT/artifacts with --state-root, otherwise ./.ershov/artifacts)",
     )
     status.add_argument("--release-gate", action="store_true", help="Include the strict systemd stable-release gate status")
+    status.add_argument("--fix-plan", action="store_true", help="Print secret-safe release-gate remediation steps")
     status.add_argument("--state-root", type=Path, default=None, help="State root containing state.json, runs.jsonl, and ERSHOV.md")
     status.add_argument(
         "--since-hours",
@@ -395,6 +396,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     soak.add_argument("--allow-failures", action="store_true", help="Do not fail when failed nightly runs exist inside the window")
     soak.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    soak.add_argument("--fix-plan", action="store_true", help="Print secret-safe remediation steps for blocked provider readiness")
 
     report_card = sub.add_parser("report-card", help="Render a redacted shareable artifact summary")
     report_card.add_argument("artifact", type=Path, help="Artifact directory")
@@ -1082,6 +1084,8 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "status":
+        if args.fix_plan and not args.release_gate:
+            parser.error("status --fix-plan requires --release-gate")
         state_root = Path(args.state_root) if args.state_root is not None else None
         artifact_root = args.artifact_root
         if artifact_root is None:
@@ -1119,11 +1123,14 @@ def main(argv: list[str] | None = None) -> int:
                 release_gate=release_gate,
                 current_commit=current_commit,
                 current_dirty=current_dirty,
+                include_fix_plan=args.fix_plan,
             ).rstrip()
         )
         return 0
 
     if args.command == "soak":
+        if args.json and args.fix_plan:
+            parser.error("soak --fix-plan cannot be combined with --json")
         default_since_hours = STABLE_GATE_SINCE_HOURS if args.strict_systemd else DEFAULT_SOAK_SINCE_HOURS
         default_min_successful = STABLE_GATE_MIN_SUCCESSFUL if args.strict_systemd else DEFAULT_SOAK_MIN_SUCCESSFUL
         since_hours = args.since_hours if args.since_hours is not None else default_since_hours
@@ -1165,7 +1172,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         except ValueError as exc:
             parser.error(str(exc))
-        print((render_soak_report_json(report) if args.json else render_soak_report(report)).rstrip())
+        print((render_soak_report_json(report) if args.json else render_soak_report(report, include_fix_plan=args.fix_plan)).rstrip())
         return 0 if report.passed else 1
 
     if args.command == "report-card":

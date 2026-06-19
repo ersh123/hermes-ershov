@@ -5,6 +5,8 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import pytest
+
 from hermes_dreaming import cli as cli_module
 from hermes_dreaming.cli import main
 from hermes_dreaming.commands.install_systemd import SERVICE_NAME, TIMER_NAME
@@ -190,6 +192,34 @@ def test_soak_report_blocks_when_timer_provider_does_not_match_requirement(tmp_p
     assert "configured provider: offline-marker; expected provider: deepseek" in report.reasons[-1]
     assert report.reasons[-1].count("configured provider: offline-marker") == 1
     assert report.reasons[-1].count("expected provider: deepseek") == 1
+
+
+def test_soak_fix_plan_is_secret_safe_for_blocked_provider(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    secret_value = "sk-soak-do-not-print"
+    state_root = tmp_path / "state"
+    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, status="no-op")])
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text(
+        f'HERMES_ERSHOV_PROVIDER="offline-marker"\nDEEPSEEK_API_KEY="{secret_value}"\n',
+        encoding="utf-8",
+    )
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_provider="deepseek",
+        provider_env_files=[env_file],
+    )
+    rendered = render_soak_report(report, include_fix_plan=True)
+
+    assert report.passed is False
+    assert "## Fix plan" in rendered
+    assert "# Hermes Ershov provider fix plan" in rendered
+    assert f"`{env_file}`" in rendered
+    assert "HERMES_ERSHOV_PROVIDER=deepseek" in rendered
+    assert "DEEPSEEK_API_KEY=<secret>" in rendered
+    assert secret_value not in rendered
 
 
 def test_soak_report_fails_when_required_timer_points_to_wrong_unit(tmp_path: Path) -> None:
@@ -497,6 +527,14 @@ def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
     assert payload["required_source"] == "systemd"
     assert payload["required_commit"] == "abc1234"
     assert payload["require_clean"] is True
+
+
+def test_soak_cli_fix_plan_rejects_json(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["soak", "--json", "--fix-plan"])
+
+    assert exc_info.value.code == 2
+    assert "soak --fix-plan cannot be combined with --json" in capsys.readouterr().err
 
 
 def test_soak_cli_strict_systemd_fills_release_gate_defaults(tmp_path: Path, monkeypatch, capsys) -> None:

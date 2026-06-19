@@ -80,6 +80,7 @@ hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successf
 It is read-only. It checks `runs.jsonl` for recent successful `nightly` runs, fails on recent nightly failures, verifies the user systemd timer when `--require-timer` is set, and can require the successful run to come from the installed systemd checkout/commit.
 The timer check requires an enabled, active, loaded timer pointing at `hermes-ershov-nightly.service` with a next scheduled elapse.
 Use `--strict-systemd` as the release gate so dirty current checkouts, dirty scheduled-run evidence, wrong runners, wrong commits, and weak timer states cannot count as stable evidence.
+When provider readiness is blocked, add `--require-provider deepseek --fix-plan` to `soak` or `status --release-gate` to print secret-safe remediation steps without changing files or printing key values.
 The one-night command above is a fast release-candidate smoke. For public stable promotion, require several scheduled nights; plain `--strict-systemd` defaults to this gate:
 
 ```bash

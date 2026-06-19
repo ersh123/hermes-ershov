@@ -5,6 +5,8 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from hermes_dreaming.commands.install_systemd import SERVICE_NAME
 from hermes_dreaming.commands.soak import build_soak_report
 from hermes_dreaming.commands.status import build_status_snapshot, render_status
@@ -132,6 +134,64 @@ def test_status_release_gate_shows_timer_provider_readiness(tmp_path: Path, monk
     assert "readiness=blocked" in output
     assert "DEEPSEEK_API_KEY: missing" in output
     assert "timer provider deepseek is not ready" in output
+
+
+def test_status_release_gate_fix_plan_is_secret_safe(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    secret_value = "sk-status-do-not-print"
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+    state_root = tmp_path / "state"
+    _write_ledger(
+        state_root,
+        [
+            {
+                "command": "nightly",
+                "success": True,
+                "timestamp": "2026-06-19T10:00:00Z",
+                "artifact_status": "no-op",
+                "run_source": "systemd",
+                "git_commit": "abc1234",
+                "git_dirty": False,
+            }
+        ],
+    )
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text(
+        f'HERMES_ERSHOV_PROVIDER="offline-marker"\nDEEPSEEK_API_KEY="{secret_value}"\n',
+        encoding="utf-8",
+    )
+
+    snapshot = build_status_snapshot(
+        artifact_root=artifact_root,
+        state_path=state_root / "state.json",
+        ledger_path=state_root / "runs.jsonl",
+        diary_path=state_root / "ERSHOV.md",
+    )
+    gate = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_source="systemd",
+        required_commit="abc1234",
+        require_clean=True,
+        required_provider="deepseek",
+        provider_env_files=[env_file],
+    )
+
+    output = render_status(
+        snapshot,
+        release_gate=gate,
+        current_commit="abc1234",
+        current_dirty=False,
+        include_fix_plan=True,
+    )
+
+    assert "Stable fix plan:" in output
+    assert "# Hermes Ershov provider fix plan" in output
+    assert f"`{env_file}`" in output
+    assert "HERMES_ERSHOV_PROVIDER=deepseek" in output
+    assert "DEEPSEEK_API_KEY=<secret>" in output
+    assert secret_value not in output
 
 
 def test_status_release_gate_blocks_dirty_current_checkout(tmp_path: Path) -> None:
@@ -376,3 +436,11 @@ def test_status_cli_release_gate_forwards_required_provider_and_env_file(
     assert captured["required_provider"] == "deepseek"
     assert captured["provider_env_files"] == [env_file]
     assert "Stable release gate:" in capsys.readouterr().out
+
+
+def test_status_cli_fix_plan_requires_release_gate(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["status", "--fix-plan"])
+
+    assert exc_info.value.code == 2
+    assert "status --fix-plan requires --release-gate" in capsys.readouterr().err
