@@ -54,6 +54,12 @@ After the first scheduled run has actually fired, verify it with:
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd
 ```
 
+If this deployment is meant to run DeepSeek, require that provider explicitly:
+
+```bash
+hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd --require-provider deepseek
+```
+
 Manual starts prove the service command works. `--require-timer` checks that the
 user timer is enabled, active, loaded, points at `hermes-ershov-nightly.service`,
 and has a next scheduled elapse. The stricter `--require-source systemd` gate
@@ -63,8 +69,9 @@ released. Commit matches require at least 7 git hash characters on both sides,
 so a too-short historical ledger prefix cannot satisfy the gate. `--require-clean`
 rejects runs produced by a dirty installed checkout.
 `--strict-systemd` applies those release gates and auto-detects the current
-checkout commit. It refuses a dirty current git checkout; if the checkout is not
-a git repo, pass `--require-commit`.
+checkout commit. It also reads the timer-visible provider env files and blocks
+when the configured provider is not locally ready. It refuses a dirty current git
+checkout; if the checkout is not a git repo, pass `--require-commit`.
 A passing one-night `soak` after the real schedule fires is the minimum release-candidate
 evidence. For public stable promotion, require several scheduled nights; the
 strict shortcut defaults to this gate when no window overrides are passed:

@@ -134,6 +134,62 @@ def test_soak_report_can_require_healthy_systemd_timer(tmp_path: Path) -> None:
     ]
 
 
+def test_soak_report_blocks_when_timer_provider_key_is_missing(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    state_root = tmp_path / "state"
+    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, status="no-op")])
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                'HERMES_ERSHOV_PROVIDER="deepseek"',
+                'HERMES_ERSHOV_MODEL="deepseek-v4-flash"',
+                'HERMES_ERSHOV_BASE_URL="https://api.deepseek.com/v1"',
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        check_provider=True,
+        provider_env_files=[env_file],
+    )
+    rendered = render_soak_report(report)
+
+    assert report.passed is False
+    assert report.provider.checked is True
+    assert report.provider.configured_provider == "deepseek"
+    assert report.provider.readiness == "blocked"
+    assert "DEEPSEEK_API_KEY: missing" in report.reasons[-1]
+    assert "Timer provider:" in rendered
+    assert "configured=deepseek" in rendered
+    assert "DEEPSEEK_API_KEY: missing" in rendered
+    assert "deepseek-v4-flash" not in rendered
+
+
+def test_soak_report_blocks_when_timer_provider_does_not_match_requirement(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    state_root = tmp_path / "state"
+    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, status="no-op")])
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text('HERMES_ERSHOV_PROVIDER="offline-marker"\n', encoding="utf-8")
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_provider="deepseek",
+        provider_env_files=[env_file],
+    )
+
+    assert report.passed is False
+    assert report.provider.expected_provider == "deepseek"
+    assert report.provider.configured_provider == "offline-marker"
+    assert "configured provider: offline-marker; expected provider: deepseek" in report.reasons[-1]
+
+
 def test_soak_report_fails_when_required_timer_points_to_wrong_unit(tmp_path: Path) -> None:
     state_root = tmp_path / "state"
     _write_ledger(state_root, [_nightly(success=True, hours_ago=2, status="no-op")])
@@ -484,6 +540,9 @@ def test_soak_cli_strict_systemd_fills_release_gate_defaults(tmp_path: Path, mon
     assert captured["required_commit"] == "abc1234"
     assert captured["require_clean"] is True
     assert captured["allow_failures"] is False
+    assert captured["check_provider"] is True
+    assert captured["required_provider"] is None
+    assert captured["provider_env_files"] is None
 
 
 def test_soak_cli_strict_systemd_preserves_explicit_one_night_smoke_overrides(
@@ -537,6 +596,7 @@ def test_soak_cli_strict_systemd_preserves_explicit_one_night_smoke_overrides(
     assert captured["require_timer"] is True
     assert captured["required_source"] == "systemd"
     assert captured["require_clean"] is True
+    assert captured["check_provider"] is True
 
 
 def test_soak_cli_strict_systemd_preserves_min_successful_promotion_gate(
@@ -595,6 +655,7 @@ def test_soak_cli_strict_systemd_preserves_min_successful_promotion_gate(
     assert captured["required_source"] == "systemd"
     assert captured["required_commit"] == "abc1234"
     assert captured["require_clean"] is True
+    assert captured["check_provider"] is True
 
 
 def test_soak_cli_strict_systemd_rejects_allow_failures(tmp_path: Path) -> None:

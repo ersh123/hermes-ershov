@@ -142,7 +142,11 @@ def test_release_docs_use_current_test_count() -> None:
         assert "222 tests" not in text, path
         assert "223 tests" not in text, path
         assert "224 tests" not in text, path
-        assert "225 tests" in text, path
+        assert "225 tests" not in text, path
+        assert "226 tests" not in text, path
+        assert "227 tests" not in text, path
+        assert "228 tests" not in text, path
+        assert "229 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -198,6 +202,11 @@ def test_release_docs_document_provider_doctor_safety() -> None:
     assert "without printing secret values" in (REPO_ROOT / "docs" / "install-update.md").read_text(
         encoding="utf-8"
     )
+    assert "--require-provider deepseek" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "offline-marker drift" in (REPO_ROOT / "CHANGELOG.md").read_text(encoding="utf-8")
+    assert "provider-aware `soak`" in (REPO_ROOT / "docs" / "release-notes-v0.4.0.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_release_docs_label_legacy_revert_evidence_as_degraded() -> None:
@@ -230,6 +239,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "local markdown link/image guards",
         "release workflow guards",
         "state-root scoped",
+        "required-provider mismatch checks",
         "CodeQL",
         "--min-successful 3 --strict-systemd",
     ):

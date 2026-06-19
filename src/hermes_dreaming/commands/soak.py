@@ -8,7 +8,8 @@ import subprocess
 from typing import Any, Callable, Sequence
 
 from .. import state as state_module
-from .install_systemd import SERVICE_NAME, TIMER_NAME
+from ..providers import ProviderDoctorRow, doctor_providers, load_env_files
+from .install_systemd import SERVICE_NAME, TIMER_NAME, default_env_files
 
 Runner = Callable[[Sequence[str]], subprocess.CompletedProcess[str]]
 MIN_COMMIT_MATCH_CHARS = 7
@@ -23,6 +24,18 @@ class TimerProbe:
     load_state: str | None = None
     unit: str | None = None
     next_elapse: str | None = None
+    error: str | None = None
+
+
+@dataclass(slots=True)
+class ProviderProbe:
+    checked: bool
+    env_files: list[str]
+    expected_provider: str | None = None
+    configured_provider: str | None = None
+    readiness: str | None = None
+    checks: str | None = None
+    notes: str | None = None
     error: str | None = None
 
 
@@ -46,6 +59,7 @@ class SoakReport:
     gate_matched_successful_nightly_runs: list[dict[str, Any]]
     recent_failed_nightly_runs: list[dict[str, Any]]
     timer: TimerProbe
+    provider: ProviderProbe
     reasons: list[str]
 
 
@@ -179,6 +193,82 @@ def _probe_timer(*, timer_name: str = TIMER_NAME, runner: Runner | None = None, 
     )
 
 
+def _first_doctor_row(rows: list[ProviderDoctorRow]) -> ProviderDoctorRow | None:
+    return rows[0] if rows else None
+
+
+def _probe_provider(
+    *,
+    checked: bool,
+    env_files: list[Path] | None = None,
+    required_provider: str | None = None,
+) -> ProviderProbe:
+    resolved_env_files = [Path(path) for path in (env_files if env_files is not None else default_env_files())]
+    if not checked:
+        return ProviderProbe(checked=False, env_files=[str(path) for path in resolved_env_files])
+
+    env = load_env_files(resolved_env_files)
+    configured_provider = str(env.get("HERMES_ERSHOV_PROVIDER", "")).strip() or None
+    expected_provider = str(required_provider).strip() if required_provider is not None else None
+    provider_to_check = expected_provider or configured_provider
+    if not provider_to_check:
+        return ProviderProbe(
+            checked=True,
+            env_files=[str(path) for path in resolved_env_files],
+            expected_provider=expected_provider,
+            configured_provider=configured_provider,
+            readiness="blocked",
+            checks="HERMES_ERSHOV_PROVIDER: missing",
+            notes="timer-visible provider readiness only; values are never printed",
+        )
+
+    model = str(env.get("HERMES_ERSHOV_MODEL", "")).strip() or None
+    base_url = str(env.get("HERMES_ERSHOV_BASE_URL", "")).strip() or None
+    try:
+        row = _first_doctor_row(doctor_providers(provider=provider_to_check, model=model, base_url=base_url, env=env))
+    except ValueError as exc:
+        return ProviderProbe(
+            checked=True,
+            env_files=[str(path) for path in resolved_env_files],
+            expected_provider=expected_provider,
+            configured_provider=configured_provider,
+            readiness="blocked",
+            checks=str(exc),
+            notes="timer-visible provider readiness only; values are never printed",
+            error=str(exc),
+        )
+
+    if row is None:  # pragma: no cover - doctor_providers returns one row for a selected provider.
+        return ProviderProbe(
+            checked=True,
+            env_files=[str(path) for path in resolved_env_files],
+            expected_provider=expected_provider,
+            configured_provider=configured_provider,
+            readiness="blocked",
+            checks="provider doctor returned no rows",
+            notes="timer-visible provider readiness only; values are never printed",
+            error="provider doctor returned no rows",
+        )
+
+    readiness = row.readiness
+    checks = row.checks
+    if expected_provider and configured_provider and configured_provider != expected_provider:
+        readiness = "blocked"
+        checks = f"configured provider: {configured_provider}; expected provider: {expected_provider}; {checks}"
+    elif configured_provider:
+        checks = f"configured provider: {configured_provider}; {checks}"
+
+    return ProviderProbe(
+        checked=True,
+        env_files=[str(path) for path in resolved_env_files],
+        expected_provider=expected_provider,
+        configured_provider=configured_provider,
+        readiness=readiness,
+        checks=checks,
+        notes=row.notes + "; timer-visible provider readiness only; values are never printed",
+    )
+
+
 def build_soak_report(
     *,
     state_root: Path | None = None,
@@ -190,6 +280,9 @@ def build_soak_report(
     require_clean: bool = False,
     timer_name: str = TIMER_NAME,
     allow_failures: bool = False,
+    check_provider: bool = False,
+    required_provider: str | None = None,
+    provider_env_files: list[Path] | None = None,
     now: datetime | None = None,
     runner: Runner | None = None,
 ) -> SoakReport:
@@ -222,6 +315,11 @@ def build_soak_report(
     recent_failures = [record for record in recent_nightly if not bool(record.get("success"))]
 
     timer = _probe_timer(timer_name=timer_name, runner=runner, checked=require_timer)
+    provider = _probe_provider(
+        checked=check_provider or required_provider is not None,
+        env_files=provider_env_files,
+        required_provider=required_provider,
+    )
     reasons: list[str] = []
     if len(gate_matched_successes) < min_successful:
         filters = []
@@ -243,6 +341,12 @@ def build_soak_report(
             reasons.append(f"timer {timer.timer_name} is not healthy: {timer.error}")
         elif timer.enabled is not True or timer.active is not True:
             reasons.append(f"timer {timer.timer_name} is not enabled and active")
+    if provider.checked:
+        if provider.error:
+            reasons.append(f"timer provider readiness failed: {provider.error}")
+        elif provider.readiness != "ready":
+            provider_name = provider.expected_provider or provider.configured_provider or "unknown"
+            reasons.append(f"timer provider {provider_name} is not ready: {provider.checks or 'unknown readiness'}")
 
     return SoakReport(
         passed=not reasons,
@@ -263,6 +367,7 @@ def build_soak_report(
         gate_matched_successful_nightly_runs=gate_matched_successes,
         recent_failed_nightly_runs=recent_failures,
         timer=timer,
+        provider=provider,
         reasons=reasons,
     )
 
@@ -299,6 +404,15 @@ def render_soak_report(report: SoakReport) -> str:
             + (f", next={report.timer.next_elapse}" if report.timer.next_elapse is not None else "")
             + (f", error={report.timer.error}" if report.timer.error else "")
         )
+    provider_state = "not checked"
+    if report.provider.checked:
+        provider_state = (
+            f"expected={report.provider.expected_provider or 'any'}, "
+            f"configured={report.provider.configured_provider or 'missing'}, "
+            f"readiness={report.provider.readiness or 'unknown'}"
+            + (f", checks={report.provider.checks}" if report.provider.checks else "")
+            + (f", error={report.provider.error}" if report.provider.error else "")
+        )
 
     lines = [
         "# Hermes Ershov soak report",
@@ -320,6 +434,7 @@ def render_soak_report(report: SoakReport) -> str:
         f"- Total nightly runs in ledger: `{report.total_nightly_runs}`",
         f"- Timer required: `{str(report.require_timer).lower()}`",
         f"- Timer: `{timer_state}`",
+        f"- Timer provider: `{provider_state}`",
         "",
         "## Latest successful nightly",
         "",

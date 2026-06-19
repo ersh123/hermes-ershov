@@ -342,6 +342,18 @@ def build_parser() -> argparse.ArgumentParser:
         help=f"Required successful scheduled runs for --release-gate (default: {STABLE_GATE_MIN_SUCCESSFUL})",
     )
     status.add_argument("--timer-name", default="hermes-ershov-nightly.timer", help="systemd user timer name for --release-gate")
+    status.add_argument(
+        "--require-provider",
+        default=None,
+        help="Require timer-visible provider readiness for --release-gate, e.g. deepseek",
+    )
+    status.add_argument(
+        "--provider-env-file",
+        action="append",
+        type=Path,
+        default=None,
+        help="Read provider readiness from systemd EnvironmentFile-style files for --release-gate",
+    )
 
     soak = sub.add_parser("soak", help="Verify nightly-memory soak evidence from the run ledger")
     soak.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl")
@@ -363,6 +375,23 @@ def build_parser() -> argparse.ArgumentParser:
     soak.add_argument("--require-clean", action="store_true", help="Require successful nightly runs to come from a clean git checkout")
     soak.add_argument("--strict-systemd", action="store_true", help="Shortcut for the stable systemd release gate using the current git commit")
     soak.add_argument("--timer-name", default="hermes-ershov-nightly.timer", help="systemd user timer name to inspect")
+    soak.add_argument(
+        "--check-provider",
+        action="store_true",
+        help="Check timer-visible provider readiness from systemd env files",
+    )
+    soak.add_argument(
+        "--require-provider",
+        default=None,
+        help="Require timer-visible provider readiness for this provider, e.g. deepseek",
+    )
+    soak.add_argument(
+        "--provider-env-file",
+        action="append",
+        type=Path,
+        default=None,
+        help="Read provider readiness from systemd EnvironmentFile-style files",
+    )
     soak.add_argument("--allow-failures", action="store_true", help="Do not fail when failed nightly runs exist inside the window")
     soak.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
 
@@ -1067,6 +1096,9 @@ def main(argv: list[str] | None = None) -> int:
                 required_commit=current_commit,
                 require_clean=True,
                 timer_name=args.timer_name,
+                check_provider=True,
+                required_provider=args.require_provider,
+                provider_env_files=args.provider_env_file,
             )
         print(
             render_status(
@@ -1095,6 +1127,7 @@ def main(argv: list[str] | None = None) -> int:
             require_timer = True
             required_source = "systemd"
             require_clean = True
+            args.check_provider = True
             current_dirty = _current_git_dirty()
             if current_dirty is True:
                 parser.error("--strict-systemd requires the current git checkout to be clean")
@@ -1113,6 +1146,9 @@ def main(argv: list[str] | None = None) -> int:
                 require_clean=require_clean,
                 timer_name=args.timer_name,
                 allow_failures=args.allow_failures,
+                check_provider=args.check_provider,
+                required_provider=args.require_provider,
+                provider_env_files=args.provider_env_file,
             )
         except ValueError as exc:
             parser.error(str(exc))

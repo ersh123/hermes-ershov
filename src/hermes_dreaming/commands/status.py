@@ -126,6 +126,18 @@ def _release_gate_timer_state(report: SoakReport) -> str:
     )
 
 
+def _release_gate_provider_state(report: SoakReport) -> str:
+    if not report.provider.checked:
+        return "not checked"
+    return (
+        f"expected={report.provider.expected_provider or 'any'}, "
+        f"configured={report.provider.configured_provider or 'missing'}, "
+        f"readiness={report.provider.readiness or 'unknown'}"
+        + (f", checks={report.provider.checks}" if report.provider.checks else "")
+        + (f", error={report.provider.error}" if report.provider.error else "")
+    )
+
+
 def render_release_gate_status(
     report: SoakReport,
     *,
@@ -153,6 +165,7 @@ def render_release_gate_status(
         f"- Gate-matching successful runs: `{len(report.gate_matched_successful_nightly_runs)}`",
         f"- Recent failed nightly runs: `{len(report.recent_failed_nightly_runs)}`",
         f"- Timer: `{_release_gate_timer_state(report)}`",
+        f"- Timer provider: `{_release_gate_provider_state(report)}`",
     ]
     reasons = [*report.reasons, *extra_reasons]
     if reasons:

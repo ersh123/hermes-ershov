@@ -49,6 +49,11 @@ def _default_env_dir() -> Path:
     return Path.home() / ".config" / "hermes-ershov"
 
 
+def default_env_files() -> list[Path]:
+    env_dir = _default_env_dir()
+    return [env_dir / ENV_FILE_NAME, env_dir / SECRET_ENV_FILE_NAME]
+
+
 def _env_quote(value: object) -> str:
     text = str(value)
     escaped = (

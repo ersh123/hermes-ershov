@@ -85,6 +85,55 @@ def test_status_can_show_blocked_stable_release_gate(tmp_path: Path) -> None:
     assert "found 0 successful nightly run(s) matching source 'systemd'" in output
 
 
+def test_status_release_gate_shows_timer_provider_readiness(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+    state_root = tmp_path / "state"
+    _write_ledger(
+        state_root,
+        [
+            {
+                "command": "nightly",
+                "success": True,
+                "timestamp": "2026-06-19T10:00:00Z",
+                "artifact_status": "no-op",
+                "run_source": "systemd",
+                "git_commit": "abc1234",
+                "git_dirty": False,
+            }
+        ],
+    )
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text('HERMES_ERSHOV_PROVIDER="deepseek"\n', encoding="utf-8")
+
+    snapshot = build_status_snapshot(
+        artifact_root=artifact_root,
+        state_path=state_root / "state.json",
+        ledger_path=state_root / "runs.jsonl",
+        diary_path=state_root / "ERSHOV.md",
+    )
+    gate = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        require_timer=True,
+        required_source="systemd",
+        required_commit="abc1234",
+        require_clean=True,
+        runner=_timer_runner,
+        check_provider=True,
+        provider_env_files=[env_file],
+    )
+
+    output = render_status(snapshot, release_gate=gate, current_commit="abc1234", current_dirty=False)
+
+    assert "Timer provider:" in output
+    assert "configured=deepseek" in output
+    assert "readiness=blocked" in output
+    assert "DEEPSEEK_API_KEY: missing" in output
+    assert "timer provider deepseek is not ready" in output
+
+
 def test_status_release_gate_blocks_dirty_current_checkout(tmp_path: Path) -> None:
     artifact_root = tmp_path / "artifacts"
     artifact_root.mkdir()
@@ -175,6 +224,9 @@ def test_status_cli_release_gate_uses_strict_systemd_defaults(
     assert captured["required_source"] == "systemd"
     assert captured["required_commit"] == "abc1234"
     assert captured["require_clean"] is True
+    assert captured["check_provider"] is True
+    assert captured["required_provider"] is None
+    assert captured["provider_env_files"] is None
     assert "Stable release gate:" in output
     assert "Status: `blocked`" in output
     assert "Window: `96h`" in output
@@ -229,3 +281,52 @@ def test_status_cli_state_root_drives_default_artifact_root_and_ledger(
     assert "Run ledger: 1 run(s), 1 successful" in output
     assert "Last run: 2026-06-19T10:00:00Z" in output
     assert "Stable release gate:" in output
+
+
+def test_status_cli_release_gate_forwards_required_provider_and_env_file(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    artifact_root = tmp_path / "artifacts"
+    artifact_root.mkdir()
+    state_root = tmp_path / "state"
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text('HERMES_ERSHOV_PROVIDER="deepseek"\n', encoding="utf-8")
+    captured: dict[str, object] = {}
+
+    def fake_build_soak_report(**kwargs):  # type: ignore[no-untyped-def]
+        captured.update(kwargs)
+        return build_soak_report(
+            state_root=state_root,
+            since_hours=kwargs["since_hours"],
+            min_successful=kwargs["min_successful"],
+            now=NOW,
+            require_timer=True,
+            required_source="systemd",
+            required_commit="abc1234",
+            require_clean=True,
+            runner=_timer_runner,
+        )
+
+    monkeypatch.setattr(cli_module, "_current_git_commit", lambda: "abc1234")
+    monkeypatch.setattr(cli_module, "_current_git_dirty", lambda: False)
+    monkeypatch.setattr(cli_module, "build_soak_report", fake_build_soak_report)
+
+    exit_code = main(
+        [
+            "status",
+            "--artifact-root",
+            str(artifact_root),
+            "--release-gate",
+            "--state-root",
+            str(state_root),
+            "--require-provider",
+            "deepseek",
+            "--provider-env-file",
+            str(env_file),
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured["required_provider"] == "deepseek"
+    assert captured["provider_env_files"] == [env_file]
+    assert "Stable release gate:" in capsys.readouterr().out

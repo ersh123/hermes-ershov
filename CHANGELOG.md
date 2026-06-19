@@ -9,6 +9,7 @@
 - Added `ershov providers list` to introspect the built-in providers (`offline-marker`, `openai-compatible`, `deepseek`, `openrouter`, `ollama`) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create`, `review`, and `nightly`.
 - Added `ershov providers doctor` for safe local provider configuration readiness checks without sending prompts, pinging model APIs, or printing secret values. Repeatable `--env-file` checks the exact systemd `EnvironmentFile` key presence a timer-visible run will see, still without printing secret values. It is intentionally not an end-to-end generation test.
 - Added `ershov soak` as a read-only release gate for scheduled nightly memory: it checks recent successful `nightly` runs, recent failures, and optionally the user systemd timer.
+- Added provider-aware release gating: `status --release-gate` and `soak --strict-systemd` surface timer-visible provider readiness, and `--require-provider deepseek` blocks offline-marker drift or missing provider keys without printing secrets.
 - Hardened provider output grounding: schema-valid model proposals are rejected if `source_quote` or `snippet` does not match a cited source line.
 - Hardened legacy revert evidence: artifacts without post-apply shas now label backup-vs-live drift inference as `legacy-degraded` in the audit trail and `REVERT.md`.
 - Hardened the root Hermes plugin wrapper so `hermes ershov ...` propagates non-zero CLI failures to the shell instead of returning success after printing an error.

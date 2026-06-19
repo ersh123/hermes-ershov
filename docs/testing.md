@@ -22,12 +22,14 @@ ershov --help
 ershov providers list
 ershov providers doctor --provider offline-marker --strict
 ershov providers doctor --provider deepseek --env-file ~/.config/hermes-ershov/nightly.env --env-file ~/.config/hermes-ershov/nightly.secrets.env --strict
+ershov status --release-gate --state-root ~/.hermes/ershov --require-provider deepseek
+ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd --require-provider deepseek
 ershov status --release-gate --state-root /tmp/hermes-ershov-state
 ershov revert --help
 ```
 
 The status release gate is state-root scoped: with `--state-root`, the default artifact root and ledger/diary paths come from that state root unless `--artifact-root` is passed explicitly.
-The provider env-file smoke is timer-visible only: it reads systemd `EnvironmentFile` assignments, ignores missing optional secret files, and never prints secret values.
+The provider env-file smoke is timer-visible only: it reads systemd `EnvironmentFile` assignments, ignores missing optional secret files, and never prints secret values. `--require-provider deepseek` is stricter than readiness alone: it also fails when the timer is still configured for `offline-marker`.
 
 ## CI gates
 
@@ -40,6 +42,7 @@ GitHub Actions runs the same release-shaped matrix:
 - coverage report for `hermes_dreaming`, `hermes_ershov`, and `hermes_mnemos`, with an 80% minimum gate
 - property-based tests from `tests/test_pbt.py`
 - timer-visible provider readiness smoke with `providers doctor --env-file`
+- strict systemd release-gate tests that include timer-visible provider readiness and required-provider mismatch checks
 - Hermes plugin wrapper smoke
 - wheel and source distribution build
 - installed wheel smoke for every public console and module alias
@@ -68,6 +71,6 @@ Passing CI is not enough for stable wording. Stable promotion also needs schedul
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd
 ```
 
-Plain `--strict-systemd` defaults to this 96h/3-run public-stable gate. Use `--since-hours 30 --min-successful 1 --strict-systemd` only for a fast one-night release-candidate smoke.
+Plain `--strict-systemd` defaults to this 96h/3-run public-stable gate and checks the configured timer provider from the systemd env files. Add `--require-provider deepseek` when the gate must prove DeepSeek specifically, not just any ready provider. Use `--since-hours 30 --min-successful 1 --strict-systemd` only for a fast one-night release-candidate smoke.
 
 Manual service starts and transient timer smokes are useful debug evidence, but they do not satisfy the stable gate.
