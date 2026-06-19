@@ -155,7 +155,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "242 tests" not in text, path
         assert "244 tests" not in text, path
         assert "248 tests" not in text, path
-        assert "249 tests" in text, path
+        assert "249 tests" not in text, path
+        assert "250 tests" not in text, path
+        assert "251 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -273,6 +275,10 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "required-provider mismatch checks",
         "--fix-plan",
         "CodeQL",
+        "OpenSSF Scorecard",
+        "SARIF uploaded to code scanning",
+        "persist-credentials: false",
+        "https://github.com/ossf/scorecard-action",
         "--min-successful 3 --strict-systemd",
         "https://docs.pytest.org/en/stable/explanation/goodpractices.html",
         "https://hypothesis.readthedocs.io/en/latest/stateful.html",

@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/ersh123/hermes-ershov/actions/workflows/ci.yml/badge.svg)](https://github.com/ersh123/hermes-ershov/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ersh123/hermes-ershov/actions/workflows/codeql.yml/badge.svg)](https://github.com/ersh123/hermes-ershov/actions/workflows/codeql.yml)
+[![Scorecard](https://github.com/ersh123/hermes-ershov/actions/workflows/scorecard.yml/badge.svg)](https://github.com/ersh123/hermes-ershov/actions/workflows/scorecard.yml)
 
 ![Hermes Ershov hero banner](assets/readme/hermes-ershov-hero.png)
 
@@ -69,7 +70,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 - **Nightly memory pipeline** for dialogue harvest, staged review artifacts, digests, inbox digest, compaction, and run-ledger audit
 - **Cron and user-systemd installers** for the full nightly memory pipeline
 - **Test suite, plugin smoke, CI, and CodeQL pass**
-- **Repo hygiene:** private security advisory path, issue/PR templates, CODEOWNERS, and weekly Dependabot checks for GitHub Actions and Python package metadata
+- **Repo hygiene:** private security advisory path, issue/PR templates, CODEOWNERS, weekly Dependabot checks, OpenSSF Scorecard SARIF, and checkout-token hardening for GitHub Actions
 
 ## Install
 

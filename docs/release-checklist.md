@@ -53,6 +53,8 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Confirm local markdown links/images pass the docs guard
 - [ ] Confirm the release workflow only uploads assets on a GitHub `release` event and does not publish to package indexes
 - [ ] Confirm Dependabot is enabled for GitHub Actions and Python package metadata
+- [ ] Confirm OpenSSF Scorecard is enabled and uploads SARIF to GitHub code scanning
+- [ ] Confirm checkout steps use `persist-credentials: false` unless a job explicitly needs a persisted token
 
 ## 5. Release gate
 

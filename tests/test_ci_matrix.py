@@ -44,6 +44,37 @@ def test_codeql_workflow_is_scheduled_and_pr_gated() -> None:
     assert "schedule:" in text
     assert "workflow_dispatch:" in text
     assert "languages: python" in text
+    assert "security-events: write" in text
+    assert "persist-credentials: false" in text
+
+
+def test_checkouts_do_not_persist_github_tokens() -> None:
+    workflow_paths = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
+
+    for path in workflow_paths:
+        text = path.read_text(encoding="utf-8")
+        if "uses: actions/checkout@" in text:
+            assert "persist-credentials: false" in text, path
+
+
+def test_scorecard_workflow_reports_supply_chain_security_to_code_scanning() -> None:
+    text = (REPO_ROOT / ".github" / "workflows" / "scorecard.yml").read_text(encoding="utf-8")
+
+    for phrase in (
+        "schedule:",
+        "workflow_dispatch:",
+        "contents: read",
+        "security-events: write",
+        "id-token: write",
+        "uses: ossf/scorecard-action@v2.4.3",
+        "results_file: scorecard-results.sarif",
+        "results_format: sarif",
+        "publish_results: true",
+        "uses: github/codeql-action/upload-sarif@v4",
+        "sarif_file: scorecard-results.sarif",
+        "persist-credentials: false",
+    ):
+        assert phrase in text
 
 
 def test_dependabot_monitors_actions_and_python_dependencies() -> None:

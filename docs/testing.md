@@ -11,6 +11,7 @@ The matrix follows the current public docs for:
 - GitHub Actions Python build/test workflows: https://docs.github.com/actions/guides/building-and-testing-python
 - GitHub CodeQL workflow configuration: https://docs.github.com/en/code-security/reference/code-scanning/workflow-configuration-options
 - GitHub Dependabot configuration: https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference
+- OpenSSF Scorecard GitHub Action: https://github.com/ossf/scorecard-action
 
 ## Local gates
 
@@ -64,6 +65,8 @@ GitHub Actions runs the same release-shaped matrix:
 - installed source distribution smoke for every public console and module alias
 - CodeQL on push, pull request, schedule, and manual dispatch
 - Dependabot weekly version-update checks for GitHub Actions and Python package metadata
+- OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
+- checkout-token hardening through `persist-credentials: false` on repository checkout steps
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
 
 ## Coverage shape
@@ -77,6 +80,7 @@ The suite is intentionally mixed:
 - docs guards that fail when release-facing text drifts from shipped behavior
 - local markdown link/image guards for release-facing docs
 - release workflow guards that prevent accidental PyPI publishing or release creation
+- supply-chain workflow guards for Scorecard permissions, SARIF output, and checkout token persistence
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 
 ## Stable-release evidence
