@@ -174,7 +174,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "267 tests" not in text, path
         assert "268 tests" not in text, path
         assert "269 tests" not in text, path
-        assert "272 tests" in text, path
+        assert "272 tests" not in text, path
+        assert "273 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -305,6 +306,8 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "ClusterFuzzLite wiring",
         "PyPI Trusted Publishing",
         "Twine package metadata checks",
+        "Zizmor GitHub Actions security lint",
+        "runtime artifact workflow cache disabled",
         "uploading only wheel/source-distribution files to the PyPI publishing artifact",
         "GitHub artifact attestations",
         "GitHub Release asset attestations",

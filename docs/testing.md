@@ -38,6 +38,7 @@ uv run --locked --extra dev python -m pytest -q --cov=hermes_dreaming --cov=herm
 uv run --locked --extra dev python -m pytest -q tests/test_pbt.py
 uv run --locked --extra dev python -m compileall -q __init__.py src scripts
 git diff --check
+uv run --locked --extra dev zizmor .github/workflows
 uv run --locked --extra dev python -m build
 uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
 uv run --locked --extra dev python scripts/hermes_plugin_smoke.py
@@ -72,6 +73,7 @@ GitHub Actions runs the same release-shaped matrix:
 - `uv.lock` backed dependency resolution through pinned `astral-sh/setup-uv`
 - locked dev environment sync with `uv sync --locked --extra dev`
 - whitespace check with `git diff --check`
+- Zizmor GitHub Actions security lint
 - bytecode compile with `compileall`
 - full pytest suite
 - coverage report for `hermes_dreaming`, `hermes_ershov`, and `hermes_mnemos`, with an 80% minimum gate
@@ -103,6 +105,7 @@ GitHub Actions runs the same release-shaped matrix:
 - job-scoped write permissions for SARIF/code-scanning uploads; top-level workflow permissions stay read-only unless the workflow has no narrower safe option
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`, `id-token: write`, and `attestations: write`
 - publish workflow build runs under read-only repository permissions; it generates and verifies the same SBOM, release manifest, checksum manifest, and artifact bundle contract before uploading only wheel/source-distribution files to the PyPI publishing artifact
+- runtime artifact workflow cache disabled for Release and Publish jobs
 - release-event-only PyPI publishing is isolated to a `pypi` environment job with `id-token: write` and `attestations: write`
 
 ## Coverage shape

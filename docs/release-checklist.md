@@ -33,6 +33,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] `pytest -q tests/test_pbt.py`
 - [ ] `python -m compileall -q __init__.py src scripts`
 - [ ] `git diff --check`
+- [ ] `zizmor .github/workflows`
 - [ ] `uv sync --locked --extra dev`
 - [ ] `python -m build`
 - [ ] `twine check --strict dist/*.whl dist/*.tar.gz`

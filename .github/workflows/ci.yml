@@ -51,6 +51,9 @@ jobs:
       - name: Check whitespace
         run: git diff --check
 
+      - name: Lint GitHub Actions security
+        run: uv run --locked --extra dev zizmor .github/workflows
+
       - name: Compile package
         run: uv run --locked --extra dev python -m compileall -q __init__.py src scripts
 

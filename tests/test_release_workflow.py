@@ -21,6 +21,7 @@ def test_release_workflow_build_job_uses_ci_strength_gates() -> None:
         "git diff --check",
         "uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0",
         'uv sync --locked --extra dev --python "3.12"',
+        "uv run --locked --extra dev zizmor .github/workflows",
         "python -m compileall -q __init__.py src scripts",
         "pytest -q --cov=hermes_dreaming",
         "--cov-fail-under=80",
@@ -90,6 +91,7 @@ def test_publish_workflow_publishes_only_from_release_event_with_oidc() -> None:
 
     assert "workflow_dispatch:" in text
     assert "permissions:\n  contents: read" in text
+    assert "uv run --locked --extra dev zizmor .github/workflows" in build_chunk
     assert "uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz" in build_chunk
     assert "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json" in build_chunk
     assert "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist" in build_chunk
