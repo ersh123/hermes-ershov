@@ -13,7 +13,7 @@ from typing import Protocol
 from .artifact import DreamProposal, SourceSnapshot, text_sha256
 from .validation import validate_proposals
 
-MARKER_RE = re.compile(r"^\s*(?:-\s*)?(?:MEMORY|DREAM):\s*(memory|user|skill|fact)\s*:\s*(.+?)\s*$", re.IGNORECASE)
+MARKER_RE = re.compile(r"^\s*(?:-\s*)?(?:user:\s*)?(?:MEMORY|DREAM):\s*(memory|user|skill|fact)\s*:\s*(.+?)\s*$", re.IGNORECASE)
 
 
 class ProviderOutputError(RuntimeError):

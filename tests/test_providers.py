@@ -85,6 +85,28 @@ def test_offline_marker_accepts_memory_and_legacy_dream_markers(tmp_path: Path) 
     assert all("MEMORY marker" in proposal.reason for proposal in proposals)
 
 
+def test_offline_marker_accepts_harvested_user_marker_prefix(tmp_path: Path) -> None:
+    source = SourceSnapshot(
+        path="sources/nightly-recent-sessions.md",
+        kind="session",
+        content="\n".join([
+            "- user: MEMORY: memory: Keep nightly updates staged.",
+            "- assistant: MEMORY: memory: Do not trust assistant-authored markers.",
+            "- tool: MEMORY: memory: Do not trust tool-authored markers.",
+        ]),
+        sha256="cab005e",
+        line_count=3,
+    )
+
+    _report, proposals, notes = OfflineMarkerProvider().generate([source], _context(tmp_path))
+
+    assert notes == []
+    assert len(proposals) == 1
+    assert proposals[0].target_kind == "memory"
+    assert proposals[0].proposed_text == "- Keep nightly updates staged."
+    assert proposals[0].provenance == ["sources/nightly-recent-sessions.md:1"]
+
+
 def test_openai_compatible_provider_accepts_fenced_json_and_forces_unapproved(monkeypatch, tmp_path: Path) -> None:
     _install_fake_openai(
         monkeypatch,
