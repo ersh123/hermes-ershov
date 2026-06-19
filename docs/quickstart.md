@@ -73,4 +73,4 @@ validation: valid
 
 ## Why this is offline
 
-The fixture uses explicit `MEMORY:` lines in text files. That means the default offline provider can generate proposals without any API key, model account, or network call. The walkthrough also points `HERMES_ERSHOV_STATE_ROOT` at a temp directory so the demo does not touch your normal Ershov run ledger.
+The fixture uses explicit `DREAM:` compatibility markers in text files. The default offline provider accepts both `MEMORY:` and `DREAM:` markers, so it can generate proposals without any API key, model account, or network call. The walkthrough also points `HERMES_ERSHOV_STATE_ROOT` at a temp directory so the demo does not touch your normal Ershov run ledger.

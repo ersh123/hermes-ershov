@@ -82,7 +82,14 @@ def test_offline_marker_accepts_memory_and_legacy_dream_markers(tmp_path: Path) 
     assert "Hermes Ershov Report" in report
     assert notes == []
     assert [proposal.target_kind for proposal in proposals] == ["memory", "user"]
-    assert all("MEMORY marker" in proposal.reason for proposal in proposals)
+    assert all("offline marker" in proposal.reason for proposal in proposals)
+
+
+def test_offline_marker_empty_sources_name_both_supported_markers(tmp_path: Path) -> None:
+    _report, proposals, notes = OfflineMarkerProvider().generate([_source()], _context(tmp_path))
+
+    assert proposals == []
+    assert notes == ["No MEMORY/DREAM markers were found in the supplied sources."]
 
 
 def test_offline_marker_accepts_harvested_user_marker_prefix(tmp_path: Path) -> None:

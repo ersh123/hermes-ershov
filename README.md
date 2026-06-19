@@ -220,13 +220,14 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 
 ## Memory markers
 
-The offline provider looks for explicit `MEMORY:` lines in the source bundle.
+The offline provider looks for explicit `MEMORY:` or `DREAM:` lines in the source bundle.
 
 ```text
 MEMORY: memory: Keep updates short and concrete.
 MEMORY: user: Prefer concise status updates.
 MEMORY: fact: {"type": "preference", "key": "tone", "value": "casual"}
 MEMORY: skill: path=skills/review.md | Preserve review gates and backups.
+DREAM: user: Legacy compatibility marker.
 ```
 
 ## Artifact layout

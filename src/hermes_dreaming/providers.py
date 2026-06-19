@@ -66,7 +66,7 @@ class OfflineMarkerProvider:
         if validation_errors:
             raise ProviderOutputError(self.name, "; ".join(validation_errors), payload_hash=text_sha256("\n".join(source.sha256 for source in sources)))
         if not proposals:
-            notes.append("No MEMORY markers were found in the supplied sources.")
+            notes.append("No MEMORY/DREAM markers were found in the supplied sources.")
         report = self._build_report(sources, proposals, context, notes)
         return report, proposals, notes
 
@@ -89,7 +89,7 @@ class OfflineMarkerProvider:
                 snippet=snippet,
                 risk="medium" if kind == "user" else "low",
                 priority="normal",
-                reason=f"explicit MEMORY marker requested a {kind} update",
+                reason=f"explicit offline marker requested a {kind} update",
                 source_quote=source_quote,
                 policy_flags=["safe_append", "profile_preference" if kind == "user" else "memory_update"],
             )
@@ -111,7 +111,7 @@ class OfflineMarkerProvider:
                 snippet=snippet,
                 risk="low",
                 priority="normal",
-                reason="explicit MEMORY marker requested a fact update",
+                reason="explicit offline marker requested a fact update",
                 source_quote=source_quote,
                 policy_flags=["fact_update", "safe_append"],
             )
@@ -135,7 +135,7 @@ class OfflineMarkerProvider:
                 snippet=snippet,
                 risk="medium",
                 priority="normal",
-                reason="explicit MEMORY marker requested a skill note",
+                reason="explicit offline marker requested a skill note",
                 source_quote=source_quote,
                 policy_flags=["skill_update", "safe_append"],
             )

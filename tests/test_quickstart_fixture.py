@@ -60,3 +60,13 @@ def test_quickstart_fixture_readme_uses_ershov_public_names() -> None:
     assert "HERMES_ERSHOV_STATE_ROOT" in fixture_readme
     assert "Hermes Dreaming" not in fixture_readme
     assert "HERMES_DREAMING_STATE_ROOT" not in fixture_readme
+
+
+def test_quickstart_docs_match_fixture_marker_names() -> None:
+    repo_root = Path(__file__).resolve().parents[1]
+    quickstart_doc = (repo_root / "docs" / "quickstart.md").read_text(encoding="utf-8")
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+
+    assert "The fixture uses explicit `DREAM:` compatibility markers" in quickstart_doc
+    assert "uses explicit `MEMORY:` lines" not in quickstart_doc
+    assert "explicit `MEMORY:` or `DREAM:` lines" in readme
