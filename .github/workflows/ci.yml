@@ -42,7 +42,7 @@ jobs:
         run: git diff --check
 
       - name: Compile package
-        run: python -m compileall -q src
+        run: python -m compileall -q __init__.py src scripts
 
       - name: Run tests
         run: pytest -q

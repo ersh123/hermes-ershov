@@ -31,7 +31,7 @@ jobs:
       - name: Verify
         run: |
           git diff --check
-          python -m compileall -q src
+          python -m compileall -q __init__.py src scripts
           pytest -q
           python scripts/hermes_plugin_smoke.py
 
