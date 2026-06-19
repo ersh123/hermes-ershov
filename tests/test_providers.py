@@ -501,6 +501,26 @@ def test_load_env_files_reads_systemd_environment_files_without_logging_values(t
     assert "sk-do-not-print" not in rows[0].checks
 
 
+def test_provider_doctor_blocks_timer_configured_provider_mismatch_without_logging_secret() -> None:
+    from hermes_dreaming.providers import render_provider_doctor_table
+
+    rows = doctor_providers(
+        provider="deepseek",
+        env={
+            "HERMES_ERSHOV_PROVIDER": "offline-marker",
+            "DEEPSEEK_API_KEY": "sk-do-not-print",
+        },
+        openai_available=True,
+    )
+    rendered = render_provider_doctor_table(rows)
+
+    assert rows[0].readiness == "blocked"
+    assert "configured provider: offline-marker" in rendered
+    assert "expected provider: deepseek" in rendered
+    assert "DEEPSEEK_API_KEY: present" in rendered
+    assert "sk-do-not-print" not in rendered
+
+
 def test_provider_doctor_blocks_missing_openai_dependency_or_key() -> None:
     rows = doctor_providers(
         provider="openrouter",

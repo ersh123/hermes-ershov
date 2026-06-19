@@ -767,6 +767,13 @@ def doctor_providers(
         rows = [row for row in rows if row.name == selected]
     resolved_env = env if env is not None else os.environ
     has_openai = _openai_compat_available() if openai_available is None else openai_available
+    configured_provider: str | None = None
+    configured_provider_invalid = False
+    if env is not None and _env_has(resolved_env, "HERMES_ERSHOV_PROVIDER"):
+        try:
+            configured_provider = _canonical_provider_name(str(resolved_env.get("HERMES_ERSHOV_PROVIDER", "")))
+        except ValueError:
+            configured_provider_invalid = True
     results: list[ProviderDoctorRow] = []
 
     for row in rows:
@@ -777,6 +784,17 @@ def doctor_providers(
             "not an end-to-end generation test",
         ]
         readiness = "ready"
+
+        if selected is not None and env is not None:
+            if configured_provider_invalid:
+                checks.append("configured provider: invalid")
+                checks.append(f"expected provider: {row.name}")
+                readiness = "blocked"
+            elif configured_provider is not None:
+                checks.append(f"configured provider: {configured_provider}")
+                if configured_provider != row.name:
+                    checks.append(f"expected provider: {row.name}")
+                    readiness = "blocked"
 
         if row.name == "offline-marker":
             checks.append("api key: not required")

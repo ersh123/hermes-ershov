@@ -31,7 +31,7 @@ ershov revert --help
 ```
 
 The status release gate is state-root scoped: with `--state-root`, the default artifact root and ledger/diary paths come from that state root unless `--artifact-root` is passed explicitly.
-The provider env-file smoke is timer-visible only: `--from-systemd` reads the default Hermes Ershov systemd `EnvironmentFile` paths, explicit `--env-file` values can test non-default layouts, missing optional secret files are ignored, and secret values are never printed. `--require-provider deepseek` is stricter than readiness alone: it also fails when the timer is still configured for `offline-marker`.
+The provider env-file smoke is timer-visible only: `--from-systemd` reads the default Hermes Ershov systemd `EnvironmentFile` paths, explicit `--env-file` values can test non-default layouts, missing optional secret files are ignored, and secret values are never printed. When `--provider` is explicit, `providers doctor` also fails closed if `HERMES_ERSHOV_PROVIDER` points at a different timer provider. `--require-provider deepseek` is stricter than readiness alone: it also fails when the timer is still configured for `offline-marker`.
 
 ## CI gates
 

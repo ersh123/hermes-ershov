@@ -148,7 +148,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "228 tests" not in text, path
         assert "230 tests" not in text, path
         assert "232 tests" not in text, path
-        assert "233 tests" in text, path
+        assert "233 tests" not in text, path
+        assert "235 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -212,6 +213,10 @@ def test_release_docs_document_provider_doctor_safety() -> None:
     )
     assert "--env-file" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     assert "timer-visible" in (REPO_ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    assert "HERMES_ERSHOV_PROVIDER" in (REPO_ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    assert "HERMES_ERSHOV_PROVIDER" in (REPO_ROOT / "docs" / "install-update.md").read_text(
+        encoding="utf-8"
+    )
     assert "without printing secret values" in (REPO_ROOT / "docs" / "install-update.md").read_text(
         encoding="utf-8"
     )

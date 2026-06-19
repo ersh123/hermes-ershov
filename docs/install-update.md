@@ -45,8 +45,9 @@ hermes ershov providers doctor --provider deepseek --from-systemd --strict
 ```
 
 This is still a local readiness check only. It proves the generated service
-files can see a provider key without printing secret values; it does not send a
-prompt or call the model API.
+files can see the requested provider key and that `HERMES_ERSHOV_PROVIDER`
+matches the requested provider without printing secret values; it does not send
+a prompt or call the model API.
 Use explicit `--env-file` values only when testing a non-default service layout:
 
 ```bash
