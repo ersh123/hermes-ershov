@@ -44,6 +44,9 @@ jobs:
       - name: Build distributions
         run: uv run --locked --extra dev python -m build
 
+      - name: Check package metadata
+        run: uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
+
       - name: Export repository SBOM
         run: uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json
 

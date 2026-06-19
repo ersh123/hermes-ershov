@@ -67,12 +67,13 @@ Three additive fields on `DreamArtifact`:
 
 ## Verification
 
-- `pytest -q` passes (270 tests).
+- `pytest -q` passes (272 tests).
 - `pytest -q tests/test_pbt.py` passes and keeps the property-based path safety, systemd escaping, scoring, and soak commit-prefix invariants visible in the release matrix.
 - `pytest -q tests/test_fuzz_harness.py` passes and keeps the ClusterFuzzLite/Atheris Python fuzz harness locally smoke-tested.
-- Coverage gate passes with `--cov-fail-under=80` (current local total: 84.52%).
+- Coverage gate passes with `--cov-fail-under=80` (current local total: 82.58%).
 - `python scripts/hermes_plugin_smoke.py` passes and exercises the root Hermes plugin wrapper with a controlled SessionDB nightly run.
 - `python -m build` succeeds, and both wheel and source distribution installs are smoked against all public CLI aliases.
+- `twine check --strict dist/*.whl dist/*.tar.gz` verifies package metadata and README rendering before release/publish artifacts are accepted.
 - `python scripts/generate_release_manifest.py --dist dist` writes `release-manifest.json` with release subject names, kinds, sizes, SHA256 digests, source commit/ref, and GitHub Actions run hints.
 - `python scripts/generate_release_checksums.py --dist dist` writes `SHA256SUMS` for the wheel, source distribution, SPDX SBOM, and release manifest assets.
 - `python scripts/verify_release_artifacts.py --dist dist` verifies wheel metadata, source distribution metadata, release manifest subject digests, SPDX SBOM package coverage, purl refs, locked SHA256 checksums, root dependency relationships, and `SHA256SUMS` integrity.

@@ -35,6 +35,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] `git diff --check`
 - [ ] `uv sync --locked --extra dev`
 - [ ] `python -m build`
+- [ ] `twine check --strict dist/*.whl dist/*.tar.gz`
 - [ ] `python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json`
 - [ ] `python scripts/generate_release_manifest.py --dist dist`
 - [ ] `python scripts/generate_release_checksums.py --dist dist`

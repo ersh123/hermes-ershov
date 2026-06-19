@@ -39,6 +39,7 @@ uv run --locked --extra dev python -m pytest -q tests/test_pbt.py
 uv run --locked --extra dev python -m compileall -q __init__.py src scripts
 git diff --check
 uv run --locked --extra dev python -m build
+uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
 uv run --locked --extra dev python scripts/hermes_plugin_smoke.py
 ```
 
@@ -80,6 +81,7 @@ GitHub Actions runs the same release-shaped matrix:
 - strict systemd release-gate tests that include timer-visible provider readiness and required-provider mismatch checks
 - Hermes plugin wrapper smoke
 - wheel and source distribution build
+- Twine package metadata checks for the built wheel and source distribution
 - installed wheel smoke for every public console alias (`ershov`, `hermes-ershov`, `mnemos`, `nightmem`, `dreaming`) and module alias, with `uv --no-cache` so the check uses the freshly built artifact
 - installed source distribution smoke for every public console alias (`ershov`, `hermes-ershov`, `mnemos`, `nightmem`, `dreaming`) and module alias, with `uv --no-cache` so the check uses the freshly built artifact
 - CodeQL on push, pull request, schedule, and manual dispatch
@@ -95,7 +97,7 @@ GitHub Actions runs the same release-shaped matrix:
 - PyPI Trusted Publishing through OIDC on GitHub `release` events only, with GitHub artifact attestations for the built distributions
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps
 - workflow action pinning to full commit SHAs with adjacent version comments
-- isolated wheel and source distribution smoke through `uv run --no-project --isolated --with dist/*`
+- isolated wheel and source distribution smoke through `uv run --no-cache --no-project --isolated --with dist/*`
 - workflow install hardening: CI and release workflows avoid `pip install` and use the committed lockfile
 - workflow-level concurrency for repeatable analysis jobs and job-level `timeout-minutes` on every GitHub Actions job
 - job-scoped write permissions for SARIF/code-scanning uploads; top-level workflow permissions stay read-only unless the workflow has no narrower safe option

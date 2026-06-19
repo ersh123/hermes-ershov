@@ -174,7 +174,7 @@ def test_release_docs_use_current_test_count() -> None:
         assert "267 tests" not in text, path
         assert "268 tests" not in text, path
         assert "269 tests" not in text, path
-        assert "270 tests" in text, path
+        assert "272 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -291,7 +291,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "uv-managed Python package metadata",
         "uv.lock",
         "uv sync --locked --extra dev",
-        "uv run --no-project --isolated --with dist/*",
+        "uv run --no-cache --no-project --isolated --with dist/*",
         "avoid `pip install`",
         "state-root scoped",
         "required-provider mismatch checks",
@@ -304,6 +304,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "ClusterFuzzLite PR/manual fuzzing",
         "ClusterFuzzLite wiring",
         "PyPI Trusted Publishing",
+        "Twine package metadata checks",
         "uploading only wheel/source-distribution files to the PyPI publishing artifact",
         "GitHub artifact attestations",
         "GitHub Release asset attestations",

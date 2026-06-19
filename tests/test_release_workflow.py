@@ -27,6 +27,7 @@ def test_release_workflow_build_job_uses_ci_strength_gates() -> None:
         "pytest -q tests/test_pbt.py",
         "python scripts/hermes_plugin_smoke.py",
         "python -m build",
+        "uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz",
         "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json",
         "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist",
         "uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist",
@@ -74,7 +75,7 @@ def test_release_workflow_does_not_publish_to_package_indexes_or_create_releases
     text = _release_workflow().lower()
 
     forbidden = (
-        "twine",
+        "twine upload",
         "pypa/gh-action-pypi-publish",
         "pypi-token",
         "gh release create",
@@ -89,6 +90,7 @@ def test_publish_workflow_publishes_only_from_release_event_with_oidc() -> None:
 
     assert "workflow_dispatch:" in text
     assert "permissions:\n  contents: read" in text
+    assert "uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz" in build_chunk
     assert "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json" in build_chunk
     assert "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist" in build_chunk
     assert "uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist" in build_chunk

@@ -25,6 +25,7 @@ def test_ci_workflow_shows_release_shaped_test_matrix() -> None:
         "pytest -q tests/test_pbt.py",
         "python scripts/hermes_plugin_smoke.py",
         "python -m build",
+        "twine check --strict dist/*.whl dist/*.tar.gz",
         "python scripts/generate_release_sbom.py",
         "python scripts/generate_release_manifest.py --dist dist",
         "python scripts/generate_release_checksums.py --dist dist",
@@ -165,6 +166,7 @@ def test_publish_workflow_uses_release_only_trusted_publishing() -> None:
         "uv run --locked --extra dev pytest -q tests/test_pbt.py tests/test_fuzz_harness.py",
         "uv run --locked --extra dev python scripts/hermes_plugin_smoke.py",
         "uv run --locked --extra dev python -m build",
+        "uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz",
         "uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json",
         "uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist",
         "uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist",
@@ -213,6 +215,13 @@ def test_pyproject_exposes_documented_console_aliases() -> None:
 
     for alias in ("ershov", "hermes-ershov", "mnemos", "nightmem", "dreaming"):
         assert scripts[alias] == "hermes_dreaming.cli:main"
+
+
+def test_pyproject_dev_extra_includes_package_metadata_checker() -> None:
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    dev_deps = pyproject["project"]["optional-dependencies"]["dev"]
+
+    assert any(dep.startswith("twine>=") for dep in dev_deps)
 
 
 def test_clusterfuzzlite_python_fuzzing_integration_is_present() -> None:

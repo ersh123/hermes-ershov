@@ -39,12 +39,13 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 ## Verification gates
 
-- `python -m pytest -q` (270 tests pass)
+- `python -m pytest -q` (272 tests pass)
 - `python -m pytest -q tests/test_pbt.py` (property-based safety invariants pass)
 - `python -m pytest -q tests/test_fuzz_harness.py` (local fuzz harness seed smoke passes)
-- coverage gate `--cov-fail-under=80` (current local total: 84.52%)
+- coverage gate `--cov-fail-under=80` (current local total: 82.58%)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
+- `twine check --strict dist/*.whl dist/*.tar.gz` (package metadata and README rendering pass)
 - `python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json` (succeeds)
 - `python scripts/generate_release_manifest.py --dist dist` (writes `release-manifest.json`)
 - `python scripts/generate_release_checksums.py --dist dist` (writes `SHA256SUMS`)
@@ -76,7 +77,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - [x] `git status -sb` clean (except intentional v0.4.0 changes)
 - [x] `git diff --check` clean
-- [x] `pytest -q` passes (270 tests)
+- [x] `pytest -q` passes (272 tests)
 - [x] `pytest -q tests/test_pbt.py` passes
 - [x] `pytest -q tests/test_fuzz_harness.py` passes
 - [x] `python -m build` succeeds
