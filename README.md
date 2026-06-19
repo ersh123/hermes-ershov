@@ -51,12 +51,12 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 
 ## Onboarding docs
 
-- `docs/onboarding.md` is the shortest path from "what is this" to the full loop.
-- `docs/install-update.md` covers plugin install and safe fast-forward updates.
-- `docs/quickstart.md` is the copy/paste offline demo.
-- `docs/personas.md` shows how different operators use the same loop.
-- `docs/safety.md` spells out what Ershov can and cannot mutate.
-- `docs/testing.md` shows the release test matrix behind the GitHub checks.
+- [docs/onboarding.md](docs/onboarding.md) is the shortest path from "what is this" to the full loop.
+- [docs/install-update.md](docs/install-update.md) covers plugin install and safe fast-forward updates.
+- [docs/quickstart.md](docs/quickstart.md) is the copy/paste offline demo.
+- [docs/personas.md](docs/personas.md) shows how different operators use the same loop.
+- [docs/safety.md](docs/safety.md) spells out what Ershov can and cannot mutate.
+- [docs/testing.md](docs/testing.md) shows the release test matrix behind the GitHub checks.
 
 ## Current status
 
@@ -196,12 +196,12 @@ ershov update --check
 If you want the shortest path to "oh, I get it," use `examples/quickstart/`. It is an offline fixture, so no API key or external model access is required.
 If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ershov` for the same commands.
 
-- Fixture notes: `examples/quickstart/README.md`
-- Onboarding path: `docs/onboarding.md`
-- Install and update: `docs/install-update.md`
-- Runnable walkthrough: `docs/quickstart.md`
-- Persona examples: `docs/personas.md`
-- Safety boundaries: `docs/safety.md`
+- Fixture notes: [examples/quickstart/README.md](examples/quickstart/README.md)
+- Onboarding path: [docs/onboarding.md](docs/onboarding.md)
+- Install and update: [docs/install-update.md](docs/install-update.md)
+- Runnable walkthrough: [docs/quickstart.md](docs/quickstart.md)
+- Persona examples: [docs/personas.md](docs/personas.md)
+- Safety boundaries: [docs/safety.md](docs/safety.md)
 
 ### Command notes
 - `report-card` renders a redacted shareable summary from an existing artifact and can write a JSON companion with `--json`. Applied summaries separate real backup file copies from rollback evidence records and created-file tombstones.
@@ -253,18 +253,18 @@ The artifact is intentionally simple, deterministic, and easy to review on disk 
 
 ## Repo docs
 
-- `CONTRIBUTING.md` is the contributor guide and local workflow contract
-- `SECURITY.md` covers private vulnerability reporting
-- `CODE_OF_CONDUCT.md` sets the collaboration rules
-- `brief.md` has the project brief and non-goals
-- `specs/mvp-implementation-plan.md` describes the current implementation contract and package layout
-- `docs/release-checklist.md` is the pre-release checklist
-- `reviews/final-sanity.md` records the most recent QA pass
-- `research/upstream-overlap.md` captures the upstream overlap notes and references
+- [CONTRIBUTING.md](CONTRIBUTING.md) is the contributor guide and local workflow contract
+- [SECURITY.md](SECURITY.md) covers private vulnerability reporting
+- [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) sets the collaboration rules
+- [brief.md](brief.md) has the project brief and non-goals
+- [specs/mvp-implementation-plan.md](specs/mvp-implementation-plan.md) describes the current implementation contract and package layout
+- [docs/release-checklist.md](docs/release-checklist.md) is the pre-release checklist
+- [reviews/final-sanity.md](reviews/final-sanity.md) records the most recent QA pass
+- [research/upstream-overlap.md](research/upstream-overlap.md) captures the upstream overlap notes and references
 
 ## Contributing
 
-If you want to contribute, start with `CONTRIBUTING.md`.
+If you want to contribute, start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 - Use the issue templates so the scope and intent are clear.
 - Run `pytest -q`, `python -m build --wheel`, and `git diff --check` before requesting review.

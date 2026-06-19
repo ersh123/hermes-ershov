@@ -49,6 +49,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Before public stable promotion, smoke `hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd`
 - [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix
+- [ ] Confirm local markdown links/images pass the docs guard
 
 ## 5. Release gate
 

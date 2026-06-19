@@ -136,7 +136,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "209 tests" not in text, path
         assert "214 tests" not in text, path
         assert "215 tests" not in text, path
-        assert "216 tests" in text, path
+        assert "216 tests" not in text, path
+        assert "218 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -214,6 +215,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "plugin wrapper smoke",
         "wheel and source distribution",
         "docs guards",
+        "local markdown link/image guards",
         "CodeQL",
         "--min-successful 3 --strict-systemd",
     ):

@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 def test_ci_workflow_shows_release_shaped_test_matrix() -> None:
     text = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
 
-    for version in ("'3.11'", "'3.12'"):
+    for version in ("'3.11'", "'3.12'", "'3.13'"):
         assert version in text
     for gate in (
         "git diff --check",
@@ -38,3 +38,14 @@ def test_codeql_workflow_is_scheduled_and_pr_gated() -> None:
     assert "schedule:" in text
     assert "workflow_dispatch:" in text
     assert "languages: python" in text
+
+
+def test_python_classifier_matches_ci_matrix() -> None:
+    pyproject = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    ci = (REPO_ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    testing_doc = (REPO_ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+
+    for version in ("3.11", "3.12", "3.13"):
+        assert f"'{version}'" in ci
+        assert f"Programming Language :: Python :: {version}" in pyproject
+        assert version in testing_doc

@@ -29,7 +29,7 @@ ershov revert --help
 
 GitHub Actions runs the same release-shaped matrix:
 
-- Python 3.11 and 3.12
+- Python 3.11, 3.12, and 3.13
 - whitespace check with `git diff --check`
 - bytecode compile with `compileall`
 - full pytest suite
@@ -50,6 +50,7 @@ The suite is intentionally mixed:
 - integration smokes for create, validate, apply, revert, status, update, nightly, and plugin wrapping
 - property-based tests for path safety, scoring thresholds, systemd escaping, and soak commit matching
 - docs guards that fail when release-facing text drifts from shipped behavior
+- local markdown link/image guards for release-facing docs
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 
 ## Stable-release evidence
