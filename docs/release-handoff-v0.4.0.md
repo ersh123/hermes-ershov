@@ -38,7 +38,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - `python -m pytest -q` (223 tests pass)
 - `python -m pytest -q tests/test_pbt.py` (property-based safety invariants pass)
-- coverage gate `--cov-fail-under=80` (current local total: 84.00%)
+- coverage gate `--cov-fail-under=80` (current local total: 84.16%)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
 - Temp-only Ershov smoke with `HERMES_ERSHOV_STATE_ROOT`:

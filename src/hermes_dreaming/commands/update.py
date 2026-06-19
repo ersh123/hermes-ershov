@@ -239,6 +239,10 @@ def handle(
     try:
         _run_git(["pull", "--ff-only", remote, branch], cwd=repo_root)
         updated_rev = _git_output(["rev-parse", "HEAD"], cwd=repo_root)
+        upstream_rev = _git_output(["rev-parse", upstream_ref], cwd=repo_root)
+        refreshed_counts = _git_output(["rev-list", "--left-right", "--count", f"HEAD...{upstream_ref}"], cwd=repo_root)
+        ahead, behind = (int(part) for part in refreshed_counts.split())
+        dirty = bool(_git_output(["status", "--porcelain"], cwd=repo_root))
     except Exception as exc:
         return UpdateResult(
             success=False,
@@ -309,7 +313,7 @@ def handle(
         upstream_rev=upstream_rev,
         behind=behind,
         ahead=ahead,
-        dirty=False,
+        dirty=dirty,
         checked_only=False,
         updated=True,
         verified=verified,

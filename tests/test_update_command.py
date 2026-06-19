@@ -7,7 +7,7 @@ import types
 
 import pytest
 
-from hermes_dreaming.commands.update import handle
+from hermes_dreaming.commands.update import handle, render_update_result
 from hermes_dreaming.cli import main
 
 update_module = import_module("hermes_dreaming.commands.update")
@@ -76,7 +76,15 @@ def test_update_fast_forwards_and_verifies(tmp_path: Path) -> None:
     assert result.success is True
     assert result.updated is True
     assert result.verified is True
-    assert result.behind == 1
+    assert result.current_rev == updated_rev
+    assert result.upstream_rev == updated_rev
+    assert result.ahead == 0
+    assert result.behind == 0
+    assert result.dirty is False
+    rendered = render_update_result(result)
+    assert "- Upstream: `" in rendered
+    assert "- Ahead: `0`" in rendered
+    assert "- Behind: `0`" in rendered
     assert _run_git(["rev-parse", "HEAD"], cwd=repo) == updated_rev
     assert (repo / "update.txt").read_text(encoding="utf-8") == "update\n"
 
