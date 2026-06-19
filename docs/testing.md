@@ -21,11 +21,13 @@ For installed-artifact confidence, smoke the wheel in a temporary virtualenv and
 ershov --help
 ershov providers list
 ershov providers doctor --provider offline-marker --strict
+ershov providers doctor --provider deepseek --env-file ~/.config/hermes-ershov/nightly.env --env-file ~/.config/hermes-ershov/nightly.secrets.env --strict
 ershov status --release-gate --state-root /tmp/hermes-ershov-state
 ershov revert --help
 ```
 
 The status release gate is state-root scoped: with `--state-root`, the default artifact root and ledger/diary paths come from that state root unless `--artifact-root` is passed explicitly.
+The provider env-file smoke is timer-visible only: it reads systemd `EnvironmentFile` assignments, ignores missing optional secret files, and never prints secret values.
 
 ## CI gates
 
@@ -37,6 +39,7 @@ GitHub Actions runs the same release-shaped matrix:
 - full pytest suite
 - coverage report for `hermes_dreaming`, `hermes_ershov`, and `hermes_mnemos`, with an 80% minimum gate
 - property-based tests from `tests/test_pbt.py`
+- timer-visible provider readiness smoke with `providers doctor --env-file`
 - Hermes plugin wrapper smoke
 - wheel and source distribution build
 - installed wheel smoke for every public console and module alias

@@ -16,6 +16,7 @@ from hermes_dreaming.providers import (
     OpenRouterProvider,
     build_provider,
     doctor_providers,
+    load_env_files,
 )
 
 
@@ -471,6 +472,33 @@ def test_provider_doctor_checks_env_without_printing_secret_values() -> None:
     assert "sk-do-not-print" not in rendered
     assert "network probe skipped" in rendered
     assert "not an end-to-end generation test" in rendered
+
+
+def test_load_env_files_reads_systemd_environment_files_without_logging_values(tmp_path: Path) -> None:
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text(
+        "\n".join(
+            [
+                "# comment",
+                'HERMES_ERSHOV_PROVIDER="deepseek"',
+                "export DEEPSEEK_API_KEY='sk-do-not-print'",
+                "BAD-NAME=ignored",
+                "EMPTY=",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    env = load_env_files([env_file, tmp_path / "missing.env"])
+    rows = doctor_providers(provider="deepseek", env=env, openai_available=True)
+
+    assert env["HERMES_ERSHOV_PROVIDER"] == "deepseek"
+    assert env["DEEPSEEK_API_KEY"] == "sk-do-not-print"
+    assert "BAD-NAME" not in env
+    assert rows[0].readiness == "ready"
+    assert "DEEPSEEK_API_KEY: present" in rows[0].checks
+    assert "sk-do-not-print" not in rows[0].checks
 
 
 def test_provider_doctor_blocks_missing_openai_dependency_or_key() -> None:

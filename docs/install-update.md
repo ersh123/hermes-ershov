@@ -37,6 +37,16 @@ ledger. It does not apply live memory automatically and does not restart Hermes.
 Provider secrets are not written by the installer. If the timer needs DeepSeek,
 put the key in `~/.config/hermes-ershov/nightly.secrets.env`; the generated
 service reads that file if it exists and leaves it untouched on reinstall.
+Before switching a timer to a cloud provider, check the timer-visible
+environment files directly:
+
+```bash
+hermes ershov providers doctor --provider deepseek --env-file ~/.config/hermes-ershov/nightly.env --env-file ~/.config/hermes-ershov/nightly.secrets.env --strict
+```
+
+This is still a local readiness check only. It proves the generated service
+files can see a provider key without printing secret values; it does not send a
+prompt or call the model API.
 
 After the first scheduled run has actually fired, verify it with:
 

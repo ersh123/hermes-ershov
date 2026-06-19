@@ -140,7 +140,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "218 tests" not in text, path
         assert "221 tests" not in text, path
         assert "222 tests" not in text, path
-        assert "223 tests" in text, path
+        assert "223 tests" not in text, path
+        assert "224 tests" not in text, path
+        assert "225 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -191,6 +193,11 @@ def test_release_docs_document_provider_doctor_safety() -> None:
         assert "configuration" in text.lower(), path
         assert "not an end-to-end generation test" in text, path
     assert "never prints secret values" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "--env-file" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "timer-visible" in (REPO_ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
+    assert "without printing secret values" in (REPO_ROOT / "docs" / "install-update.md").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_release_docs_label_legacy_revert_evidence_as_degraded() -> None:

@@ -242,6 +242,23 @@ def test_providers_doctor_strict_returns_nonzero_for_unready_provider(capsys) ->
     assert "blocked" in output or "missing" in output
 
 
+def test_providers_doctor_can_check_systemd_env_file_without_printing_secret(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    env_file = tmp_path / "nightly.secrets.env"
+    env_file.write_text('DEEPSEEK_API_KEY="sk-do-not-print"\n', encoding="utf-8")
+
+    exit_code = main(["providers", "doctor", "--provider", "deepseek", "--env-file", str(env_file), "--strict"])
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "deepseek" in output
+    assert "DEEPSEEK_API_KEY: present" in output
+    assert "sk-do-not-print" not in output
+
+
 def test_create_with_no_llm_shorthand_uses_offline_marker(tmp_path: Path, monkeypatch, capsys) -> None:
     """`--no-llm` should set the provider to offline-marker regardless of --provider."""
     from hermes_dreaming.analyze import DreamRunConfig
