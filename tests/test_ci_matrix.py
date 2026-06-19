@@ -64,7 +64,7 @@ def test_checkouts_do_not_persist_github_tokens() -> None:
 
 
 def test_repeatable_analysis_workflows_cancel_stale_runs() -> None:
-    for workflow_name in ("ci.yml", "codeql.yml", "scorecard.yml", "cflite_pr.yml"):
+    for workflow_name in ("ci.yml", "codeql.yml", "scorecard.yml", "cflite_pr.yml", "publish.yml"):
         text = (REPO_ROOT / ".github" / "workflows" / workflow_name).read_text(encoding="utf-8")
         assert "concurrency:" in text, workflow_name
         assert "group: ${{ github.workflow }}-${{ github.ref }}" in text, workflow_name
@@ -135,11 +135,48 @@ def test_dependabot_monitors_actions_and_python_dependencies() -> None:
     assert text.count('interval: "weekly"') == 2
     assert "open-pull-requests-limit: 5" in text
 
-    for workflow_name in ("ci.yml", "release.yml"):
+    for workflow_name in ("ci.yml", "release.yml", "publish.yml"):
         workflow = (REPO_ROOT / ".github" / "workflows" / workflow_name).read_text(encoding="utf-8")
         assert "uv sync --locked --extra dev" in workflow
         assert "uv run --locked --extra dev" in workflow
         assert "pip install" not in workflow
+
+
+def test_publish_workflow_uses_release_only_trusted_publishing() -> None:
+    text = (REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
+    top_level_permissions = text.split("jobs:", 1)[0]
+    build_chunk, publish_chunk = text.split("  attest-and-publish:", 1)
+
+    for phrase in (
+        "release:",
+        "types: [published]",
+        "workflow_dispatch:",
+        "permissions:\n  contents: read",
+        "uv sync --locked --extra dev --python \"3.12\"",
+        "uv run --locked --extra dev python -m compileall -q __init__.py src scripts fuzzers",
+        "uv run --locked --extra dev pytest -q --cov=hermes_dreaming",
+        "uv run --locked --extra dev pytest -q tests/test_pbt.py tests/test_fuzz_harness.py",
+        "uv run --locked --extra dev python scripts/hermes_plugin_smoke.py",
+        "uv run --locked --extra dev python -m build",
+        "uv run --no-project --isolated --with dist/*.whl ershov --help",
+        "uv run --no-project --isolated --with dist/*.tar.gz python -m hermes_ershov --help",
+        "uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7",
+        "uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8",
+        "uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0",
+        "uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0",
+        "packages-dir: dist/",
+        "attestations: true",
+    ):
+        assert phrase in text
+    assert "id-token: write" not in top_level_permissions
+    assert "attestations: write" not in top_level_permissions
+    assert "id-token: write" not in build_chunk
+    assert "attestations: write" not in build_chunk
+    assert "if: github.event_name == 'release' && github.event.action == 'published'" in publish_chunk
+    assert "environment: pypi" in publish_chunk
+    assert "permissions:\n      contents: read\n      id-token: write\n      attestations: write" in publish_chunk
+    assert "password:" not in publish_chunk
+    assert "api-token" not in publish_chunk.lower()
 
 
 def test_python_classifier_matches_ci_matrix() -> None:

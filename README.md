@@ -62,6 +62,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 ## Current status
 
 - **Release posture:** public beta / release candidate. The current code, tests, plugin smoke, CI, and CodeQL gates are green, but stable wording waits for several clean scheduled systemd runs followed by `hermes ershov soak --strict-systemd`. The stable shortcut defaults to the 3-run public promotion gate: `hermes ershov soak --since-hours 96 --min-successful 3 --strict-systemd`.
+- **Publishing posture:** GitHub Release assets and PyPI Trusted Publishing workflows are wired, but no tag, GitHub release, or PyPI publish should happen until Niko explicitly approves the release gate.
 - **Full feature set:** create, review/open, nightly, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, install-systemd, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
 - **Run ledger + ERSHOV.md diary** for auditability

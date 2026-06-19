@@ -53,12 +53,14 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix
 - [ ] Confirm local markdown links/images pass the docs guard
 - [ ] Confirm the release workflow only uploads assets on a GitHub `release` event and does not publish to package indexes
+- [ ] Confirm the publish workflow can only publish to PyPI from a GitHub `release` event through the `pypi` environment, PyPI Trusted Publishing, OIDC, and artifact attestations
 - [ ] Confirm Dependabot is enabled for GitHub Actions and uv-managed Python package metadata
 - [ ] Confirm OpenSSF Scorecard is enabled and uploads SARIF to GitHub code scanning
 - [ ] Confirm ClusterFuzzLite PR/manual fuzzing is wired to `.clusterfuzzlite/` and uses pinned actions
+- [ ] Confirm PyPI Trusted Publishing is configured on PyPI for `.github/workflows/publish.yml` before any real PyPI release
 - [ ] Confirm checkout steps use `persist-credentials: false` unless a job explicitly needs a persisted token
 - [ ] Confirm workflow `uses:` actions are pinned to full commit SHAs with version comments
-- [ ] Confirm CI and release workflows use locked uv installs and contain no `pip install` commands
+- [ ] Confirm CI, release, and publish workflows use locked uv installs and contain no `pip install` commands
 - [ ] Confirm every GitHub Actions job has `timeout-minutes` and repeatable analysis workflows use concurrency cancellation
 - [ ] Confirm write permissions for SARIF/code-scanning uploads are scoped to the upload/analyze job
 

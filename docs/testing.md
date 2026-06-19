@@ -18,6 +18,9 @@ The matrix follows the current public docs for:
 - OpenSSF Scorecard Fuzzing check: https://github.com/ossf/scorecard/blob/main/docs/checks.md#fuzzing
 - ClusterFuzzLite GitHub Actions: https://google.github.io/clusterfuzzlite/running-clusterfuzzlite/github-actions/
 - ClusterFuzzLite Python integration: https://google.github.io/clusterfuzzlite/build-integration/python-lang/
+- PyPI Trusted Publishing: https://docs.pypi.org/trusted-publishers/using-a-publisher/
+- GitHub artifact attestations: https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+- OpenSSF Scorecard Packaging: https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging
 
 ## Local gates
 
@@ -77,6 +80,7 @@ GitHub Actions runs the same release-shaped matrix:
 - Dependabot weekly version-update checks for GitHub Actions and uv-managed Python package metadata
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
 - ClusterFuzzLite PR/manual fuzzing for the Python safety harness through `.clusterfuzzlite/` and `fuzzers/ershov_safety_fuzzer.py`
+- PyPI Trusted Publishing through OIDC on GitHub `release` events only, with GitHub artifact attestations for the built distributions
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps
 - workflow action pinning to full commit SHAs with adjacent version comments
 - isolated wheel and source distribution smoke through `uv run --no-project --isolated --with dist/*`
@@ -84,6 +88,7 @@ GitHub Actions runs the same release-shaped matrix:
 - workflow-level concurrency for repeatable analysis jobs and job-level `timeout-minutes` on every GitHub Actions job
 - job-scoped write permissions for SARIF/code-scanning uploads; top-level workflow permissions stay read-only unless the workflow has no narrower safe option
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
+- publish workflow build runs under read-only repository permissions; release-event-only PyPI publishing is isolated to a `pypi` environment job with `id-token: write` and `attestations: write`
 
 ## Coverage shape
 
@@ -96,7 +101,7 @@ The suite is intentionally mixed:
 - ClusterFuzzLite/Atheris fuzz target coverage for path validation, env quoting, provider fact parsing, memory-op validation, and score gates
 - docs guards that fail when release-facing text drifts from shipped behavior
 - local markdown link/image guards for release-facing docs
-- release workflow guards that prevent accidental PyPI publishing or release creation
+- release workflow guards that prevent accidental release creation and accidental PyPI publishing outside the dedicated Trusted Publishing job
 - supply-chain workflow guards for Scorecard permissions, SARIF output, checkout token persistence, full-SHA action pinning, ClusterFuzzLite wiring, workflow timeout/concurrency controls, and top-level permission minimization
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 

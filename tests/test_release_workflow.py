@@ -10,6 +10,10 @@ def _release_workflow() -> str:
     return (REPO_ROOT / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
 
 
+def _publish_workflow() -> str:
+    return (REPO_ROOT / ".github" / "workflows" / "publish.yml").read_text(encoding="utf-8")
+
+
 def test_release_workflow_build_job_uses_ci_strength_gates() -> None:
     text = _release_workflow()
 
@@ -63,3 +67,23 @@ def test_release_workflow_does_not_publish_to_package_indexes_or_create_releases
     )
     for phrase in forbidden:
         assert phrase not in text
+
+
+def test_publish_workflow_publishes_only_from_release_event_with_oidc() -> None:
+    text = _publish_workflow()
+    build_chunk, publish_chunk = text.split("  attest-and-publish:", 1)
+
+    assert "workflow_dispatch:" in text
+    assert "permissions:\n  contents: read" in text
+    assert "id-token: write" not in build_chunk
+    assert "attestations: write" not in build_chunk
+    assert "if: github.event_name == 'release' && github.event.action == 'published'" in publish_chunk
+    assert "environment: pypi" in publish_chunk
+    assert "id-token: write" in publish_chunk
+    assert "attestations: write" in publish_chunk
+    assert "actions/attest-build-provenance@" in publish_chunk
+    assert "pypa/gh-action-pypi-publish@" in publish_chunk
+    assert "packages-dir: dist/" in publish_chunk
+    assert "attestations: true" in publish_chunk
+    assert "password:" not in publish_chunk
+    assert "api-token" not in publish_chunk.lower()
