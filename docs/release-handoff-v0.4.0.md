@@ -36,9 +36,9 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 ## Verification gates
 
-- `python -m pytest -q` (230 tests pass)
+- `python -m pytest -q` (233 tests pass)
 - `python -m pytest -q tests/test_pbt.py` (property-based safety invariants pass)
-- coverage gate `--cov-fail-under=80` (current local total: 84.37%)
+- coverage gate `--cov-fail-under=80` (current local total: 84.40%)
 - `git diff --check` (clean)
 - `python3 -m build` (succeeds)
 - Temp-only Ershov smoke with `HERMES_ERSHOV_STATE_ROOT`:
@@ -65,7 +65,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 
 - [x] `git status -sb` clean (except intentional v0.4.0 changes)
 - [x] `git diff --check` clean
-- [x] `pytest -q` passes (230 tests)
+- [x] `pytest -q` passes (233 tests)
 - [x] `pytest -q tests/test_pbt.py` passes
 - [x] `python -m build` succeeds
 - [x] Each new + modified command smoke-tested on temp fixtures

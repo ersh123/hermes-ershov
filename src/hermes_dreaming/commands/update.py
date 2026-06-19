@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -60,6 +61,25 @@ def _run_git(
 
 def _git_output(args: list[str], *, cwd: Path) -> str:
     return _run_git(args, cwd=cwd).stdout.strip()
+
+
+def _verification_command(repo_root: Path, *, cache_dir: Path) -> list[str]:
+    pytest_args = ["-m", "pytest", "-q", "-o", f"cache_dir={cache_dir}"]
+    if (repo_root / "pyproject.toml").exists() and shutil.which("uv"):
+        return [
+            "uv",
+            "run",
+            "--no-project",
+            "--with-editable",
+            ".",
+            "--with",
+            "pytest",
+            "--with",
+            "hypothesis",
+            "python",
+            *pytest_args,
+        ]
+    return [sys.executable, *pytest_args]
 
 
 def _format_update_report(result: UpdateResult) -> str:
@@ -265,8 +285,9 @@ def handle(
         env = os.environ.copy()
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         with tempfile.TemporaryDirectory(prefix="hermes-ershov-update-pytest-cache-") as cache_dir:
+            verify_command = _verification_command(repo_root, cache_dir=Path(cache_dir))
             verify_proc = subprocess.run(
-                [sys.executable, "-m", "pytest", "-q", "-o", f"cache_dir={cache_dir}"],
+                verify_command,
                 cwd=repo_root,
                 text=True,
                 capture_output=True,

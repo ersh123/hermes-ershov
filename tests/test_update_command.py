@@ -110,6 +110,19 @@ def test_update_git_commands_have_timeout(monkeypatch, tmp_path: Path) -> None:
         update_module._run_git(["fetch", "--prune", "origin"], cwd=tmp_path)
 
 
+def test_update_verifier_uses_uv_ephemeral_env_for_pyproject(monkeypatch, tmp_path: Path) -> None:
+    (tmp_path / "pyproject.toml").write_text("[project]\nname = 'example'\nversion = '0.1.0'\n", encoding="utf-8")
+    monkeypatch.setattr(update_module.shutil, "which", lambda name: "/usr/bin/uv" if name == "uv" else None)
+
+    command = update_module._verification_command(tmp_path, cache_dir=tmp_path / ".pytest-cache")
+
+    assert command[:5] == ["uv", "run", "--no-project", "--with-editable", "."]
+    assert "--with" in command
+    assert "hypothesis" in command
+    assert "pytest" in command
+    assert "-m" in command
+
+
 def test_cli_update_wires_through_parser(monkeypatch, tmp_path: Path) -> None:
     captured = {}
 
