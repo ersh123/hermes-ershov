@@ -200,7 +200,7 @@ def test_discard_command_archives_artifact(tmp_path: Path, capsys) -> None:
     assert (live_root / "memory.md").read_text(encoding="utf-8") == "# MEMORY\n"
 
 
-def test_providers_list_prints_table_with_three_providers(tmp_path: Path, capsys) -> None:
+def test_providers_list_prints_table_with_builtin_providers(tmp_path: Path, capsys) -> None:
     exit_code = main(["providers", "list"])
     output = capsys.readouterr().out
     assert exit_code == 0
