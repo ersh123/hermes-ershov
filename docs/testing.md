@@ -70,6 +70,7 @@ GitHub Actions runs the same release-shaped matrix:
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps
 - workflow action pinning to full commit SHAs with adjacent version comments
 - workflow-level concurrency for repeatable analysis jobs and job-level `timeout-minutes` on every GitHub Actions job
+- job-scoped write permissions for SARIF/code-scanning uploads; top-level workflow permissions stay read-only unless the workflow has no narrower safe option
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
 
 ## Coverage shape
@@ -83,7 +84,7 @@ The suite is intentionally mixed:
 - docs guards that fail when release-facing text drifts from shipped behavior
 - local markdown link/image guards for release-facing docs
 - release workflow guards that prevent accidental PyPI publishing or release creation
-- supply-chain workflow guards for Scorecard permissions, SARIF output, checkout token persistence, full-SHA action pinning, and workflow timeout/concurrency controls
+- supply-chain workflow guards for Scorecard permissions, SARIF output, checkout token persistence, full-SHA action pinning, workflow timeout/concurrency controls, and top-level permission minimization
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 
 ## Stable-release evidence

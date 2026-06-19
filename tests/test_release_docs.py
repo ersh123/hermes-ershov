@@ -283,6 +283,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "full commit SHAs",
         "timeout-minutes",
         "workflow timeout/concurrency controls",
+        "top-level permission minimization",
         "https://docs.github.com/actions/using-workflows/workflow-syntax-for-github-actions",
         "https://github.com/ossf/scorecard-action",
         "--min-successful 3 --strict-systemd",

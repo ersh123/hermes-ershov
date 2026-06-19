@@ -40,12 +40,15 @@ def test_ci_workflow_shows_release_shaped_test_matrix() -> None:
 
 def test_codeql_workflow_is_scheduled_and_pr_gated() -> None:
     text = (REPO_ROOT / ".github" / "workflows" / "codeql.yml").read_text(encoding="utf-8")
+    top_level_permissions = text.split("concurrency:", 1)[0]
+    analyze_job = text.split("  analyze:", 1)[1]
 
     assert "pull_request:" in text
     assert "schedule:" in text
     assert "workflow_dispatch:" in text
     assert "languages: python" in text
-    assert "security-events: write" in text
+    assert "security-events: write" not in top_level_permissions
+    assert "permissions:\n      contents: read\n      security-events: write" in analyze_job
     assert "persist-credentials: false" in text
 
 
