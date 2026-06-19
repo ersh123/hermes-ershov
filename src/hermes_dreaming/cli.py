@@ -20,7 +20,7 @@ from .apply import (
 )
 from .commands.compact import handle as compact_artifacts
 from .commands.install_cron import handle as install_cron_command
-from .commands.install_systemd import handle as install_systemd_command, render_result as render_systemd_install
+from .commands.install_systemd import default_env_files, handle as install_systemd_command, render_result as render_systemd_install
 from .commands.harvest import harvest_recent
 from .commands.inbox import build_inbox, parse_filter, render_inbox, render_inbox_json
 from .commands.digest import build_digest, build_inbox_digest, render_digest, render_inbox_digest
@@ -420,6 +420,11 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=None,
         help="Read key presence from systemd EnvironmentFile-style files instead of the current process env; values are never printed",
+    )
+    providers_doctor.add_argument(
+        "--from-systemd",
+        action="store_true",
+        help="Read provider readiness from the default Hermes Ershov systemd EnvironmentFile paths; explicit --env-file values are applied after them",
     )
     providers_doctor.add_argument("--strict", action="store_true", help="Exit non-zero when any checked provider is not ready")
     providers_doctor.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
@@ -1200,7 +1205,11 @@ def main(argv: list[str] | None = None) -> int:
             print(render_providers_table(rows).rstrip())
             return 0
         if args.providers_command == "doctor":
-            env = load_env_files(args.env_file) if args.env_file else None
+            env_files = []
+            if args.from_systemd:
+                env_files.extend(default_env_files())
+            env_files.extend(args.env_file or [])
+            env = load_env_files(env_files) if env_files else None
             rows = doctor_providers(
                 provider=args.provider,
                 model=args.model,

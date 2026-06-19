@@ -6,6 +6,7 @@ from hypothesis import given, settings, strategies as st
 
 from hermes_dreaming.commands.install_systemd import _env_quote, _single_line_unit_value
 from hermes_dreaming.commands.soak import _commit_matches
+from hermes_dreaming.providers import doctor_providers, render_provider_doctor_table
 from hermes_dreaming.scoring import (
     ADD_MIN_SCORE,
     REMOVE_MIN_CONFIDENCE,
@@ -51,6 +52,19 @@ def test_pbt_env_quote_is_single_line_and_wrapped(value: str) -> None:
     assert "\n" not in quoted
     assert "\r" not in quoted
     assert "$" not in quoted or "\\$" in quoted
+
+
+@settings(max_examples=200)
+@given(st.text(alphabet="abcdefghijklmnopqrstuvwxyz0123456789", min_size=1, max_size=32))
+def test_pbt_provider_doctor_reports_key_presence_without_secret_output(suffix: str) -> None:
+    secret = f"sk-secret-{suffix}"
+
+    rows = doctor_providers(provider="deepseek", env={"DEEPSEEK_API_KEY": secret}, openai_available=True)
+    output = render_provider_doctor_table(rows)
+
+    assert rows[0].readiness == "ready"
+    assert "DEEPSEEK_API_KEY: present" in output
+    assert "sk-secret-" not in output
 
 
 @settings(max_examples=200)

@@ -41,12 +41,17 @@ Before switching a timer to a cloud provider, check the timer-visible
 environment files directly:
 
 ```bash
-hermes ershov providers doctor --provider deepseek --env-file ~/.config/hermes-ershov/nightly.env --env-file ~/.config/hermes-ershov/nightly.secrets.env --strict
+hermes ershov providers doctor --provider deepseek --from-systemd --strict
 ```
 
 This is still a local readiness check only. It proves the generated service
 files can see a provider key without printing secret values; it does not send a
 prompt or call the model API.
+Use explicit `--env-file` values only when testing a non-default service layout:
+
+```bash
+hermes ershov providers doctor --provider deepseek --env-file ~/.config/hermes-ershov/nightly.env --env-file ~/.config/hermes-ershov/nightly.secrets.env --strict
+```
 
 After the first scheduled run has actually fired, verify it with:
 

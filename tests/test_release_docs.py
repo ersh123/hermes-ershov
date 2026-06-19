@@ -202,6 +202,13 @@ def test_release_docs_document_provider_doctor_safety() -> None:
         assert "configuration" in text.lower(), path
         assert "not an end-to-end generation test" in text, path
     assert "never prints secret values" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "--from-systemd" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
+    assert "--from-systemd" in (REPO_ROOT / "docs" / "release-notes-v0.4.0.md").read_text(
+        encoding="utf-8"
+    )
+    assert "--from-systemd" in (REPO_ROOT / "docs" / "release-handoff-v0.4.0.md").read_text(
+        encoding="utf-8"
+    )
     assert "--env-file" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     assert "timer-visible" in (REPO_ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
     assert "without printing secret values" in (REPO_ROOT / "docs" / "install-update.md").read_text(

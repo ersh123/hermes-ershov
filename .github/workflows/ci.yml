@@ -65,6 +65,7 @@ jobs:
           /tmp/ershov-wheel-smoke/bin/ershov --help
           /tmp/ershov-wheel-smoke/bin/ershov providers list
           /tmp/ershov-wheel-smoke/bin/ershov providers doctor --provider offline-marker --strict
+          /tmp/ershov-wheel-smoke/bin/ershov providers doctor --provider offline-marker --from-systemd --strict
           /tmp/ershov-wheel-smoke/bin/ershov status --release-gate --state-root /tmp/ershov-wheel-smoke-state
           /tmp/ershov-wheel-smoke/bin/ershov revert --help
           /tmp/ershov-wheel-smoke/bin/mnemos --help

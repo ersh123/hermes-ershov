@@ -75,7 +75,7 @@ This is the short follow-up note for the v0.4.0 release lane.
 ## What needs Niko's eyes
 
 - **Revert command behavior**: new successful applies record per-write post-apply shas in `backup_records`, so drift detection can distinguish a clean applied file from an operator edit after apply. Legacy artifacts still fall back to backup-vs-live drift comparison, but those events are labeled `legacy-degraded` in audit output and `REVERT.md`.
-- **Provider doctor behavior**: `providers doctor --strict` is a local configuration gate only. With repeatable `--env-file`, it checks the same systemd `EnvironmentFile` key presence the timer will see, still without prompt/model calls and without printing secret values. It is not an end-to-end generation test.
+- **Provider doctor behavior**: `providers doctor --strict` is a local configuration gate only. With `--from-systemd`, it checks the default Hermes Ershov systemd `EnvironmentFile` paths the timer will see; repeatable `--env-file` remains available for explicit layouts. Both paths avoid prompt/model calls and never print secret values. It is not an end-to-end generation test.
 - **Apply filter behavior**: filtered-out proposals stay `approved` so a later apply with a different filter can still land them. This is the right behavior for the use case, but it's a state-machine subtlety. Read `apply_artifact` to confirm.
 - **Re-run of reject without reason**: the CLI now exits 1 instead of erroring in argparse. If you want a different code, it's a one-liner in `cli.py`.
 - **`--from-since` count heuristic**: 4 sessions per day, capped at 50. If you want a different default, change the constant in `_resolve_creation_sources`.
