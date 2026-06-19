@@ -67,7 +67,7 @@ Three additive fields on `DreamArtifact`:
 
 ## Verification
 
-- `pytest -q` passes (258 tests).
+- `pytest -q` passes (260 tests).
 - `pytest -q tests/test_pbt.py` passes and keeps the property-based path safety, systemd escaping, scoring, and soak commit-prefix invariants visible in the release matrix.
 - `pytest -q tests/test_fuzz_harness.py` passes and keeps the ClusterFuzzLite/Atheris Python fuzz harness locally smoke-tested.
 - Coverage gate passes with `--cov-fail-under=80` (current local total: 84.52%).

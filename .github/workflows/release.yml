@@ -44,6 +44,9 @@ jobs:
       - name: Build distributions
         run: uv run --locked --extra dev python -m build
 
+      - name: Export repository SBOM
+        run: uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/hermes-ershov-sbom.spdx.json
+
       - name: Smoke wheel
         run: |
           uv run --no-project --isolated --with dist/*.whl ershov --help

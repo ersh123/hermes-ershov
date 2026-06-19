@@ -162,7 +162,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "254 tests" not in text, path
         assert "255 tests" not in text, path
         assert "256 tests" not in text, path
-        assert "258 tests" in text, path
+        assert "258 tests" not in text, path
+        assert "259 tests" not in text, path
+        assert "260 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -294,6 +296,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "PyPI Trusted Publishing",
         "GitHub artifact attestations",
         "GitHub Release asset attestations",
+        "SPDX release SBOM generation",
         "release-event-only PyPI publishing",
         "SARIF uploaded to code scanning",
         "persist-credentials: false",
@@ -310,6 +313,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "https://google.github.io/clusterfuzzlite/build-integration/python-lang/",
         "https://docs.pypi.org/trusted-publishers/using-a-publisher/",
         "https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds",
+        "https://spdx.github.io/spdx-spec/v2.3/package-information/",
         "https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging",
         "--min-successful 3 --strict-systemd",
         "https://docs.pytest.org/en/stable/explanation/goodpractices.html",

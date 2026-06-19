@@ -20,6 +20,7 @@ The matrix follows the current public docs for:
 - ClusterFuzzLite Python integration: https://google.github.io/clusterfuzzlite/build-integration/python-lang/
 - PyPI Trusted Publishing: https://docs.pypi.org/trusted-publishers/using-a-publisher/
 - GitHub artifact attestations: https://docs.github.com/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds
+- SPDX package information: https://spdx.github.io/spdx-spec/v2.3/package-information/
 - OpenSSF Scorecard Packaging: https://github.com/ossf/scorecard/blob/main/docs/checks.md#packaging
 
 ## Local gates
@@ -80,6 +81,7 @@ GitHub Actions runs the same release-shaped matrix:
 - Dependabot weekly version-update checks for GitHub Actions and uv-managed Python package metadata
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
 - ClusterFuzzLite PR/manual fuzzing for the Python safety harness through `.clusterfuzzlite/` and `fuzzers/ershov_safety_fuzzer.py`
+- SPDX release SBOM generation into `dist/hermes-ershov-sbom.spdx.json`
 - GitHub Release asset attestations on release-event uploads
 - PyPI Trusted Publishing through OIDC on GitHub `release` events only, with GitHub artifact attestations for the built distributions
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps

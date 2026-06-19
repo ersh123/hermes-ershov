@@ -52,7 +52,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Smoke `ershov update --check` and the real `ershov update --no-verify` path on a disposable repo
 - [ ] Confirm `docs/testing.md` still matches the GitHub Actions matrix
 - [ ] Confirm local markdown links/images pass the docs guard
-- [ ] Confirm the release workflow only uploads attested assets on a GitHub `release` event and does not publish to package indexes
+- [ ] Confirm the release workflow exports an SPDX SBOM and only uploads attested assets on a GitHub `release` event, without publishing to package indexes
 - [ ] Confirm the publish workflow can only publish to PyPI from a GitHub `release` event through the `pypi` environment, PyPI Trusted Publishing, OIDC, and artifact attestations
 - [ ] Confirm Dependabot is enabled for GitHub Actions and uv-managed Python package metadata
 - [ ] Confirm OpenSSF Scorecard is enabled and uploads SARIF to GitHub code scanning
