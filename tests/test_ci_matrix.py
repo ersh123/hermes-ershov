@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -57,6 +58,18 @@ def test_checkouts_do_not_persist_github_tokens() -> None:
             assert "persist-credentials: false" in text, path
 
 
+def test_github_actions_are_pinned_to_full_commit_shas() -> None:
+    workflow_paths = sorted((REPO_ROOT / ".github" / "workflows").glob("*.yml"))
+    action_line = re.compile(r"uses:\s+[-\w./]+@[0-9a-f]{40}\s+#\s+v?[0-9][-\w.]*$")
+
+    for path in workflow_paths:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("uses: "):
+                continue
+            assert action_line.search(stripped), (path, stripped)
+
+
 def test_scorecard_workflow_reports_supply_chain_security_to_code_scanning() -> None:
     text = (REPO_ROOT / ".github" / "workflows" / "scorecard.yml").read_text(encoding="utf-8")
 
@@ -66,13 +79,13 @@ def test_scorecard_workflow_reports_supply_chain_security_to_code_scanning() -> 
         "contents: read",
         "security-events: write",
         "id-token: write",
-        "uses: ossf/scorecard-action@v2.4.3",
-        "uses: actions/upload-artifact@v7",
-        "uses: actions/download-artifact@v8",
+        "uses: ossf/scorecard-action@4eaacf0543bb3f2c246792bd56e8cdeffafb205a # v2.4.3",
+        "uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7",
+        "uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8",
         "results_file: scorecard-results.sarif",
         "results_format: sarif",
         "publish_results: true",
-        "uses: github/codeql-action/upload-sarif@v4",
+        "uses: github/codeql-action/upload-sarif@8aad20d150bbac5944a9f9d289da16a4b0d87c1e # v4",
         "sarif_file: scorecard-results.sarif",
         "persist-credentials: false",
     ):

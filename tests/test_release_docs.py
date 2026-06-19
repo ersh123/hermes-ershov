@@ -157,7 +157,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "248 tests" not in text, path
         assert "249 tests" not in text, path
         assert "250 tests" not in text, path
-        assert "251 tests" in text, path
+        assert "251 tests" not in text, path
+        assert "252 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -278,6 +279,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "OpenSSF Scorecard",
         "SARIF uploaded to code scanning",
         "persist-credentials: false",
+        "full commit SHAs",
         "https://github.com/ossf/scorecard-action",
         "--min-successful 3 --strict-systemd",
         "https://docs.pytest.org/en/stable/explanation/goodpractices.html",

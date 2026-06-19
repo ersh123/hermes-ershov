@@ -55,6 +55,7 @@ Contributor documentation and GitHub templates are welcome, but they do not cons
 - [ ] Confirm Dependabot is enabled for GitHub Actions and Python package metadata
 - [ ] Confirm OpenSSF Scorecard is enabled and uploads SARIF to GitHub code scanning
 - [ ] Confirm checkout steps use `persist-credentials: false` unless a job explicitly needs a persisted token
+- [ ] Confirm workflow `uses:` actions are pinned to full commit SHAs with version comments
 
 ## 5. Release gate
 

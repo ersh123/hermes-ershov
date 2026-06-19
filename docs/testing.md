@@ -67,6 +67,7 @@ GitHub Actions runs the same release-shaped matrix:
 - Dependabot weekly version-update checks for GitHub Actions and Python package metadata
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps
+- workflow action pinning to full commit SHAs with adjacent version comments
 - release asset workflow build runs under read-only repository permissions; asset upload is isolated to a separate `release`-event-only job with `contents: write`
 
 ## Coverage shape
@@ -80,7 +81,7 @@ The suite is intentionally mixed:
 - docs guards that fail when release-facing text drifts from shipped behavior
 - local markdown link/image guards for release-facing docs
 - release workflow guards that prevent accidental PyPI publishing or release creation
-- supply-chain workflow guards for Scorecard permissions, SARIF output, and checkout token persistence
+- supply-chain workflow guards for Scorecard permissions, SARIF output, checkout token persistence, and full-SHA action pinning
 - negative tests for malformed provider output, fabricated provenance, fabricated quotes/snippets, unsafe paths, missing backups, and no-op nightlies
 
 ## Stable-release evidence
