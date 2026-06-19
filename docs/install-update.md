@@ -42,13 +42,14 @@ After the first scheduled run has actually fired, verify it with:
 
 ```bash
 COMMIT="$(git -C ~/.hermes/plugins/hermes-ershov rev-parse --short HEAD)"
-ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT"
+ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT" --require-clean
 ```
 
 Manual starts prove the service command works. The stricter `--require-source
 systemd` gate only accepts ledger entries written by the systemd service
 environment. `--require-commit` ties the evidence to the installed checkout that
-will be released. A passing `soak` after the real schedule fires is the stronger
+will be released. `--require-clean` rejects runs produced by a dirty installed
+checkout. A passing `soak` after the real schedule fires is the stronger
 evidence for stable operations.
 
 ## Update the installed checkout

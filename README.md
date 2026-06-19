@@ -59,7 +59,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 
 ## Current status
 
-- **Release posture:** public beta / release candidate. The current code, tests, plugin smoke, CI, and CodeQL gates are green, but stable wording waits for a real overnight systemd/cron run followed by `ershov soak --require-timer --require-source systemd --require-commit <installed-commit>`.
+- **Release posture:** public beta / release candidate. The current code, tests, plugin smoke, CI, and CodeQL gates are green, but stable wording waits for a real overnight systemd/cron run followed by `ershov soak --require-timer --require-source systemd --require-commit <installed-commit> --require-clean`.
 - **Full feature set:** create, review/open, nightly, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, install-systemd, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
 - **Run ledger + ERSHOV.md diary** for auditability
@@ -178,7 +178,7 @@ ershov status --artifact-root ./artifacts
 # Verify overnight soak evidence after a scheduled nightly run
 
 COMMIT="$(git -C ~/.hermes/plugins/hermes-ershov rev-parse --short HEAD)"
-ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT"
+ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT" --require-clean
 
 # Safely update the installed checkout
 
@@ -212,7 +212,7 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 - `providers list` introspects the built-in providers (offline-marker, openai-compatible, deepseek, openrouter, ollama) without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create`, `review`, and `nightly`.
 - OpenAI-compatible, DeepSeek, OpenRouter, and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
 - `HERMES_ERSHOV_SESSION_DB=/path/to/state.db` forces harvest/nightly to read a specific SessionDB-compatible SQLite file before trying the live Hermes SessionDB. This is useful for deterministic smoke tests.
-- `soak` is a read-only release gate for scheduled nightly memory. It checks the run ledger for recent successful `nightly` runs, fails on recent nightly failures unless `--allow-failures` is set, can require the user systemd timer with `--require-timer`, and can require evidence from a specific runner and code revision with `--require-source systemd --require-commit <sha>`.
+- `soak` is a read-only release gate for scheduled nightly memory. It checks the run ledger for recent successful `nightly` runs, fails on recent nightly failures unless `--allow-failures` is set, can require the user systemd timer with `--require-timer`, and can require evidence from a specific runner, code revision, and clean checkout with `--require-source systemd --require-commit <sha> --require-clean`.
 - `summarize` prints a concise decision brief for an existing artifact.
 - `approve` and `reject` update artifact metadata only, they do not touch live roots. `reject` requires a non-empty `--reason` at the command layer; any code path (CLI, library, plugin) is constrained by the same rule.
 - `diff` accepts optional `--live-root` and renders unified diffs when the live target root is available.

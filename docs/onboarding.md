@@ -75,10 +75,11 @@ After a scheduled run has had time to fire, use `soak` as the release gate:
 
 ```bash
 COMMIT="$(git -C ~/.hermes/plugins/hermes-ershov rev-parse --short HEAD)"
-ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT"
+ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer --require-source systemd --require-commit "$COMMIT" --require-clean
 ```
 
 It is read-only. It checks `runs.jsonl` for recent successful `nightly` runs, fails on recent nightly failures, verifies the user systemd timer when `--require-timer` is set, and can require the successful run to come from the installed systemd checkout/commit.
+Add `--require-clean` when using it as a release gate so dirty installed checkouts cannot count as stable evidence.
 
 ## What to expect
 

@@ -280,6 +280,7 @@ def build_parser() -> argparse.ArgumentParser:
     soak.add_argument("--require-timer", action="store_true", help="Require the user systemd timer to be enabled and active")
     soak.add_argument("--require-source", default=None, help="Require successful nightly runs to have this run_source, e.g. systemd")
     soak.add_argument("--require-commit", default=None, help="Require successful nightly runs to match this git commit")
+    soak.add_argument("--require-clean", action="store_true", help="Require successful nightly runs to come from a clean git checkout")
     soak.add_argument("--timer-name", default="hermes-ershov-nightly.timer", help="systemd user timer name to inspect")
     soak.add_argument("--allow-failures", action="store_true", help="Do not fail when failed nightly runs exist inside the window")
     soak.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
@@ -952,6 +953,7 @@ def main(argv: list[str] | None = None) -> int:
                 require_timer=args.require_timer,
                 required_source=args.require_source,
                 required_commit=args.require_commit,
+                require_clean=args.require_clean,
                 timer_name=args.timer_name,
                 allow_failures=args.allow_failures,
             )

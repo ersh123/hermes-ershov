@@ -46,6 +46,7 @@ class NightlyMemoryResult:
     summary: str
     run_source: str
     git_commit: str | None
+    git_dirty: bool | None
 
 
 def _state_root(path: Path | None) -> Path:
@@ -104,6 +105,23 @@ def _current_git_commit(repo_root: Path | None = None) -> str | None:
     return commit or None
 
 
+def _current_git_dirty(repo_root: Path | None = None) -> bool | None:
+    root = repo_root or _repo_root()
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(root), "status", "--short"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if result.returncode != 0:
+        return None
+    return bool(result.stdout.strip())
+
+
 @contextmanager
 def _exclusive_nightly_lock(lock_path: Path) -> Iterator[None]:
     if fcntl is None:
@@ -134,6 +152,7 @@ def _write_noop_digest(*, path: Path, result: NightlyMemoryResult) -> None:
         f"- Proposals: `{result.proposal_count}`",
         f"- Source bundle: `{result.source_bundle}`",
         f"- Git commit: `{result.git_commit or 'unknown'}`",
+        f"- Git dirty: `{str(result.git_dirty).lower() if result.git_dirty is not None else 'unknown'}`",
         f"- Inbox digest: `{result.inbox_digest_path}`",
         "",
         "## Summary",
@@ -165,6 +184,7 @@ def _record_nightly_run(result: NightlyMemoryResult) -> None:
             "live_root": str(result.live_root),
             "run_source": result.run_source,
             "git_commit": result.git_commit,
+            "git_dirty": result.git_dirty,
             "summary": result.summary,
             "sessions": len(result.harvest_result.sessions),
             "redactions": result.harvest_result.redaction_count,
@@ -187,6 +207,7 @@ def _record_nightly_failure(
     artifact_root: Path,
     run_source: str,
     git_commit: str | None,
+    git_dirty: bool | None,
     error: BaseException,
 ) -> None:
     error_text = f"{type(error).__name__}: {error}"
@@ -201,6 +222,7 @@ def _record_nightly_failure(
             "live_root": str(live_root),
             "run_source": run_source,
             "git_commit": git_commit,
+            "git_dirty": git_dirty,
             "summary": f"nightly failed before completion: {error_text}",
             "sessions": 0,
             "redactions": 0,
@@ -234,7 +256,9 @@ def run_nightly_memory(
 
     resolved_state_root = _state_root(state_root)
     run_source = _run_source_from_env()
-    git_commit = _current_git_commit()
+    repo_root = _repo_root()
+    git_commit = _current_git_commit(repo_root)
+    git_dirty = _current_git_dirty(repo_root)
     with _exclusive_nightly_lock(resolved_state_root / "nightly.lock"):
         try:
             return _run_nightly_memory_locked(
@@ -250,6 +274,7 @@ def run_nightly_memory(
                 include_weekly=include_weekly,
                 run_source=run_source,
                 git_commit=git_commit,
+                git_dirty=git_dirty,
             )
         except Exception as exc:
             try:
@@ -259,6 +284,7 @@ def run_nightly_memory(
                     artifact_root=Path(artifact_root),
                     run_source=run_source,
                     git_commit=git_commit,
+                    git_dirty=git_dirty,
                     error=exc,
                 )
             except Exception:
@@ -280,6 +306,7 @@ def _run_nightly_memory_locked(
     include_weekly: bool = True,
     run_source: str | None = None,
     git_commit: str | None = None,
+    git_dirty: bool | None = None,
 ) -> NightlyMemoryResult:
     if recent <= 0:
         raise ValueError("recent must be greater than 0")
@@ -289,7 +316,10 @@ def _run_nightly_memory_locked(
     archive_root = Path(archive_root) if archive_root is not None else artifact_root.parent / "archive"
     resolved_state_root = _state_root(state_root)
     run_source = run_source or _run_source_from_env()
-    git_commit = git_commit if git_commit is not None else _current_git_commit()
+    if git_commit is None or git_dirty is None:
+        repo_root = _repo_root()
+        git_commit = git_commit if git_commit is not None else _current_git_commit(repo_root)
+        git_dirty = git_dirty if git_dirty is not None else _current_git_dirty(repo_root)
     source_bundle = _source_bundle_path(artifact_root)
 
     harvest = harvest_recent(
@@ -336,6 +366,7 @@ def _run_nightly_memory_locked(
             summary=summary,
             run_source=run_source,
             git_commit=git_commit,
+            git_dirty=git_dirty,
         )
         _write_noop_digest(path=digest_path, result=result)
         _record_nightly_run(result)
@@ -399,6 +430,7 @@ def _run_nightly_memory_locked(
         summary=summary,
         run_source=run_source,
         git_commit=git_commit,
+        git_dirty=git_dirty,
     )
     _record_nightly_run(result)
     return result
@@ -417,6 +449,7 @@ def render_nightly_memory(result: NightlyMemoryResult) -> str:
         f"- Source bundle: `{result.source_bundle}`",
         f"- Run source: `{result.run_source}`",
         f"- Git commit: `{result.git_commit or 'unknown'}`",
+        f"- Git dirty: `{str(result.git_dirty).lower() if result.git_dirty is not None else 'unknown'}`",
         f"- Digest: `{result.digest_path}`",
         f"- Inbox digest: `{result.inbox_digest_path}`",
         f"- Sessions harvested: `{len(result.harvest_result.sessions)}`",

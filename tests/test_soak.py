@@ -31,6 +31,7 @@ def _nightly(
     status: str = "staged",
     run_source: str = "manual",
     git_commit: str = "abc1234",
+    git_dirty: bool = False,
 ) -> dict[str, object]:
     return {
         "command": "nightly",
@@ -40,6 +41,7 @@ def _nightly(
         "artifact_status": status,
         "run_source": run_source,
         "git_commit": git_commit,
+        "git_dirty": git_dirty,
         "summary": "nightly staged proposals" if success else "nightly failed",
     }
 
@@ -127,6 +129,7 @@ def test_soak_report_can_require_successful_run_source(tmp_path: Path) -> None:
     assert len(report.recent_successful_nightly_runs) == 2
     assert len(report.source_matched_successful_nightly_runs) == 1
     assert len(report.commit_matched_successful_nightly_runs) == 1
+    assert len(report.clean_matched_successful_nightly_runs) == 1
     assert "Required run source: `systemd`" in render_soak_report(report)
     assert "source=systemd" in render_soak_report(report)
 
@@ -141,6 +144,7 @@ def test_soak_report_fails_when_required_source_is_missing(tmp_path: Path) -> No
     assert "source 'systemd'" in report.reasons[0]
     assert "Source-matching successful nightly runs: `0`" in render_soak_report(report)
     assert "Commit-matching successful nightly runs: `0`" in render_soak_report(report)
+    assert "Clean successful nightly runs: `0`" in render_soak_report(report)
 
 
 def test_soak_report_can_require_successful_git_commit(tmp_path: Path) -> None:
@@ -186,6 +190,53 @@ def test_soak_report_fails_when_required_git_commit_is_missing(tmp_path: Path) -
     assert "Commit-matching successful nightly runs: `0`" in render_soak_report(report)
 
 
+def test_soak_report_can_require_clean_checkout(tmp_path: Path) -> None:
+    state_root = tmp_path / "state"
+    _write_ledger(
+        state_root,
+        [
+            _nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234", git_dirty=True),
+            _nightly(success=True, hours_ago=1, run_source="systemd", git_commit="abc1234", git_dirty=False),
+        ],
+    )
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_source="systemd",
+        required_commit="abc1234",
+        require_clean=True,
+    )
+
+    assert report.passed is True
+    assert report.require_clean is True
+    assert len(report.commit_matched_successful_nightly_runs) == 2
+    assert len(report.clean_matched_successful_nightly_runs) == 1
+    output = render_soak_report(report)
+    assert "Require clean checkout: `true`" in output
+    assert "dirty=false" in output
+
+
+def test_soak_report_fails_when_clean_checkout_is_required_but_missing(tmp_path: Path) -> None:
+    state_root = tmp_path / "state"
+    _write_ledger(
+        state_root,
+        [_nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234", git_dirty=True)],
+    )
+
+    report = build_soak_report(
+        state_root=state_root,
+        now=NOW,
+        required_source="systemd",
+        required_commit="abc1234",
+        require_clean=True,
+    )
+
+    assert report.passed is False
+    assert "clean checkout" in report.reasons[0]
+    assert "Clean successful nightly runs: `0`" in render_soak_report(report)
+
+
 def test_soak_report_json_is_machine_readable(tmp_path: Path) -> None:
     state_root = tmp_path / "state"
     _write_ledger(state_root, [_nightly(success=True, hours_ago=2)])
@@ -224,6 +275,7 @@ def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
                 "systemd",
                 "--require-commit",
                 "abc1234",
+                "--require-clean",
                 "--json",
             ]
         )
@@ -234,3 +286,4 @@ def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
     assert payload["passed"] is True
     assert payload["required_source"] == "systemd"
     assert payload["required_commit"] == "abc1234"
+    assert payload["require_clean"] is True
