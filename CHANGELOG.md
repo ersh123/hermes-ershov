@@ -8,6 +8,7 @@
 - Added `ershov inbox --apply-ready` to surface artifacts where every proposal is approved (or already applied). The inbox digest also renders a "Ready to apply" section.
 - Added `ershov providers list` to introspect the three built-in providers without pinging external services. `--no-llm` is a shorthand for `--provider offline-marker` on `create` and `review`.
 - Added `ershov soak` as a read-only release gate for scheduled nightly memory: it checks recent successful `nightly` runs, recent failures, and optionally the user systemd timer.
+- Hardened the root Hermes plugin wrapper so `hermes ershov ...` propagates non-zero CLI failures to the shell instead of returning success after printing an error.
 - Hardened `nightly --no-llm` so harvests without eligible `MEMORY:` / `DREAM:` markers exit as clean `no-op` runs instead of invalid empty artifacts.
 - Added `HERMES_ERSHOV_SESSION_DB` for deterministic harvest/nightly smoke tests against a specific SessionDB-compatible SQLite file.
 - Tightened the `reject` reason enforcement: the non-empty reason check is now in `commands/review.py:reject_artifact()`, so any caller (CLI, library, plugin) is constrained by the same rule.

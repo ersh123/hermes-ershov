@@ -35,6 +35,7 @@ v0.4.0 makes Ershov safe to use in anger (revert, dry-run, selective apply) and 
 - **`ershov nightly --no-llm`** now exits as a clean `no-op` when the recent harvest has no eligible `MEMORY:` / `DREAM:` markers. It records the run and writes digests, but does not create an invalid empty artifact.
 - **`HERMES_ERSHOV_SESSION_DB=/path/to/state.db`** forces harvest/nightly to use a specific SessionDB-compatible SQLite file before the live Hermes SessionDB. This makes installed-CLI smoke tests deterministic.
 - **`ershov soak`** is the read-only scheduled-run gate. It checks recent successful `nightly` runs in `runs.jsonl`, fails on recent nightly failures by default, and can require the user systemd timer to be enabled and active.
+- The root Hermes plugin wrapper now propagates non-zero CLI failures, so `hermes ershov ...` can be used as a real shell gate instead of only a human-readable wrapper.
 
 ## Data model
 
@@ -53,10 +54,10 @@ A third field, `dry_run_report`, is attached in-memory only during a single appl
 
 ## Verification
 
-- `pytest -q` passes (139 tests).
+- `pytest -q` passes (144 tests).
 - `python -m build --wheel` succeeds.
 - `git diff --check` clean.
-- Smoke-tested on temp fixtures for: `revert` (roundtrip, drift, missing backup, partial failure), `apply --dry-run` (preview without writes), `apply --priority` and `--target-kind` (filters), `inbox --apply-ready`, `providers list`, `--from-sessions` with redaction stats, `nightly --no-llm` no-op/staged paths, deterministic SessionDB override, and `soak` pass/fail gates.
+- Smoke-tested on temp fixtures for: `revert` (roundtrip, drift, missing backup, partial failure), `apply --dry-run` (preview without writes), `apply --priority` and `--target-kind` (filters), `inbox --apply-ready`, `providers list`, `--from-sessions` with redaction stats, `nightly --no-llm` no-op/staged paths, deterministic SessionDB override, plugin wrapper failure propagation, and `soak` pass/fail gates.
 
 ## Known limitations
 

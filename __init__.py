@@ -30,11 +30,13 @@ def _run_night_memory(args: argparse.Namespace) -> int:
         result = dreaming_main(dream_args)
     except SystemExit as exc:
         code = exc.code
-        if isinstance(code, int):
-            return code
-        return 0 if code in (None, "") else 1
+        code = code if isinstance(code, int) else 0 if code in (None, "") else 1
+    else:
+        code = int(result or 0)
 
-    return int(result or 0)
+    if code:
+        raise SystemExit(code)
+    return code
 
 
 def _setup_dreaming_cli(parser: argparse.ArgumentParser) -> None:
