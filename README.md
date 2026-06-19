@@ -60,7 +60,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 
 ## Current status
 
-- **Release posture:** public beta / release candidate. The current code, tests, plugin smoke, CI, and CodeQL gates are green, but stable wording waits for a real overnight systemd run followed by `hermes ershov soak --strict-systemd`. Public stable promotion should use the stronger 3-run gate: `hermes ershov soak --since-hours 96 --min-successful 3 --strict-systemd`.
+- **Release posture:** public beta / release candidate. The current code, tests, plugin smoke, CI, and CodeQL gates are green, but stable wording waits for several clean scheduled systemd runs followed by `hermes ershov soak --strict-systemd`. The stable shortcut defaults to the 3-run public promotion gate: `hermes ershov soak --since-hours 96 --min-successful 3 --strict-systemd`.
 - **Full feature set:** create, review/open, nightly, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, install-systemd, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
 - **Run ledger + ERSHOV.md diary** for auditability
@@ -177,11 +177,11 @@ ershov digest ./artifacts/<artifact-id> --weekly
 
 ershov status --artifact-root ./artifacts
 
-# Verify overnight soak evidence after a scheduled nightly run
+# Fast one-night RC smoke after the first scheduled nightly run
 
-hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --strict-systemd
+hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd
 
-# Stronger public-stable promotion gate after several scheduled nights
+# Public-stable promotion gate after several scheduled nights
 
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd
 
@@ -220,7 +220,7 @@ If the `ershov` entrypoint is not installed yet, swap in `python -m hermes_ersho
 - OpenAI-compatible, DeepSeek, OpenRouter, and Ollama providers fail closed on malformed output, and each proposal must carry confidence, snippet, provenance, and approved fields before it can be written.
 - `HERMES_ERSHOV_SESSION_DB=/path/to/state.db` forces harvest/nightly to read a specific SessionDB-compatible SQLite file before trying the live Hermes SessionDB. This is useful for deterministic smoke tests.
 - `status --release-gate --state-root ~/.hermes/ershov` renders the strict systemd stable gate inline: current commit, dirty state, timer health/next elapse, matching scheduled runs, recent failures, and the exact blockers keeping stable wording off.
-- `soak` is a read-only release gate for scheduled nightly memory. It checks the run ledger for recent successful `nightly` runs, fails on recent nightly failures unless `--allow-failures` is set, can require the user systemd timer with `--require-timer`, and can require evidence from a specific runner, code revision, and clean checkout with `--require-source systemd --require-commit <sha> --require-clean`. `--strict-systemd` is the stable release shortcut: it requires the timer, `run_source=systemd`, the current git commit, a clean current git checkout, and clean scheduled-run evidence. `--min-successful 3 --since-hours 96 --strict-systemd` is the stronger public-stable promotion gate when you want several scheduled nights instead of one. The timer gate checks that the timer is enabled, active, loaded, points at `hermes-ershov-nightly.service`, and has a next scheduled elapse. Commit matches require at least 7 git hash characters on both sides; shorter prefixes do not satisfy the gate.
+- `soak` is a read-only release gate for scheduled nightly memory. It checks the run ledger for recent successful `nightly` runs, fails on recent nightly failures unless `--allow-failures` is set, can require the user systemd timer with `--require-timer`, and can require evidence from a specific runner, code revision, and clean checkout with `--require-source systemd --require-commit <sha> --require-clean`. `--strict-systemd` is the stable release shortcut: it requires the timer, `run_source=systemd`, the current git commit, a clean current git checkout, and clean scheduled-run evidence. With no explicit window overrides it defaults to the public-stable promotion gate: `--since-hours 96 --min-successful 3 --strict-systemd`. Use `--since-hours 30 --min-successful 1 --strict-systemd` only as a fast one-night RC smoke. The timer gate checks that the timer is enabled, active, loaded, points at `hermes-ershov-nightly.service`, and has a next scheduled elapse. Commit matches require at least 7 git hash characters on both sides; shorter prefixes do not satisfy the gate.
 - `summarize` prints a concise decision brief for an existing artifact.
 - `approve` and `reject` update artifact metadata only, they do not touch live roots. `reject` requires a non-empty `--reason` at the command layer; any code path (CLI, library, plugin) is constrained by the same rule.
 - `diff` accepts optional `--live-root` and renders unified diffs when the live target root is available.

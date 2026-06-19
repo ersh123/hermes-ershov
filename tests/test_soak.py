@@ -443,7 +443,14 @@ def test_soak_cli_returns_zero_when_gate_passes(tmp_path: Path, capsys) -> None:
 
 def test_soak_cli_strict_systemd_fills_release_gate_defaults(tmp_path: Path, monkeypatch, capsys) -> None:
     state_root = tmp_path / "state"
-    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234")])
+    _write_ledger(
+        state_root,
+        [
+            _nightly(success=True, hours_ago=4, run_source="systemd", git_commit="abc1234"),
+            _nightly(success=True, hours_ago=3, run_source="systemd", git_commit="abc1234"),
+            _nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234"),
+        ],
+    )
     captured: dict[str, object] = {}
 
     def fake_build_soak_report(**kwargs):  # type: ignore[no-untyped-def]
@@ -464,15 +471,72 @@ def test_soak_cli_strict_systemd_fills_release_gate_defaults(tmp_path: Path, mon
     monkeypatch.setattr(cli_module, "_current_git_dirty", lambda: False)
     monkeypatch.setattr(cli_module, "build_soak_report", fake_build_soak_report)
 
-    assert main(["soak", "--state-root", str(state_root), "--since-hours", "30", "--strict-systemd", "--json"]) == 0
+    assert main(["soak", "--state-root", str(state_root), "--strict-systemd", "--json"]) == 0
 
     payload = json.loads(capsys.readouterr().out)
     assert payload["passed"] is True
+    assert payload["since_hours"] == 96
+    assert payload["min_successful"] == 3
+    assert captured["since_hours"] == 96
+    assert captured["min_successful"] == 3
     assert captured["require_timer"] is True
     assert captured["required_source"] == "systemd"
     assert captured["required_commit"] == "abc1234"
     assert captured["require_clean"] is True
     assert captured["allow_failures"] is False
+
+
+def test_soak_cli_strict_systemd_preserves_explicit_one_night_smoke_overrides(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    state_root = tmp_path / "state"
+    _write_ledger(state_root, [_nightly(success=True, hours_ago=2, run_source="systemd", git_commit="abc1234")])
+    captured: dict[str, object] = {}
+
+    def fake_build_soak_report(**kwargs):  # type: ignore[no-untyped-def]
+        captured.update(kwargs)
+        return build_soak_report(
+            state_root=kwargs["state_root"],
+            since_hours=kwargs["since_hours"],
+            min_successful=kwargs["min_successful"],
+            require_timer=False,
+            required_source=kwargs["required_source"],
+            required_commit=kwargs["required_commit"],
+            require_clean=kwargs["require_clean"],
+            allow_failures=kwargs["allow_failures"],
+            now=NOW,
+        )
+
+    monkeypatch.setattr(cli_module, "_current_git_commit", lambda: "abc1234")
+    monkeypatch.setattr(cli_module, "_current_git_dirty", lambda: False)
+    monkeypatch.setattr(cli_module, "build_soak_report", fake_build_soak_report)
+
+    assert (
+        main(
+            [
+                "soak",
+                "--state-root",
+                str(state_root),
+                "--since-hours",
+                "30",
+                "--min-successful",
+                "1",
+                "--strict-systemd",
+                "--json",
+            ]
+        )
+        == 0
+    )
+
+    payload = json.loads(capsys.readouterr().out)
+    assert payload["passed"] is True
+    assert payload["since_hours"] == 30
+    assert payload["min_successful"] == 1
+    assert captured["since_hours"] == 30
+    assert captured["min_successful"] == 1
+    assert captured["require_timer"] is True
+    assert captured["required_source"] == "systemd"
+    assert captured["require_clean"] is True
 
 
 def test_soak_cli_strict_systemd_preserves_min_successful_promotion_gate(

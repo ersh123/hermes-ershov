@@ -38,7 +38,7 @@ v0.4.0 makes Ershov much safer to trial in real operator loops (revert, dry-run,
 - **`ershov nightly`** takes a state-root lock before harvesting. A concurrent run fails before writing source bundles, artifacts, digests, or ledger state, so unattended timers and manual smokes cannot race each other.
 - **`ershov nightly`** records a failed run in `runs.jsonl` when the pipeline crashes before normal completion. `soak` can therefore catch recent unattended failures instead of silently trusting older success evidence.
 - **`HERMES_ERSHOV_SESSION_DB=/path/to/state.db`** forces harvest/nightly to use a specific SessionDB-compatible SQLite file before the live Hermes SessionDB. This makes installed-CLI smoke tests deterministic.
-- **`ershov soak`** is the read-only scheduled-run gate. It checks recent successful `nightly` runs in `runs.jsonl`, fails on recent nightly failures by default, can require the user systemd timer to be enabled, active, loaded, pointed at `hermes-ershov-nightly.service`, and scheduled for a next elapse, and can require a matching ledger source, code revision, and clean checkout such as `--require-source systemd --require-commit <sha> --require-clean`. `--strict-systemd` bundles the stable release gate, auto-detects the current checkout commit, and refuses a dirty current git checkout. For public stable promotion, use `--min-successful 3 --since-hours 96 --strict-systemd` to require several scheduled nights. Commit matching requires at least 7 git hash characters on both sides.
+- **`ershov soak`** is the read-only scheduled-run gate. It checks recent successful `nightly` runs in `runs.jsonl`, fails on recent nightly failures by default, can require the user systemd timer to be enabled, active, loaded, pointed at `hermes-ershov-nightly.service`, and scheduled for a next elapse, and can require a matching ledger source, code revision, and clean checkout such as `--require-source systemd --require-commit <sha> --require-clean`. `--strict-systemd` bundles the stable release gate, auto-detects the current checkout commit, and refuses a dirty current git checkout. With no explicit overrides it defaults to the public-stable promotion gate: `--min-successful 3 --since-hours 96 --strict-systemd`. Use `--since-hours 30 --min-successful 1 --strict-systemd` only as a fast one-night release-candidate smoke. Commit matching requires at least 7 git hash characters on both sides.
 - **`report-card` and `digest` backup details** now separate real backup file copies from rollback evidence records and created-file tombstones, so apply-created files do not look like missing backup coverage.
 - **`ershov revert --validate`** adds a post-restore validation gate for rollback drills and release smokes without changing the default restore semantics.
 - **Per-write post-apply shas** are now stored in `backup_records` on successful apply and used by revert drift detection, so a normal apply→revert is not mislabeled as drift while operator edits after apply still are.
@@ -65,7 +65,7 @@ Three additive fields on `DreamArtifact`:
 
 ## Verification
 
-- `pytest -q` passes (221 tests).
+- `pytest -q` passes (222 tests).
 - `pytest -q tests/test_pbt.py` passes and keeps the property-based path safety, systemd escaping, scoring, and soak commit-prefix invariants visible in the release matrix.
 - Coverage gate passes with `--cov-fail-under=80` (current local total: 83.96%).
 - `python scripts/hermes_plugin_smoke.py` passes and exercises the root Hermes plugin wrapper with a controlled SessionDB nightly run.
@@ -75,7 +75,7 @@ Three additive fields on `DreamArtifact`:
 
 ## Known limitations
 
-- Stable release wording waits for at least one real scheduled systemd run followed by a passing `hermes ershov soak --strict-systemd`. Public stable promotion should wait for the stronger `hermes ershov soak --since-hours 96 --min-successful 3 --strict-systemd` gate. Manual service starts and transient timer smokes are useful evidence, but they are not the same as overnight scheduled runs.
+- Stable release wording waits for several real scheduled systemd runs followed by a passing `hermes ershov soak --strict-systemd`. The strict shortcut defaults to `hermes ershov soak --since-hours 96 --min-successful 3 --strict-systemd`; a one-night `--since-hours 30 --min-successful 1 --strict-systemd` run is only release-candidate smoke evidence. Manual service starts and transient timer smokes are useful evidence, but they are not the same as overnight scheduled runs.
 - Revert does not re-run validation by default. Use `ershov revert --validate` for a post-restore validation gate. Without it, the CLI and `REVERT.md` say `post_revert_validation: not-run`. If a reverted proposal is reapplied, validation runs normally as part of the apply path.
 - Legacy artifacts created before post-apply shas still use backup-vs-live drift comparison. Those events are labeled `legacy-degraded`; new successful applies use recorded post-apply shas.
 - The `--from-since` window-to-count heuristic is conservative (4 sessions per day, capped at 50). If you want a more aggressive count, use `--from-sessions N` directly.

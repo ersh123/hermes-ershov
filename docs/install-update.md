@@ -41,7 +41,7 @@ service reads that file if it exists and leaves it untouched on reinstall.
 After the first scheduled run has actually fired, verify it with:
 
 ```bash
-hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --strict-systemd
+hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd
 ```
 
 Manual starts prove the service command works. `--require-timer` checks that the
@@ -55,8 +55,9 @@ rejects runs produced by a dirty installed checkout.
 `--strict-systemd` applies those release gates and auto-detects the current
 checkout commit. It refuses a dirty current git checkout; if the checkout is not
 a git repo, pass `--require-commit`.
-A passing `soak` after the real schedule fires is the minimum stable-candidate
-evidence. For public stable promotion, prefer several scheduled nights:
+A passing one-night `soak` after the real schedule fires is the minimum release-candidate
+evidence. For public stable promotion, require several scheduled nights; the
+strict shortcut defaults to this gate when no window overrides are passed:
 
 ```bash
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd

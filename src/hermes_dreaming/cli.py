@@ -43,6 +43,12 @@ from .state import record_run
 from .validation import validate_artifact
 
 
+DEFAULT_SOAK_SINCE_HOURS = 30
+DEFAULT_SOAK_MIN_SUCCESSFUL = 1
+STABLE_GATE_SINCE_HOURS = 96
+STABLE_GATE_MIN_SUCCESSFUL = 3
+
+
 def _discover_update_repo_root() -> Path:
     env_root = (
         os.environ.get("HERMES_ERSHOV_REPO_ROOT")
@@ -311,14 +317,34 @@ def build_parser() -> argparse.ArgumentParser:
     status.add_argument("--artifact-root", type=Path, default=Path.cwd() / ".ershov" / "artifacts", help="Where artifacts are stored")
     status.add_argument("--release-gate", action="store_true", help="Include the strict systemd stable-release gate status")
     status.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl for --release-gate")
-    status.add_argument("--since-hours", type=int, default=30, help="Lookback window for --release-gate evidence")
-    status.add_argument("--min-successful", type=int, default=1, help="Required successful scheduled runs for --release-gate")
+    status.add_argument(
+        "--since-hours",
+        type=int,
+        default=None,
+        help=f"Lookback window for --release-gate evidence (default: {STABLE_GATE_SINCE_HOURS})",
+    )
+    status.add_argument(
+        "--min-successful",
+        type=int,
+        default=None,
+        help=f"Required successful scheduled runs for --release-gate (default: {STABLE_GATE_MIN_SUCCESSFUL})",
+    )
     status.add_argument("--timer-name", default="hermes-ershov-nightly.timer", help="systemd user timer name for --release-gate")
 
     soak = sub.add_parser("soak", help="Verify nightly-memory soak evidence from the run ledger")
     soak.add_argument("--state-root", type=Path, default=None, help="State root containing runs.jsonl")
-    soak.add_argument("--since-hours", type=int, default=30, help="Lookback window for nightly soak evidence")
-    soak.add_argument("--min-successful", type=int, default=1, help="Required successful nightly runs inside the window")
+    soak.add_argument(
+        "--since-hours",
+        type=int,
+        default=None,
+        help=f"Lookback window for nightly soak evidence (default: {DEFAULT_SOAK_SINCE_HOURS}, or {STABLE_GATE_SINCE_HOURS} with --strict-systemd)",
+    )
+    soak.add_argument(
+        "--min-successful",
+        type=int,
+        default=None,
+        help=f"Required successful nightly runs inside the window (default: {DEFAULT_SOAK_MIN_SUCCESSFUL}, or {STABLE_GATE_MIN_SUCCESSFUL} with --strict-systemd)",
+    )
     soak.add_argument("--require-timer", action="store_true", help="Require the user systemd timer to be enabled and active")
     soak.add_argument("--require-source", default=None, help="Require successful nightly runs to have this run_source, e.g. systemd")
     soak.add_argument("--require-commit", default=None, help="Require successful nightly runs to match this git commit")
@@ -1002,10 +1028,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.release_gate:
             current_commit = _current_git_commit()
             current_dirty = _current_git_dirty()
+            since_hours = args.since_hours if args.since_hours is not None else STABLE_GATE_SINCE_HOURS
+            min_successful = args.min_successful if args.min_successful is not None else STABLE_GATE_MIN_SUCCESSFUL
             release_gate = build_soak_report(
                 state_root=args.state_root,
-                since_hours=args.since_hours,
-                min_successful=args.min_successful,
+                since_hours=since_hours,
+                min_successful=min_successful,
                 require_timer=True,
                 required_source="systemd",
                 required_commit=current_commit,
@@ -1023,6 +1051,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.command == "soak":
+        default_since_hours = STABLE_GATE_SINCE_HOURS if args.strict_systemd else DEFAULT_SOAK_SINCE_HOURS
+        default_min_successful = STABLE_GATE_MIN_SUCCESSFUL if args.strict_systemd else DEFAULT_SOAK_MIN_SUCCESSFUL
+        since_hours = args.since_hours if args.since_hours is not None else default_since_hours
+        min_successful = args.min_successful if args.min_successful is not None else default_min_successful
         require_timer = args.require_timer
         required_source = args.require_source
         required_commit = args.require_commit
@@ -1045,8 +1077,8 @@ def main(argv: list[str] | None = None) -> int:
         try:
             report = build_soak_report(
                 state_root=args.state_root,
-                since_hours=args.since_hours,
-                min_successful=args.min_successful,
+                since_hours=since_hours,
+                min_successful=min_successful,
                 require_timer=require_timer,
                 required_source=required_source,
                 required_commit=required_commit,

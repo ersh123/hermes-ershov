@@ -141,6 +141,8 @@ def test_status_cli_release_gate_uses_strict_systemd_defaults(
         captured.update(kwargs)
         return build_soak_report(
             state_root=state_root,
+            since_hours=kwargs["since_hours"],
+            min_successful=kwargs["min_successful"],
             now=NOW,
             require_timer=True,
             required_source="systemd",
@@ -167,10 +169,14 @@ def test_status_cli_release_gate_uses_strict_systemd_defaults(
 
     assert exit_code == 0
     assert captured["state_root"] == state_root
+    assert captured["since_hours"] == 96
+    assert captured["min_successful"] == 3
     assert captured["require_timer"] is True
     assert captured["required_source"] == "systemd"
     assert captured["required_commit"] == "abc1234"
     assert captured["require_clean"] is True
     assert "Stable release gate:" in output
     assert "Status: `blocked`" in output
+    assert "Window: `96h`" in output
+    assert "Required successful scheduled runs: `3`" in output
     assert "next=Sat 2026-06-20 03:00:49 +07" in output

@@ -138,7 +138,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "215 tests" not in text, path
         assert "216 tests" not in text, path
         assert "218 tests" not in text, path
-        assert "221 tests" in text, path
+        assert "221 tests" not in text, path
+        assert "222 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -153,8 +154,10 @@ def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
     for path in docs:
         text = path.read_text(encoding="utf-8")
         assert gate in text, path
+        assert "--since-hours 30 --min-successful 1 --strict-systemd" in text, path
     assert "status --release-gate" in (REPO_ROOT / "README.md").read_text(encoding="utf-8")
     assert "status --release-gate" in (REPO_ROOT / "docs" / "release-notes-v0.4.0.md").read_text(encoding="utf-8")
+    assert "defaults to" in (REPO_ROOT / "docs" / "testing.md").read_text(encoding="utf-8")
 
 
 def test_release_docs_keep_revert_validation_and_provider_grounding_honest() -> None:

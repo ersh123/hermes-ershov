@@ -63,4 +63,6 @@ Passing CI is not enough for stable wording. Stable promotion also needs schedul
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd
 ```
 
+Plain `--strict-systemd` defaults to this 96h/3-run public-stable gate. Use `--since-hours 30 --min-successful 1 --strict-systemd` only for a fast one-night release-candidate smoke.
+
 Manual service starts and transient timer smokes are useful debug evidence, but they do not satisfy the stable gate.

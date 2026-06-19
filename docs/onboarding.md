@@ -74,13 +74,13 @@ For deterministic smoke tests, set `HERMES_ERSHOV_SESSION_DB=/path/to/state.db` 
 After a scheduled run has had time to fire, use `soak` as the release gate:
 
 ```bash
-hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --strict-systemd
+hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd
 ```
 
 It is read-only. It checks `runs.jsonl` for recent successful `nightly` runs, fails on recent nightly failures, verifies the user systemd timer when `--require-timer` is set, and can require the successful run to come from the installed systemd checkout/commit.
 The timer check requires an enabled, active, loaded timer pointing at `hermes-ershov-nightly.service` with a next scheduled elapse.
 Use `--strict-systemd` as the release gate so dirty current checkouts, dirty scheduled-run evidence, wrong runners, wrong commits, and weak timer states cannot count as stable evidence.
-For public stable promotion, prefer several scheduled nights instead of one:
+The one-night command above is a fast release-candidate smoke. For public stable promotion, require several scheduled nights; plain `--strict-systemd` defaults to this gate:
 
 ```bash
 hermes ershov soak --state-root ~/.hermes/ershov --since-hours 96 --min-successful 3 --strict-systemd
