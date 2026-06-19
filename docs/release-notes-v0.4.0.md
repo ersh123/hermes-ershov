@@ -27,7 +27,7 @@ v0.4.0 makes Ershov much safer to trial in real operator loops (revert, dry-run,
 ### Discovery and inbox
 
 - **`ershov providers list`** prints a table with `NAME`, `KIND`, `STATUS` (always | optional | missing), and `NOTES` for the built-in providers (`offline-marker`, `openai-compatible`, `deepseek`, `openrouter`, `ollama`). No external services are pinged.
-- **`ershov providers doctor`** checks local provider configuration readiness without sending prompts or pinging model APIs. It reports dependency presence, API-key env-var presence, base URL shape, and local-only notes without printing secret values. `--from-systemd` checks the default Hermes Ershov timer `EnvironmentFile` paths; repeatable `--env-file` flags test explicit systemd layouts. Both paths avoid printing secret values and, when `--provider` is explicit, fail closed if `HERMES_ERSHOV_PROVIDER` points at a different provider. It is not an end-to-end generation test; use an explicit review/create run when you want to exercise a model call. `--strict` turns the local readiness check into a shell gate.
+- **`ershov providers doctor`** checks local provider configuration readiness without sending prompts or pinging model APIs. It reports dependency presence, API-key env-var presence, base URL shape, and local-only notes without printing secret values. `--from-systemd` checks the default Hermes Ershov timer `EnvironmentFile` paths; repeatable `--env-file` flags test explicit systemd layouts; `--fix-plan` prints secret-safe remediation steps for blocked providers. These paths avoid printing secret values and, when `--provider` is explicit, fail closed if `HERMES_ERSHOV_PROVIDER` points at a different provider. It is not an end-to-end generation test; use an explicit review/create run when you want to exercise a model call. `--strict` turns the local readiness check into a shell gate.
 - **`ershov inbox --apply-ready`** filters to artifacts where every non-rejected proposal is approved (or already applied) and the artifact is in `staged`, `approved`, or `applied` status. Composes with `--state` and `--priority`.
 - The **inbox digest** (`ershov digest --inbox`) now surfaces a "Ready to apply" section and an `Apply-ready count` field at the top.
 
@@ -67,13 +67,13 @@ Three additive fields on `DreamArtifact`:
 
 ## Verification
 
-- `pytest -q` passes (238 tests).
+- `pytest -q` passes (242 tests).
 - `pytest -q tests/test_pbt.py` passes and keeps the property-based path safety, systemd escaping, scoring, and soak commit-prefix invariants visible in the release matrix.
-- Coverage gate passes with `--cov-fail-under=80` (current local total: 84.39%).
+- Coverage gate passes with `--cov-fail-under=80` (current local total: 84.41%).
 - `python scripts/hermes_plugin_smoke.py` passes and exercises the root Hermes plugin wrapper with a controlled SessionDB nightly run.
 - `python -m build` succeeds, and both wheel and source distribution installs are smoked against all public CLI aliases.
 - `git diff --check` clean.
-- Smoke-tested on temp fixtures for: `revert` (roundtrip, `--validate`, validation failure after restore, post-apply sha no-drift path, post-apply sha drift path, `legacy-degraded` drift fallback, missing backup, partial failure), `apply --dry-run` (preview without writes), `apply --priority` and `--target-kind` (filters), `inbox --apply-ready`, `providers list`, `providers doctor` configuration readiness plus `--from-systemd` and explicit env-file checks, `--from-sessions` with redaction stats, `nightly --no-llm` no-op/staged paths, nightly lock rejection, nightly crash ledger recording, deterministic SessionDB override, plugin wrapper failure propagation, and source/commit/clean-checkout/provider-aware `soak` pass/fail gates.
+- Smoke-tested on temp fixtures for: `revert` (roundtrip, `--validate`, validation failure after restore, post-apply sha no-drift path, post-apply sha drift path, `legacy-degraded` drift fallback, missing backup, partial failure), `apply --dry-run` (preview without writes), `apply --priority` and `--target-kind` (filters), `inbox --apply-ready`, `providers list`, `providers doctor` configuration readiness plus `--from-systemd`, `--fix-plan`, and explicit env-file checks, `--from-sessions` with redaction stats, `nightly --no-llm` no-op/staged paths, nightly lock rejection, nightly crash ledger recording, deterministic SessionDB override, plugin wrapper failure propagation, and source/commit/clean-checkout/provider-aware `soak` pass/fail gates.
 
 ## Known limitations
 

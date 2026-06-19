@@ -32,6 +32,7 @@ ershov providers list
 ershov providers doctor --provider offline-marker --strict
 ershov providers doctor --provider offline-marker --from-systemd --strict
 ershov providers doctor --provider deepseek --from-systemd --strict
+ershov providers doctor --provider deepseek --from-systemd --fix-plan --strict
 ershov providers doctor --provider deepseek --env-file ~/.config/hermes-ershov/nightly.env --env-file ~/.config/hermes-ershov/nightly.secrets.env --strict
 ershov status --release-gate --state-root ~/.hermes/ershov --require-provider deepseek
 ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd --require-provider deepseek
@@ -40,7 +41,7 @@ ershov revert --help
 ```
 
 The status release gate is state-root scoped: with `--state-root`, the default artifact root and ledger/diary paths come from that state root unless `--artifact-root` is passed explicitly.
-The provider env-file smoke is timer-visible only: `--from-systemd` reads the default Hermes Ershov systemd `EnvironmentFile` paths, explicit `--env-file` values can test non-default layouts, missing optional secret files are ignored, and secret values are never printed. When `--provider` is explicit, `providers doctor` also fails closed if `HERMES_ERSHOV_PROVIDER` points at a different timer provider. `--require-provider deepseek` is stricter than readiness alone: it also fails when the timer is still configured for `offline-marker`.
+The provider env-file smoke is timer-visible only: `--from-systemd` reads the default Hermes Ershov systemd `EnvironmentFile` paths, explicit `--env-file` values can test non-default layouts, missing optional secret files are ignored, and secret values are never printed. When `--provider` is explicit, `providers doctor` also fails closed if `HERMES_ERSHOV_PROVIDER` points at a different timer provider. `--fix-plan` is still read-only; it prints remediation commands and `<secret>` placeholders only. `--require-provider deepseek` is stricter than readiness alone: it also fails when the timer is still configured for `offline-marker`.
 
 ## CI gates
 
@@ -52,7 +53,7 @@ GitHub Actions runs the same release-shaped matrix:
 - full pytest suite
 - coverage report for `hermes_dreaming`, `hermes_ershov`, and `hermes_mnemos`, with an 80% minimum gate
 - property-based tests from `tests/test_pbt.py`
-- timer-visible provider readiness smoke with `providers doctor --from-systemd` and explicit `--env-file`
+- timer-visible provider readiness smoke with `providers doctor --from-systemd`, `--fix-plan`, and explicit `--env-file`
 - strict systemd release-gate tests that include timer-visible provider readiness and required-provider mismatch checks
 - Hermes plugin wrapper smoke
 - wheel and source distribution build

@@ -44,6 +44,7 @@ from .providers import (
     load_env_files,
     render_provider_doctor_json,
     render_provider_doctor_table,
+    render_provider_fix_plan,
     render_providers_table,
 )
 from .state import record_run
@@ -434,6 +435,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     providers_doctor.add_argument("--strict", action="store_true", help="Exit non-zero when any checked provider is not ready")
     providers_doctor.add_argument("--json", action="store_true", help="Emit machine-readable JSON")
+    providers_doctor.add_argument("--fix-plan", action="store_true", help="Print secret-safe remediation steps for blocked providers")
 
     return parser
 
@@ -1212,6 +1214,8 @@ def main(argv: list[str] | None = None) -> int:
             print(render_providers_table(rows).rstrip())
             return 0
         if args.providers_command == "doctor":
+            if args.json and args.fix_plan:
+                parser.error("providers doctor --fix-plan cannot be combined with --json")
             env_files = []
             if args.from_systemd:
                 env_files.extend(default_env_files())
@@ -1228,6 +1232,9 @@ def main(argv: list[str] | None = None) -> int:
                 print(render_provider_doctor_json(rows).rstrip())
             else:
                 print(render_provider_doctor_table(rows).rstrip())
+                if args.fix_plan:
+                    print()
+                    print(render_provider_fix_plan(rows, env_files=env_files).rstrip())
             if args.strict and any(row.readiness != "ready" for row in rows):
                 return 1
             return 0

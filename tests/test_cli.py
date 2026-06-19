@@ -5,6 +5,8 @@ from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
 
+import pytest
+
 from hermes_dreaming.artifact import DreamArtifact, DreamProposal, SourceSnapshot, load_artifact, write_artifact
 from hermes_dreaming.cli import main
 
@@ -303,6 +305,46 @@ def test_providers_doctor_from_systemd_blocks_configured_provider_mismatch_witho
     assert "expected provider: deepseek" in output
     assert "DEEPSEEK_API_KEY: present" in output
     assert "sk-systemd-do-not-print" not in output
+
+
+def test_providers_doctor_fix_plan_is_secret_safe(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    monkeypatch.setattr("hermes_dreaming.providers._openai_compat_available", lambda: True)
+    env_file = tmp_path / "nightly.env"
+    env_file.write_text('HERMES_ERSHOV_PROVIDER="offline-marker"\n', encoding="utf-8")
+    secret_file = tmp_path / "nightly.secrets.env"
+    secret_file.write_text('DEEPSEEK_API_KEY="sk-systemd-do-not-print"\n', encoding="utf-8")
+    monkeypatch.setattr("hermes_dreaming.cli.default_env_files", lambda: [env_file, secret_file])
+
+    exit_code = main(
+        [
+            "providers",
+            "doctor",
+            "--provider",
+            "deepseek",
+            "--from-systemd",
+            "--fix-plan",
+            "--strict",
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "Hermes Ershov provider fix plan" in output
+    assert "HERMES_ERSHOV_PROVIDER=deepseek" in output
+    assert "DEEPSEEK_API_KEY=<secret>" in output
+    assert "sk-systemd-do-not-print" not in output
+    assert "install-systemd --provider deepseek" in output
+    assert "providers doctor --provider deepseek --from-systemd --strict" in output
+
+
+def test_providers_doctor_fix_plan_rejects_json(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        main(["providers", "doctor", "--json", "--fix-plan"])
+    captured = capsys.readouterr()
+
+    assert exc_info.value.code == 2
+    assert "--fix-plan cannot be combined with --json" in captured.err
 
 
 def test_create_with_no_llm_shorthand_uses_offline_marker(tmp_path: Path, monkeypatch, capsys) -> None:

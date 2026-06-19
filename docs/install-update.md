@@ -42,12 +42,14 @@ environment files directly:
 
 ```bash
 hermes ershov providers doctor --provider deepseek --from-systemd --strict
+hermes ershov providers doctor --provider deepseek --from-systemd --fix-plan --strict
 ```
 
 This is still a local readiness check only. It proves the generated service
 files can see the requested provider key and that `HERMES_ERSHOV_PROVIDER`
 matches the requested provider without printing secret values; it does not send
-a prompt or call the model API.
+a prompt or call the model API. Add `--fix-plan` when the check is blocked and
+you want the exact secret-safe remediation commands without changing files.
 Use explicit `--env-file` values only when testing a non-default service layout:
 
 ```bash

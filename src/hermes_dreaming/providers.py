@@ -680,6 +680,25 @@ class ProviderDoctorRow:
     notes: str
 
 
+PROVIDER_API_KEY_ENVS = {
+    "openai-compatible": "OPENAI_API_KEY",
+    "deepseek": "DEEPSEEK_API_KEY",
+    "openrouter": "OPENROUTER_API_KEY",
+}
+PROVIDER_DEFAULT_MODELS = {
+    "openai-compatible": "gpt-4o-mini",
+    "deepseek": "deepseek-v4-flash",
+    "openrouter": "openrouter/auto",
+    "ollama": "qwen2.5:3b",
+}
+PROVIDER_DEFAULT_BASE_URLS = {
+    "openai-compatible": "<base-url>",
+    "deepseek": "https://api.deepseek.com/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "ollama": "http://127.0.0.1:11434",
+}
+
+
 def _openai_compat_available() -> bool:
     try:
         import openai  # noqa: F401
@@ -899,6 +918,59 @@ def render_provider_doctor_table(rows: list[ProviderDoctorRow]) -> str:
     for row in data:
         lines.append(line(row))
     return "\n".join(lines) + "\n"
+
+
+def render_provider_fix_plan(rows: list[ProviderDoctorRow], *, env_files: list[Path] | None = None) -> str:
+    lines = [
+        "# Hermes Ershov provider fix plan",
+        "",
+        "Secret values are never printed. Apply these steps only in the intended operator environment.",
+        "",
+    ]
+    if env_files:
+        lines.extend(["## Env files inspected", ""])
+        for path in env_files:
+            lines.append(f"- `{path}`")
+        lines.append("")
+
+    for row in rows:
+        lines.extend([f"## {row.name}", "", f"- Readiness: `{row.readiness}`"])
+        if row.readiness == "ready":
+            lines.extend(["- Config action: none required.", ""])
+            continue
+
+        lines.append(f"- Required provider selector: `HERMES_ERSHOV_PROVIDER={row.name}`")
+        key_env = PROVIDER_API_KEY_ENVS.get(row.name)
+        if key_env is not None:
+            lines.append(f"- Required secret: `{key_env}=<secret>`")
+        elif row.name == "offline-marker":
+            lines.append("- Required secret: none")
+        elif row.name == "ollama":
+            lines.append("- Required service: local Ollama server with the configured model")
+
+        model = PROVIDER_DEFAULT_MODELS.get(row.name)
+        base_url = PROVIDER_DEFAULT_BASE_URLS.get(row.name)
+        if row.name != "offline-marker":
+            command = f"hermes ershov install-systemd --provider {row.name}"
+            if model:
+                command += f" --model {model}"
+            if base_url:
+                command += f" --base-url {base_url}"
+            label = "Non-secret env refresh"
+            if "<" in command or ">" in command:
+                label += " (replace placeholders)"
+            lines.append(f"- {label}: `{command}`")
+        if key_env is not None:
+            lines.append("- Put the secret in the systemd secret env file, not in shell history or release docs.")
+        lines.extend(
+            [
+                f"- Recheck: `hermes ershov providers doctor --provider {row.name} --from-systemd --strict`",
+                f"- Then wait for a real scheduled timer run and recheck: `hermes ershov soak --state-root ~/.hermes/ershov --since-hours 30 --min-successful 1 --strict-systemd --require-provider {row.name}`",
+                "",
+            ]
+        )
+
+    return "\n".join(lines).rstrip() + "\n"
 
 
 def render_provider_doctor_json(rows: list[ProviderDoctorRow]) -> str:

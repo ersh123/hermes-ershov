@@ -150,7 +150,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "232 tests" not in text, path
         assert "233 tests" not in text, path
         assert "235 tests" not in text, path
-        assert "238 tests" in text, path
+        assert "238 tests" not in text, path
+        assert "241 tests" not in text, path
+        assert "242 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -201,6 +203,7 @@ def test_release_docs_document_provider_doctor_safety() -> None:
     for path in docs:
         text = path.read_text(encoding="utf-8")
         assert "providers doctor" in text, path
+        assert "--fix-plan" in text, path
         assert "without" in text.lower(), path
         assert "configuration" in text.lower(), path
         assert "not an end-to-end generation test" in text, path
@@ -230,6 +233,7 @@ def test_release_docs_document_provider_doctor_safety() -> None:
     assert "timed-out `git fetch`" in (REPO_ROOT / "docs" / "release-notes-v0.4.0.md").read_text(
         encoding="utf-8"
     )
+    assert "<secret>" in (REPO_ROOT / "docs" / "release-handoff-v0.4.0.md").read_text(encoding="utf-8")
 
 
 def test_release_docs_label_legacy_revert_evidence_as_degraded() -> None:
@@ -263,6 +267,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "release workflow guards",
         "state-root scoped",
         "required-provider mismatch checks",
+        "--fix-plan",
         "CodeQL",
         "--min-successful 3 --strict-systemd",
         "https://docs.pytest.org/en/8.3.x/explanation/goodpractices.html",

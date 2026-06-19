@@ -521,6 +521,42 @@ def test_provider_doctor_blocks_timer_configured_provider_mismatch_without_loggi
     assert "sk-do-not-print" not in rendered
 
 
+def test_provider_fix_plan_is_secret_safe_and_actionable(tmp_path: Path) -> None:
+    from hermes_dreaming.providers import render_provider_fix_plan
+
+    rows = doctor_providers(
+        provider="deepseek",
+        env={
+            "HERMES_ERSHOV_PROVIDER": "offline-marker",
+            "DEEPSEEK_API_KEY": "sk-do-not-print",
+        },
+        openai_available=True,
+    )
+
+    rendered = render_provider_fix_plan(rows, env_files=[tmp_path / "nightly.env", tmp_path / "nightly.secrets.env"])
+
+    assert "HERMES_ERSHOV_PROVIDER=deepseek" in rendered
+    assert "DEEPSEEK_API_KEY=<secret>" in rendered
+    assert "sk-do-not-print" not in rendered
+    assert "install-systemd --provider deepseek" in rendered
+    assert "providers doctor --provider deepseek --from-systemd --strict" in rendered
+    assert "soak --state-root ~/.hermes/ershov" in rendered
+    assert str(tmp_path / "nightly.env") in rendered
+    assert str(tmp_path / "nightly.secrets.env") in rendered
+
+
+def test_provider_fix_plan_marks_generic_openai_base_url_placeholder() -> None:
+    from hermes_dreaming.providers import render_provider_fix_plan
+
+    rows = doctor_providers(provider="openai-compatible", env={}, openai_available=True)
+
+    rendered = render_provider_fix_plan(rows)
+
+    assert "--provider openai-compatible" in rendered
+    assert "--base-url <base-url>" in rendered
+    assert "replace placeholders" in rendered
+
+
 def test_provider_doctor_blocks_missing_openai_dependency_or_key() -> None:
     rows = doctor_providers(
         provider="openrouter",
