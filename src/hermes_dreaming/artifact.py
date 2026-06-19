@@ -116,6 +116,7 @@ class DreamArtifact:
     apply_errors: list[str] = field(default_factory=list)
     applied_proposal_ids: list[str] = field(default_factory=list)
     backup_paths: list[str] = field(default_factory=list)
+    backup_records: list[dict[str, Any]] = field(default_factory=list)
     audit_events: list[dict[str, Any]] = field(default_factory=list)
     apply_started_at: str | None = None
     apply_finished_at: str | None = None
@@ -143,6 +144,7 @@ class DreamArtifact:
             apply_errors=list(data.get('apply_errors', []) or []),
             applied_proposal_ids=list(data.get('applied_proposal_ids', []) or []),
             backup_paths=list(data.get('backup_paths', []) or []),
+            backup_records=[dict(item) for item in data.get('backup_records', []) or []],
             audit_events=[dict(item) for item in data.get('audit_events', []) or []],
             apply_started_at=data.get('apply_started_at'),
             apply_finished_at=data.get('apply_finished_at'),

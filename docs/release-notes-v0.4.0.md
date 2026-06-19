@@ -8,7 +8,7 @@ v0.4.0 makes Ershov much safer to trial in real operator loops (revert, dry-run,
 
 ### Trust loop
 
-- **`ershov revert <artifact>`** restores live files from the recorded backups and rolls an `applied` artifact back to a `reverted` state. Requires the artifact to be in `applied` status; anything else fails loud.
+- **`ershov revert <artifact>`** restores live files from the recorded backups, removes files that were created by apply, and rolls an `applied` artifact back to a `reverted` state. Requires the artifact to be in `applied` status; anything else fails loud.
   - Drift detection: if the live file changed after apply, a `drift_detected` audit event is recorded, but the restore still runs from backup.
   - On a missing backup file, revert aborts, leaves live state untouched, and records a `revert_failed` audit event.
   - Writes a `REVERT.md` next to the artifact summarizing what was restored, what was rolled back, what drifted, and what failed.
@@ -41,12 +41,13 @@ v0.4.0 makes Ershov much safer to trial in real operator loops (revert, dry-run,
 
 ## Data model
 
-Two additive fields on `DreamArtifact`:
+Three additive fields on `DreamArtifact`:
 
 - `reverted_at: str | None` — ISO timestamp of the last revert, if any
 - `revert_audit_events: list[dict]` — the revert audit trail (drift events, restore summary, partial-failure summary)
+- `backup_records: list[dict]` — per-target backup evidence; existing files point at a backup path, and files created by apply are recorded as `existed_before=false` tombstones so revert can remove them
 
-A third field, `dry_run_report`, is attached in-memory only during a single apply dry-run call and excluded from `manifest.json` so the on-disk contract stays stable across the dry-run feature.
+`dry_run_report` is attached in-memory only during a single apply dry-run call and excluded from `manifest.json` so the on-disk contract stays stable across the dry-run feature.
 
 ## Migration / compatibility
 
@@ -56,7 +57,7 @@ A third field, `dry_run_report`, is attached in-memory only during a single appl
 
 ## Verification
 
-- `pytest -q` passes (188 tests).
+- `pytest -q` passes (189 tests).
 - `python scripts/hermes_plugin_smoke.py` passes and exercises the root Hermes plugin wrapper with a controlled SessionDB nightly run.
 - `python -m build` succeeds, and both wheel and source distribution installs are smoked against all public CLI aliases.
 - `git diff --check` clean.

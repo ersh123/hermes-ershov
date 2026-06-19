@@ -68,6 +68,7 @@ def validate_target_kind_filter(values: set[str] | None) -> set[str] | None:
 class _ApplyPlan:
     proposal: DreamProposal
     target: Path
+    target_relative: Path
     existed_before: bool
     backup_path: Path | None
 
@@ -182,6 +183,7 @@ def _plan_selected_proposals(
     plans: list[_ApplyPlan] = []
     for proposal in selected:
         target = resolve_live_target_path(live_root, proposal)
+        target_relative = target.relative_to(live_root)
         existed_before = target.exists()
         current = target.read_text(encoding="utf-8") if existed_before else ""
         preview_proposal_content(current, proposal)
@@ -190,6 +192,7 @@ def _plan_selected_proposals(
             _ApplyPlan(
                 proposal=proposal,
                 target=target,
+                target_relative=target_relative,
                 existed_before=existed_before,
                 backup_path=backup_path,
             )
@@ -197,15 +200,23 @@ def _plan_selected_proposals(
     return plans
 
 
-def _snapshot_plans(plans: list[_ApplyPlan]) -> list[str]:
+def _snapshot_plans(plans: list[_ApplyPlan]) -> tuple[list[str], list[dict[str, Any]]]:
     backup_paths: list[str] = []
+    backup_records: list[dict[str, Any]] = []
     for plan in plans:
-        if plan.backup_path is None:
-            continue
-        plan.backup_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(plan.target, plan.backup_path)
-        backup_paths.append(str(plan.backup_path))
-    return backup_paths
+        record: dict[str, Any] = {
+            "proposal_id": plan.proposal.id,
+            "target_relative": plan.target_relative.as_posix(),
+            "existed_before": plan.existed_before,
+        }
+        if plan.backup_path is not None:
+            plan.backup_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(plan.target, plan.backup_path)
+            backup_path_text = str(plan.backup_path)
+            backup_paths.append(backup_path_text)
+            record["backup_path"] = backup_path_text
+        backup_records.append(record)
+    return backup_paths, backup_records
 
 
 def _restore_plans(plans: list[_ApplyPlan]) -> None:
@@ -260,6 +271,7 @@ def apply_artifact(
     artifact.apply_errors = []
     artifact.applied_proposal_ids = []
     artifact.backup_paths = []
+    artifact.backup_records = []
     write_artifact(artifact, artifact_dir)
 
     errors = validate_artifact(artifact, live_root=live_root)
@@ -354,10 +366,11 @@ def apply_artifact(
 
     plans: list[_ApplyPlan] = []
     backup_paths: list[str] = []
+    backup_records: list[dict[str, Any]] = []
     applied_ids: list[str] = []
     try:
         plans = _plan_selected_proposals(live_root, backup_root, selected)
-        backup_paths = _snapshot_plans(plans)
+        backup_paths, backup_records = _snapshot_plans(plans)
 
         for plan in plans:
             _write_proposal(plan.target, plan.proposal)
@@ -368,6 +381,7 @@ def apply_artifact(
         artifact.apply_errors = [str(exc)]
         artifact.applied_proposal_ids = applied_ids
         artifact.backup_paths = backup_paths
+        artifact.backup_records = backup_records
         artifact.apply_finished_at = _now_iso()
         write_artifact(artifact, artifact_dir)
         if isinstance(exc, DreamApplyError):
@@ -383,6 +397,7 @@ def apply_artifact(
     artifact.apply_errors = []
     artifact.applied_proposal_ids = [plan.proposal.id for plan in plans]
     artifact.backup_paths = backup_paths
+    artifact.backup_records = backup_records
     artifact.applied_at = finished_at
     artifact.apply_finished_at = finished_at
     write_artifact(artifact, artifact_dir)
@@ -400,9 +415,9 @@ def revert_artifact(
 
     Behavior:
     - Requires artifact.status == "applied". Anything else raises.
-    - For each backup path, restores the corresponding live file to the
-      pre-apply content. If the live file was missing before apply, the file
-      is removed on revert.
+    - For files that existed before apply, restores the corresponding live
+      file to the pre-apply content.
+    - For files created by apply, removes the created live file on revert.
     - Drift detection: if the live file's current content differs from the
       post-apply content (we don't snapshot post-apply content; the spec
       contract is "if the live file changed after apply, still restore from
@@ -427,27 +442,29 @@ def revert_artifact(
         raise DreamRevertError(
             f"cannot revert artifact in status {artifact.status!r}; must be 'applied'"
         )
-    if not artifact.backup_paths:
-        raise DreamRevertError(
-            f"artifact {artifact.artifact_id} has no recorded backup_paths; cannot revert"
-        )
-
     workspace_root = Path(live_root) if live_root is not None else Path(artifact.workspace_root)
     resolved_backup_root = Path(backup_root) if backup_root is not None else workspace_root / ".ershov" / "backups"
+    backup_records = _revert_backup_records(artifact, backup_root=resolved_backup_root)
+    if not artifact.backup_paths and not backup_records:
+        raise DreamRevertError(
+            f"artifact {artifact.artifact_id} has no recorded backup evidence; cannot revert"
+        )
 
     # Pre-flight: every backup must exist and be readable.
     missing: list[str] = []
-    for backup_path_text in artifact.backup_paths:
-        backup_path = Path(backup_path_text)
-        if not backup_path.exists():
-            missing.append(backup_path_text)
+    for record in backup_records:
+        if not bool(record.get("existed_before")):
+            continue
+        backup_path_text = record.get("backup_path")
+        if not backup_path_text or not Path(str(backup_path_text)).exists():
+            missing.append(str(backup_path_text or record.get("target_relative") or "unknown"))
     if missing:
         message = "missing backup file(s): " + ", ".join(missing)
         artifact.revert_audit_events.append(_make_revert_event(artifact, action="revert_failed", reason=message, command="revert"))
         write_artifact(artifact, artifact_dir)
         raise DreamRevertError(message)
 
-    # Sanity check: every applied proposal id must have a backup path.
+    # Sanity check: every applied proposal id must still exist in the artifact.
     applied_proposal_ids = set(artifact.applied_proposal_ids or [])
     proposals_by_id = {proposal.id: proposal for proposal in artifact.proposals}
     for proposal_id in applied_proposal_ids:
@@ -473,18 +490,23 @@ def revert_artifact(
 
     # We restore in declared order; the spec says "in order". Live-side changes
     # are independent per target file so a partial revert can be retried.
-    for backup_path_text in artifact.backup_paths:
-        backup_path = Path(backup_path_text)
-        try:
-            relative = backup_path.relative_to(resolved_backup_root)
-        except ValueError:
-            relative = Path(backup_path.name)
+    for record in backup_records:
+        relative = _target_relative_from_backup_record(record)
         target = workspace_root / relative
-        existed_before_apply = backup_path.exists()
-        if not existed_before_apply:
-            failures.append(f"backup disappeared during revert: {backup_path_text}")
-            continue
+        existed_before_apply = bool(record.get("existed_before"))
         try:
+            if not existed_before_apply:
+                if target.exists():
+                    target.unlink()
+                    removed_files.append(str(target))
+                continue
+
+            backup_path_text = str(record.get("backup_path") or "")
+            backup_path = Path(backup_path_text)
+            if not backup_path.exists():
+                failures.append(f"backup disappeared during revert: {backup_path_text}")
+                continue
+
             if not target.exists():
                 # Live file missing now (possibly already removed); record drift.
                 drift_events.append(
@@ -518,6 +540,7 @@ def revert_artifact(
                 shutil.copy2(backup_path, target)
                 restored_files.append(str(target))
         except OSError as exc:
+            backup_path_text = str(record.get("backup_path") or "no backup")
             failures.append(f"failed to restore {target} from {backup_path_text}: {exc}")
 
     # Roll applied proposals back to approved (state-wise).
@@ -632,12 +655,42 @@ def _make_revert_event(
     return event
 
 
+def _revert_backup_records(artifact: DreamArtifact, *, backup_root: Path | None) -> list[dict[str, Any]]:
+    if artifact.backup_records:
+        return [dict(record) for record in artifact.backup_records]
+    if backup_root is None:
+        return []
+    records: list[dict[str, Any]] = []
+    for backup_path_text in artifact.backup_paths:
+        backup_path = Path(backup_path_text)
+        try:
+            relative = backup_path.relative_to(backup_root)
+        except ValueError:
+            relative = Path(backup_path.name)
+        records.append(
+            {
+                "backup_path": str(backup_path),
+                "target_relative": relative.as_posix(),
+                "existed_before": True,
+            }
+        )
+    return records
+
+
+def _target_relative_from_backup_record(record: dict[str, Any]) -> Path:
+    try:
+        return safe_relative_path(str(record.get("target_relative") or ""))
+    except DreamApplyError as exc:
+        raise DreamRevertError(f"invalid backup target record: {exc}") from exc
+
+
 def _render_revert_confirmation(artifact: DreamArtifact, live_root: Path, backup_root: Path) -> str:
     lines = [
         f"About to revert artifact {artifact.artifact_id!r}.",
         f"Live root: {live_root}",
         f"Backup root: {backup_root}",
         f"Recorded backups: {len(artifact.backup_paths)}",
+        f"Recorded target snapshots: {len(artifact.backup_records or artifact.backup_paths)}",
         f"Applied proposals that will roll back to approved: {len(artifact.applied_proposal_ids or [])}",
         "",
         "First few files that will be restored:",
@@ -680,6 +733,12 @@ def _render_revert_markdown(
     ]
     if restored_files:
         for path_text in restored_files:
+            lines.append(f"- `{path_text}`")
+    else:
+        lines.append("- none")
+    lines.extend(["", "## Removed files", ""])
+    if removed_files:
+        for path_text in removed_files:
             lines.append(f"- `{path_text}`")
     else:
         lines.append("- none")

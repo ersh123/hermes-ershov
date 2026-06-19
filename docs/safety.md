@@ -34,7 +34,7 @@ In the current offline fixture, the demo shows three target kinds:
 - `apply` validates before it writes
 - `apply --dry-run` previews the change without writing live state or creating a backup
 - `apply --priority` and `apply --target-kind` filter which approved proposals land; filtered-out proposals stay approved so a later apply with a different filter can still land them
-- Real `apply` records backup paths in the artifact manifest before live writes; `--dry-run` deliberately records no backups and writes no live files
+- Real `apply` records backup evidence in the artifact manifest before live writes: existing files get backup paths, and files created by apply get `backup_records` tombstones. `--dry-run` deliberately records no backups and writes no live files
 - `revert` restores live files from the recorded backups and rolls the artifact back to a `reverted` state. Drift detection records a `drift_detected` audit event when the live file changed after apply, but the restore still runs from backup
 - backups are taken before live writes
 - unsafe proposal paths are rejected instead of being normalized into something dangerous
@@ -48,7 +48,7 @@ In the current offline fixture, the demo shows three target kinds:
 `ershov revert <artifact>` does three things, in this order:
 
 1. Loads the artifact and checks that it is in the `applied` state. Anything else fails loud.
-2. For each path in `artifact.backup_paths`, copies the recorded backup back to its original live location. If the live file was missing at apply time, the file is recreated from the backup. Drift between the live file and the pre-apply snapshot is recorded as a `drift_detected` audit event, but the restore still runs.
+2. For each backup record, restores existing files from their recorded backup path. If apply created a file that did not exist before, revert removes that created file. Drift between the live file and the pre-apply snapshot is recorded as a `drift_detected` audit event, but the restore still runs.
 3. Marks the artifact's `applied` proposals back to `approved` and writes a `REVERT.md` summary next to the artifact describing what was restored and what failed.
 
 Revert does **not** re-run validation. It is a restore from backup, not a re-apply. If you want to re-apply the same proposals, run `ershov apply <artifact>` again with the same filters. If you want to apply a subset, pass `--priority` or `--target-kind`.

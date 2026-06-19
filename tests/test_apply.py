@@ -185,6 +185,7 @@ def test_apply_rolls_back_and_records_audit_when_later_write_fails(
 
     assert memory.read_text(encoding="utf-8") == "# MEMORY\n\n- Existing note\n"
     assert facts.read_text(encoding="utf-8") == '{"key": "tone", "value": "direct"}\n'
+    assert not (live_root / "skills" / "notes.md").exists()
     assert (backup_root / "memory.md").exists()
     assert (backup_root / "facts.jsonl").exists()
 
@@ -192,6 +193,25 @@ def test_apply_rolls_back_and_records_audit_when_later_write_fails(
     assert loaded.status == "validated"
     assert loaded.applied_proposal_ids == [first.id, second.id]
     assert loaded.backup_paths == [str(backup_root / "memory.md"), str(backup_root / "facts.jsonl")]
+    assert loaded.backup_records == [
+        {
+            "proposal_id": first.id,
+            "target_relative": "memory.md",
+            "existed_before": True,
+            "backup_path": str(backup_root / "memory.md"),
+        },
+        {
+            "proposal_id": second.id,
+            "target_relative": "skills/notes.md",
+            "existed_before": False,
+        },
+        {
+            "proposal_id": third.id,
+            "target_relative": "facts.jsonl",
+            "existed_before": True,
+            "backup_path": str(backup_root / "facts.jsonl"),
+        },
+    ]
     assert loaded.apply_started_at is not None
     assert loaded.apply_finished_at is not None
     assert loaded.apply_errors

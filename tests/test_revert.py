@@ -57,6 +57,21 @@ def _memory_proposal(tmp_path: Path, *, target_path: str = "memory.md", priority
     )
 
 
+def _skill_proposal(*, target_path: str = "skills/review.md", approved: bool = True) -> DreamProposal:
+    return DreamProposal(
+        id=f"proposal-{target_path}",
+        target_kind="skill",
+        target_path=target_path,
+        mode="append_text",
+        summary="append skill note",
+        provenance=["sessions/1.md:2"],
+        proposed_text="- Preserve review gates.",
+        approved=approved,
+        priority="normal",
+        risk="low",
+    )
+
+
 def test_apply_then_revert_roundtrip_restores_live_state(tmp_path: Path) -> None:
     live_root = tmp_path / "live"
     live_root.mkdir()
@@ -94,6 +109,42 @@ def test_apply_then_revert_roundtrip_restores_live_state(tmp_path: Path) -> None
     assert reverted.proposals[0].approved is True
     assert reverted.proposals[0].applied is False
     assert any(event["action"] == "reverted" for event in reverted.revert_audit_events)
+
+
+def test_apply_then_revert_removes_file_created_by_apply(tmp_path: Path) -> None:
+    live_root = tmp_path / "live"
+    live_root.mkdir()
+    artifact_dir = _write_artifact(
+        tmp_path,
+        artifact_id="artifact-revert-created-file",
+        live_root=live_root,
+        proposals=[_skill_proposal(target_path="skills/new-review.md")],
+        status="validated",
+    )
+    backup_root = tmp_path / "backups"
+
+    applied = apply_artifact(artifact_dir, live_root=live_root, backup_root=backup_root)
+
+    created_file = live_root / "skills" / "new-review.md"
+    assert created_file.exists()
+    assert applied.backup_paths == []
+    assert applied.backup_records == [
+        {
+            "proposal_id": "proposal-skills/new-review.md",
+            "target_relative": "skills/new-review.md",
+            "existed_before": False,
+        }
+    ]
+
+    reverted = revert_artifact(artifact_dir, live_root=live_root, backup_root=backup_root, yes=True)
+
+    assert reverted.status == "reverted"
+    assert not created_file.exists()
+    assert reverted.proposals[0].approved is True
+    assert reverted.proposals[0].applied is False
+    revert_md = (artifact_dir / REVERT_FILE).read_text(encoding="utf-8")
+    assert "Removed files: `1`" in revert_md
+    assert str(created_file) in revert_md
 
 
 def test_revert_rejects_non_applied_artifact(tmp_path: Path) -> None:

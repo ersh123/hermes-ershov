@@ -94,7 +94,8 @@ def test_quickstart_uses_temp_live_root_and_dry_run_before_apply() -> None:
     assert "`apply: dry-run`" in text
     assert "`mode: dry-run`" not in text
     assert "leave `$LIVE_ROOT` and `$BACKUP_ROOT` unchanged" in text
-    assert "records backup paths in `manifest.json`" in text
+    assert "records backup evidence in `manifest.json`" in text
+    assert "remove files that were created by apply" in text
     assert "/tmp/hermes-ershov-quickstart/artifacts" not in text
     assert "/tmp/hermes-ershov-quickstart.<suffix>/artifacts" in text
 
@@ -104,7 +105,8 @@ def test_readme_has_single_discard_example_and_trust_loop_notes() -> None:
 
     assert text.count("ershov discard ./artifacts/<artifact-id> --archive-root ./archive") == 1
     assert "`--dry-run` deliberately creates no backups and writes no live files" in text
-    assert "records backup paths in the artifact manifest before live writes" in text
+    assert "records backup evidence in the artifact manifest before live writes" in text
+    assert "`backup_records` tombstones" in text
 
 
 def test_release_docs_use_current_test_count() -> None:
@@ -118,7 +120,8 @@ def test_release_docs_use_current_test_count() -> None:
         assert "185 tests" not in text, path
         assert "186 tests" not in text, path
         assert "187 tests" not in text, path
-        assert "188 tests" in text, path
+        assert "188 tests" not in text, path
+        assert "189 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
