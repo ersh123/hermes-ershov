@@ -1,6 +1,16 @@
 # Live memory policy review
 
-Verdict: STOP
+Current status: RESOLVED.
+
+Resolved by:
+- `reviews/policy-wiring-review.md`
+- `reviews/live-policy-scope-review.md`
+- `tests/test_policy.py`
+- `tests/test_provider_failure.py`
+- `tests/test_validation.py`
+- `tests/test_apply_memory_op.py`
+
+Historical verdict: STOP
 
 ## What I checked
 
