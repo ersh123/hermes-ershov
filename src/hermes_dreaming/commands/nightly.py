@@ -1,8 +1,15 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 from dataclasses import dataclass
 import os
 from pathlib import Path
+from typing import Iterator
+
+try:
+    import fcntl
+except ImportError:  # pragma: no cover - non-Unix fallback
+    fcntl = None  # type: ignore[assignment]
 
 from ..analyze import DreamRunConfig, create_dream_artifact
 from ..providers import MARKER_RE
@@ -12,6 +19,10 @@ from .digest import build_digest, build_inbox_digest, render_digest, render_inbo
 from .harvest import HarvestResult, harvest_recent
 
 _OFFLINE_MARKER_PROVIDERS = {"offline", "offline-marker", "marker"}
+
+
+class NightlyAlreadyRunning(RuntimeError):
+    """Raised when another nightly run already owns the state-root lock."""
 
 
 @dataclass(slots=True)
@@ -63,6 +74,24 @@ def _run_source_from_env() -> str:
     value = os.environ.get("HERMES_ERSHOV_RUN_SOURCE", "manual")
     normalized = "".join(char if char.isalnum() or char in {"-", "_", "."} else "-" for char in value.strip().lower())
     return normalized[:64] or "manual"
+
+
+@contextmanager
+def _exclusive_nightly_lock(lock_path: Path) -> Iterator[None]:
+    if fcntl is None:
+        yield
+        return
+
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise NightlyAlreadyRunning(f"nightly already running for state root: {lock_path.parent}") from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def _write_noop_digest(*, path: Path, result: NightlyMemoryResult) -> None:
@@ -122,6 +151,38 @@ def _record_nightly_run(result: NightlyMemoryResult) -> None:
 
 
 def run_nightly_memory(
+    *,
+    live_root: Path,
+    artifact_root: Path,
+    archive_root: Path | None = None,
+    state_root: Path | None = None,
+    recent: int = 14,
+    provider_name: str = "deepseek",
+    model: str | None = "deepseek-v4-flash",
+    base_url: str | None = "https://api.deepseek.com/v1",
+    compact: bool = True,
+    include_weekly: bool = True,
+) -> NightlyMemoryResult:
+    if recent <= 0:
+        raise ValueError("recent must be greater than 0")
+
+    resolved_state_root = _state_root(state_root)
+    with _exclusive_nightly_lock(resolved_state_root / "nightly.lock"):
+        return _run_nightly_memory_locked(
+            live_root=live_root,
+            artifact_root=artifact_root,
+            archive_root=archive_root,
+            state_root=resolved_state_root,
+            recent=recent,
+            provider_name=provider_name,
+            model=model,
+            base_url=base_url,
+            compact=compact,
+            include_weekly=include_weekly,
+        )
+
+
+def _run_nightly_memory_locked(
     *,
     live_root: Path,
     artifact_root: Path,

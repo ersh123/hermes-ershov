@@ -23,7 +23,7 @@ from .commands.install_systemd import handle as install_systemd_command, render_
 from .commands.harvest import harvest_recent
 from .commands.inbox import build_inbox, parse_filter, render_inbox, render_inbox_json
 from .commands.digest import build_digest, build_inbox_digest, render_digest, render_inbox_digest
-from .commands.nightly import render_nightly_memory, run_nightly_memory
+from .commands.nightly import NightlyAlreadyRunning, render_nightly_memory, run_nightly_memory
 from .commands.report_card import handle as report_card_command
 from .commands.review import (
     ReviewError,
@@ -890,6 +890,9 @@ def main(argv: list[str] | None = None) -> int:
             )
         except ValueError as exc:
             parser.error(str(exc))
+        except NightlyAlreadyRunning as exc:
+            print(f"nightly failed: {exc}")
+            return 1
         print(render_nightly_memory(result).rstrip())
         return 0 if result.success else 1
 

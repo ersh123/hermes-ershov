@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import json
 from pathlib import Path
 
@@ -7,7 +8,7 @@ from hermes_dreaming.artifact import DreamArtifact, DreamProposal, SourceSnapsho
 from hermes_dreaming.cli import main
 from hermes_dreaming.commands import nightly as nightly_module
 from hermes_dreaming.commands.harvest import HarvestResult
-from hermes_dreaming.commands.nightly import render_nightly_memory, run_nightly_memory
+from hermes_dreaming.commands.nightly import NightlyAlreadyRunning, render_nightly_memory, run_nightly_memory
 from hermes_dreaming.session_reader import SessionDigest
 from hermes_dreaming.state import read_run_ledger
 
@@ -211,6 +212,38 @@ def test_run_nightly_memory_records_sanitized_run_source(tmp_path: Path, monkeyp
     assert read_run_ledger(ledger_path=state_root / "runs.jsonl")[0]["run_source"] == "systemd-timer-injected-bad"
 
 
+def test_run_nightly_memory_rejects_concurrent_run_before_writes(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(nightly_module, "harvest_recent", _fake_harvest)
+    live_root = _live_root(tmp_path)
+    artifact_root = tmp_path / "artifacts"
+    state_root = tmp_path / "state"
+    lock_path = state_root / "nightly.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with lock_path.open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            try:
+                run_nightly_memory(
+                    live_root=live_root,
+                    artifact_root=artifact_root,
+                    state_root=state_root,
+                    provider_name="offline-marker",
+                    model=None,
+                    base_url=None,
+                    compact=False,
+                )
+            except NightlyAlreadyRunning as exc:
+                assert str(state_root) in str(exc)
+            else:  # pragma: no cover - assertion branch
+                raise AssertionError("concurrent nightly run should be rejected")
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+    assert read_run_ledger(ledger_path=state_root / "runs.jsonl") == []
+    assert not (artifact_root / "_sources" / "nightly-recent-sessions.md").exists()
+
+
 def test_run_nightly_memory_records_invalid_artifact_without_live_write(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(nightly_module, "harvest_recent", _fake_harvest)
     missing_live_root = tmp_path / "missing-live"
@@ -268,3 +301,38 @@ def test_nightly_cli_runs_full_pipeline(tmp_path: Path, monkeypatch, capsys) -> 
     assert "Live memory writes: disabled" in output
     assert "Sessions harvested: `1`" in output
     assert read_run_ledger(ledger_path=state_root / "runs.jsonl")[0]["command"] == "nightly"
+
+
+def test_nightly_cli_returns_nonzero_when_lock_is_held(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(nightly_module, "harvest_recent", _fake_harvest)
+    live_root = _live_root(tmp_path)
+    artifact_root = tmp_path / "artifacts"
+    state_root = tmp_path / "state"
+    lock_path = state_root / "nightly.lock"
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+
+    with lock_path.open("a+", encoding="utf-8") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        try:
+            exit_code = main(
+                [
+                    "nightly",
+                    "--live-root",
+                    str(live_root),
+                    "--artifact-root",
+                    str(artifact_root),
+                    "--state-root",
+                    str(state_root),
+                    "--recent",
+                    "2",
+                    "--no-llm",
+                    "--no-compact",
+                    "--no-weekly",
+                ]
+            )
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+    assert exit_code == 1
+    assert "nightly failed: nightly already running" in capsys.readouterr().out
+    assert read_run_ledger(ledger_path=state_root / "runs.jsonl") == []
