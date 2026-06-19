@@ -38,6 +38,15 @@ Provider secrets are not written by the installer. If the timer needs DeepSeek,
 put the key in `~/.config/hermes-ershov/nightly.secrets.env`; the generated
 service reads that file if it exists and leaves it untouched on reinstall.
 
+After the first scheduled run has actually fired, verify it with:
+
+```bash
+ershov soak --state-root ~/.hermes/ershov --since-hours 30 --require-timer
+```
+
+Manual starts prove the service command works. A passing `soak` after the real
+schedule fires is the stronger evidence for stable operations.
+
 ## Update the installed checkout
 
 ```bash

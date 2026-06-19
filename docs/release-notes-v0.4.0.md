@@ -2,7 +2,7 @@
 
 **Headline:** *The trust loop and the friction-killer.*
 
-v0.4.0 makes Ershov safe to use in anger (revert, dry-run, selective apply) and removes the harvest-to-create two-step (one command, real sessions, redacted).
+v0.4.0 makes Ershov much safer to trial in real operator loops (revert, dry-run, selective apply) and removes the harvest-to-create two-step (one command, real sessions, redacted). It is a public beta / release candidate, not a stable release claim until scheduled-run soak evidence exists.
 
 ## What's new
 
@@ -62,6 +62,7 @@ A third field, `dry_run_report`, is attached in-memory only during a single appl
 
 ## Known limitations
 
+- Stable release wording waits for at least one real scheduled systemd/cron run followed by a passing `ershov soak --require-timer`. Manual service starts and transient timer smokes are useful evidence, but they are not the same as an overnight scheduled run.
 - Revert does not re-run validation. It is a restore from backup, not a re-apply. If a reverted proposal is reapplied, validation runs normally as part of the apply path.
 - Drift detection compares the live file's pre-restore content to the recorded backup snapshot, but does not currently track per-write post-apply shas. Adding a per-write post-apply sha is a v0.5.0 candidate.
 - The `--from-since` window-to-count heuristic is conservative (4 sessions per day, capped at 50). If you want a more aggressive count, use `--from-sessions N` directly.

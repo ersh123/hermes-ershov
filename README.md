@@ -59,6 +59,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 
 ## Current status
 
+- **Release posture:** public beta / release candidate. The current code, tests, plugin smoke, CI, and CodeQL gates are green, but stable wording waits for a real overnight systemd/cron run followed by `ershov soak --require-timer`.
 - **Full feature set:** create, review/open, nightly, summarize, approve, reject, diff, validate, apply, discard, compact, report-card, install-cron, install-systemd, status, update, all implemented
 - **Live memory mutation** with score gating, idempotence, backups, and capacity enforcement
 - **Run ledger + ERSHOV.md diary** for auditability
@@ -66,7 +67,7 @@ The plugin also bundles a Hermes skill named `ershov`. Load that bare name insid
 - **Recent-session reader** with fallback chain (SessionDB → SQLite → pointer-log)
 - **Nightly memory pipeline** for dialogue harvest, staged review artifacts, digests, inbox digest, compaction, and run-ledger audit
 - **Cron and user-systemd installers** for the full nightly memory pipeline
-- **Test suite passes locally**
+- **Test suite, plugin smoke, CI, and CodeQL pass**
 
 ## Install
 
@@ -268,4 +269,4 @@ python -m pip install build
 python -m build --wheel
 ```
 
-The repo is intentionally self-contained and safe for public release review.
+The repo is intentionally self-contained and ready for public beta / release-candidate review.
