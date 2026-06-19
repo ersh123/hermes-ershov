@@ -82,6 +82,7 @@ GitHub Actions runs the same release-shaped matrix:
 - OpenSSF Scorecard on weekly schedule and manual dispatch, with SARIF uploaded to code scanning
 - ClusterFuzzLite PR/manual fuzzing for the Python safety harness through `.clusterfuzzlite/` and `fuzzers/ershov_safety_fuzzer.py`
 - SPDX release SBOM generation into `dist/hermes-ershov-sbom.spdx.json`
+- release artifact verification for wheel metadata, source distribution metadata, SBOM package coverage, purl refs, locked SHA256 checksums, and root dependency relationships
 - GitHub Release asset attestations on release-event uploads
 - PyPI Trusted Publishing through OIDC on GitHub `release` events only, with GitHub artifact attestations for the built distributions
 - checkout-token hardening through `persist-credentials: false` on repository checkout steps

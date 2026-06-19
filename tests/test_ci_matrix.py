@@ -24,6 +24,8 @@ def test_ci_workflow_shows_release_shaped_test_matrix() -> None:
         "pytest -q tests/test_pbt.py",
         "python scripts/hermes_plugin_smoke.py",
         "python -m build",
+        "python scripts/generate_release_sbom.py",
+        "python scripts/verify_release_artifacts.py --dist dist",
         "dist/*.whl",
         "dist/*.tar.gz",
         "uv run --no-project --isolated --with dist/*.whl ershov --help",

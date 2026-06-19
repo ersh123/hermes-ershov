@@ -164,7 +164,9 @@ def test_release_docs_use_current_test_count() -> None:
         assert "256 tests" not in text, path
         assert "258 tests" not in text, path
         assert "259 tests" not in text, path
-        assert "260 tests" in text, path
+        assert "260 tests" not in text, path
+        assert "261 tests" not in text, path
+        assert "262 tests" in text, path
 
 
 def test_release_docs_document_stronger_public_stable_promotion_gate() -> None:
@@ -297,6 +299,7 @@ def test_testing_matrix_is_linked_and_mentions_diverse_release_gates() -> None:
         "GitHub artifact attestations",
         "GitHub Release asset attestations",
         "SPDX release SBOM generation",
+        "release artifact verification",
         "release-event-only PyPI publishing",
         "SARIF uploaded to code scanning",
         "persist-credentials: false",
