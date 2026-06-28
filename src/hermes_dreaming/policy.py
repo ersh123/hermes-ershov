@@ -34,10 +34,10 @@ TARGET_POLICY: dict[str, dict[str, int]] = {
 LIVE_TARGET_KINDS = {"memory", "user"}
 
 RUN_POLICY = {
-    "max_changes": 3,
+    "max_changes": 8,
     "max_adds": 1,
-    "max_new_chars": 250,
-    "max_targets": 3,
+    "max_new_chars": 2500,  # DEBI 2026-06-24: was 250, too tight for nightly memory proposals
+    "max_targets": 8,
 }
 
 _GENERIC_SLOP_RE = re.compile(r"\b(important|various|misc(?:ellaneous)?|stuff|things|etc\.?|general)\b", re.IGNORECASE)

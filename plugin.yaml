@@ -1,8 +1,9 @@
 name: hermes-ershov
-version: 0.4.0
+version: 0.5.0
 description: >-
-  Personal staged nightly memory engine for Hermes operator memory. Commands:
-  create, review, nightly, diff, validate, apply, discard, compact,
-  install-cron, install-systemd, status, soak, update.
+  Self-audit engine for Hermes operator memory. Replaces nightly memory with
+  dialog-driven self-audit pipeline. Commands: create, review, nightly, diff,
+  validate, apply, discard, compact, install-cron, install-systemd, status,
+  soak, update.
 author: Niko
 kind: standalone
