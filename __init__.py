@@ -15,9 +15,9 @@ LEGACY_MNEMOS_COMMAND = "mnemos"
 LEGACY_NIGHTMEM_COMMAND = "nightmem"
 LEGACY_COMMAND = "dreaming"
 PRODUCT_NAME = "Hermes Ershov"
+PRODUCT_NAME = "Self Ershov Memory"
 
-
-def _run_night_memory(args: argparse.Namespace) -> int:
+def _run_self_audit(args: argparse.Namespace) -> int:
     from hermes_dreaming.cli import main as dreaming_main
 
     dream_args = list(getattr(args, "dreaming_args", []) or [])
@@ -43,29 +43,30 @@ def _setup_dreaming_cli(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "dreaming_args",
         nargs=argparse.REMAINDER,
-        help="Arguments forwarded to the Ershov CLI.",
+        help="Arguments forwarded to the Self Ershov Memory CLI.",
     )
 
 
 def register(ctx) -> None:
     for name, help_text in (
-        (PRIMARY_COMMAND, "Run the personal Hermes Ershov engine"),
-        (LEGACY_MNEMOS_COMMAND, "Run the legacy ershov compatibility command"),
-        (LEGACY_NIGHTMEM_COMMAND, "Run the legacy ershov compatibility command"),
-        (LEGACY_COMMAND, "Run the legacy ershov compatibility command"),
+        (PRIMARY_COMMAND, "Run the Self Ershov Memory engine"),
+        (LEGACY_MNEMOS_COMMAND, "Run the legacy compatibility command"),
+        (LEGACY_NIGHTMEM_COMMAND, "Run the legacy compatibility command"),
+        (LEGACY_COMMAND, "Run the legacy compatibility command"),
     ):
         ctx.register_cli_command(
             name=name,
             help=help_text,
             setup_fn=_setup_dreaming_cli,
-            handler_fn=_run_night_memory,
+            handler_fn=_run_self_audit,
             description=(
                 f"Expose the standalone {PRODUCT_NAME} CLI inside Hermes. "
-                "Use it to create, inspect, validate, apply, or discard staged personal memory artifacts."
+                "Dialog-driven self-audit engine — analyzes conversations, "
+                "extracts corrections, updates USER.md/MEMORY.md."
             ),
         )
 
-    skill_md = ROOT / "skills" / "hermes-ershov" / "SKILL.md"
+    skill_md = ROOT / "skills" / "self-ershov-memory" / "SKILL.md"
     if skill_md.exists():
         ctx.register_skill("ershov", skill_md)
         ctx.register_skill(LEGACY_MNEMOS_COMMAND, skill_md)

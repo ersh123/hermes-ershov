@@ -3,9 +3,9 @@ requires = ["hatchling>=1.24"]
 build-backend = "hatchling.build"
 
 [project]
-name = "hermes-ershov"
+name = "self-ershov-memory"
 version = "0.4.0"
-description = "Staged nightly memory engine for Hermes operators"
+description = "Self-audit engine for Hermes operators. Dialog-driven memory consolidation."
 readme = "README.md"
 license = {file = "LICENSE"}
 requires-python = ">=3.11"

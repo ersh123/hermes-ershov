@@ -1,4 +1,4 @@
-# Hermes Ershov — Project Brief
+# Self Ershov Memory — Project Brief
 
 ## Goal
 Build a safe, reviewable self-improvement engine for Hermes-style memory,

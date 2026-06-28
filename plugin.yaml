@@ -1,9 +1,8 @@
-name: hermes-ershov
+name: self-ershov-memory
 version: 0.5.0
 description: >-
-  Self-audit engine for Hermes operator memory. Replaces nightly memory with
-  dialog-driven self-audit pipeline. Commands: create, review, nightly, diff,
-  validate, apply, discard, compact, install-cron, install-systemd, status,
-  soak, update.
+  Self-audit engine for Hermes operator memory. Dialog-driven memory
+  consolidation — analyzes conversations, extracts corrections, updates
+  USER.md/MEMORY.md, creates skills. Idempotent, dedup, snapshot-based.
 author: Niko
 kind: standalone
