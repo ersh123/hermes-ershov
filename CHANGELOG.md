@@ -62,3 +62,21 @@
 - Added offline marker parsing plus an optional OpenAI-compatible provider.
 - Added tests for the core model, validation, CLI flow, and apply/discard behavior.
 - Added initial scaffold and repository setup.
+
+## v0.5.0 — Self-Audit Engine (2026-06-28)
+
+**Концептуальный переход: nightly memory → self-audit.**
+
+- **Self-audit pipeline** — основной механизм памяти
+  - Анализ диалогов из state.db (режимы: quick 24ч / full 30д)
+  - Извлечение коррекций по regex-паттернам
+  - Классификация по темам (keyword-based)
+  - Dedup — не дублирует существующие правила в USER.md
+  - Snapshot — бэкап перед каждой правкой
+  - Авто-создание скиллов для новых тем
+- **Удалён старый nightly cron** (`c03d3e130c54`)
+- **Plugin.yaml** v0.4.0 → v0.5.0, описание: «self-audit engine»
+- **Policy** (DEBI): max_changes 3→8, max_new_chars 250→2500, max_targets 3→8
+- **Providers**: retry на validation failure, relaxed provenance, single-bundle fallback
+- **Cron**: daily quick (22:00) + weekly full (Вс 20:00)
+- **README**: полная переработка под self-audit концепцию
