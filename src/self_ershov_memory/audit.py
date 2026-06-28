@@ -11,11 +11,9 @@ self-audit.py — Debi self-audit pipeline.
 Без флагов = --dry-run --quick
 """
 import sqlite3
-import json
-import os
 import re
 import shutil
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from pathlib import Path
 
 HOME = Path.home()
@@ -273,7 +271,6 @@ def format_corrections_entry(corrections):
     
     for c in corrections:
         text = c["text"]
-        ctype = c.get("type", "correction")
         
         # Извлекаем суть из полного текста
         # Отрезаем первые 100-200 символов, очищаем
@@ -621,7 +618,7 @@ def run_pipeline(mode="quick", dry_run=True):
     
     # Синхронизация скиллов по всем найденным темам
     if not dry_run:
-        skills_updated = sync_skills(corrections, dry_run=False)
+        sync_skills(corrections, dry_run=False)
     else:
         log("--- Skills check (dry-run) ---")
         sync_skills(corrections, dry_run=True)
