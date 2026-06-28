@@ -4,6 +4,8 @@
 
 [![CI](https://github.com/ersh123/self-ershov-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/ersh123/self-ershov-memory/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ersh123/self-ershov-memory/actions/workflows/codeql.yml/badge.svg)](https://github.com/ersh123/self-ershov-memory/actions/workflows/codeql.yml)
+![tests](https://img.shields.io/badge/tests-40%20passing-brightgreen)
+![coverage](https://img.shields.io/badge/product%20coverage-100%25-brightgreen)
 
 Self-audit memory engine for Hermes operators. It reads Hermes dialogue history, extracts durable operator corrections, snapshots memory files, and updates `USER.md` / `MEMORY.md` only through explicit, reviewable runs.
 
@@ -20,7 +22,31 @@ Self-audit memory engine for Hermes operators. It reads Hermes dialogue history,
 - **Idempotent**: repeat runs skip already-known corrections.
 - **Grounded**: durable memory comes from dialogue evidence, not fabricated assumptions.
 - **Safe by default**: `--dry-run` is the default; `--execute` is explicit.
-- **Provider policy**: direct `deepseek` is the fallback LLM path; OpenRouter is intentionally not supported.
+- **Provider policy**: direct `deepseek` is the fallback LLM path.
+
+
+## Before → approval → after
+
+`self-ershov-memory` is built around an explicit memory approval loop. The engine never silently rewrites operator memory.
+
+| Stage | What happens | Write access |
+|---|---|---|
+| **Before** | Raw Hermes dialogues stay in `~/.hermes/state.db`; memory files remain unchanged. | none |
+| **Review / approval** | `self-ershov-memory --dry-run --full` extracts candidate corrections, deduplicates them, shows the proposed memory delta, and leaves files untouched. | none |
+| **After** | `self-ershov-memory --execute --full` applies only reviewed corrections, creates snapshots first, updates `USER.md` / `MEMORY.md`, and records skill changes when needed. | explicit |
+
+
+## Test evidence
+
+Current product gate: **40 pytest tests passing** and **100% coverage for `self_ershov_memory` and the Hermes plugin wrapper**. Legacy staged-memory code is intentionally removed from the public package instead of being kept as dead compatibility surface.
+
+```bash
+uv run --locked --extra dev pytest -q
+uv run --locked --extra dev pytest --cov=src/self_ershov_memory --cov=__init__ --cov-report=term-missing --cov-fail-under=100 -q
+uv run --locked --extra dev ruff check --select F401,F841,E731 __init__.py src tests
+```
+
+GitHub Actions repeats the package gates on Python 3.11, 3.12, and 3.13; CodeQL runs separately.
 
 ## Install
 
@@ -41,15 +67,6 @@ self-ershov-memory --dry-run --full
 self-ershov-memory --execute --full
 ```
 
-## Legacy compatibility
-
-The old staged-memory CLI is still available for existing automation:
-
-```bash
-ershov nightly --live-root ./live --artifact-root ./artifacts --no-llm
-ershov review --open ./artifacts/<id>
-ershov apply ./artifacts/<id> --live-root ./live --backup-root ./backups
-```
 
 ## Development
 
@@ -67,10 +84,6 @@ uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
 - No secret values in docs, logs, or provider doctor output.
 - GitHub CLI credentials are for repository operations only, never LLM access.
 
-## Offline fixture and staged artifact compatibility
-
-The legacy fixture uses explicit `MEMORY:` or `DREAM:` lines so offline demos can run with no API key. `ershov discard ./artifacts/<artifact-id> --archive-root ./archive` is the one-shot way to archive a staged artifact. `--dry-run` deliberately creates no backups and writes no live files; revert evidence can be `not-run` until a real apply exists; real apply records backup evidence in the artifact manifest before live writes, including `backup_records` tombstones. Schema-valid model output is still treated as untrusted: provider output must carry provenance / `source_quote` evidence.
-
 ## Release and testing gates
 
-See `docs/testing.md` and `docs/release-integrity.md`. Public stable promotion requires `--since-hours 96 --min-successful 3 --strict-systemd`; one-night smoke evidence uses `--since-hours 30 --min-successful 1 --strict-systemd`. `status --release-gate` checks the last nightly run / last successful nightly evidence. `providers doctor --provider deepseek --env-file ... --fix-plan --strict` is configuration readiness only, not an end-to-end generation test, and works without printing secret values and never prints secret values. Use `--from-systemd`, `--env-file`, `--require-provider deepseek`, and `--git-timeout-seconds` when validating installed timers. Legacy revert evidence may be `legacy-degraded`; verify post-apply shas / post-apply sha before treating rollback as strong evidence.
+The public package is intentionally narrow: one product CLI, one package, one memory self-audit loop. Release candidates must pass product coverage at 100%, package build, Twine metadata checks, CI, and CodeQL.

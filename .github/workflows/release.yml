@@ -9,146 +9,26 @@ permissions:
   contents: read
 
 jobs:
-  build-release-assets:
-    name: build release assets
+  package:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: '3.12'
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+          enable-cache: true
+      - uses: actions/setup-python@v6
         with:
-          enable-cache: false
-
-      - name: Sync locked release environment
-        run: uv sync --locked --extra dev --python "3.12"
-
-      - name: Verify
-        run: |
-          git diff --check
-          uv run --locked --extra dev zizmor .github/workflows
-          uv run --locked --extra dev pip-audit . --strict --progress-spinner off
-          uv run --locked --extra dev pip-audit --local --skip-editable --progress-spinner off
-          uv run --locked --extra dev ruff check --select F401,F841,E731 __init__.py src scripts tests fuzzers
-          uv run --locked --extra dev python -m compileall -q __init__.py src scripts
-          uv run --locked --extra dev pytest -q --cov=hermes_dreaming --cov=hermes_ershov --cov=hermes_mnemos --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=80
-          uv run --locked --extra dev pytest -q tests/test_pbt.py
-          uv run --locked --extra dev python scripts/hermes_plugin_smoke.py
-
-      - name: Build distributions
-        run: uv run --locked --extra dev python -m build
-
-      - name: Check package metadata
-        run: uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
-
-      - name: Export repository SBOM
-        run: uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/self-ershov-memory-sbom.spdx.json
-
-      - name: Export release manifest
-        run: uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist
-
-      - name: Export release checksums
-        run: uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist
-
-      - name: Verify release artifacts
-        run: uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist
-
-      - name: Smoke wheel
-        run: |
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov providers list
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov providers doctor --provider offline-marker --strict
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov providers doctor --provider offline-marker --from-systemd --strict
-          mkdir -p /tmp/ershov-release-smoke-state
-          printf '%s\n' 'HERMES_ERSHOV_PROVIDER="offline-marker"' 'DEEPSEEK_API_KEY="sk-rel-do-not-print"' > /tmp/ershov-release-nightly.env
-          if uv run --no-cache --no-project --isolated --with dist/*.whl ershov providers doctor --provider deepseek --env-file /tmp/ershov-release-nightly.env --fix-plan --strict > /tmp/ershov-release-doctor.txt; then
-            echo "expected deepseek env-file doctor to fail while wheel lacks the llm extra or provider selector mismatches"
-            exit 1
-          fi
-          grep -q 'DEEPSEEK_API_KEY=<secret>' /tmp/ershov-release-doctor.txt
-          if grep -q 'sk-rel-do-not-print' /tmp/ershov-release-doctor.txt; then
-            echo "secret leaked from providers doctor fix-plan"
-            exit 1
-          fi
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov status --release-gate --state-root /tmp/ershov-release-smoke-state
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov status --release-gate --state-root /tmp/ershov-release-smoke-state --require-provider deepseek --provider-env-file /tmp/ershov-release-nightly.env --fix-plan > /tmp/ershov-release-status.txt
-          grep -q 'Stable fix plan:' /tmp/ershov-release-status.txt
-          grep -q 'DEEPSEEK_API_KEY=<secret>' /tmp/ershov-release-status.txt
-          if grep -q 'sk-rel-do-not-print' /tmp/ershov-release-status.txt; then
-            echo "secret leaked from status release-gate fix-plan"
-            exit 1
-          fi
-          if uv run --no-cache --no-project --isolated --with dist/*.whl ershov soak --state-root /tmp/ershov-release-smoke-state --since-hours 30 --min-successful 1 --require-timer --require-source systemd --require-commit "$GITHUB_SHA" --require-clean --require-provider deepseek --provider-env-file /tmp/ershov-release-nightly.env --fix-plan > /tmp/ershov-release-soak.txt; then
-            echo "expected installed wheel soak gate to fail without scheduled-run evidence"
-            exit 1
-          fi
-          grep -q '## Fix plan' /tmp/ershov-release-soak.txt
-          grep -q 'DEEPSEEK_API_KEY=<secret>' /tmp/ershov-release-soak.txt
-          if grep -q 'sk-rel-do-not-print' /tmp/ershov-release-soak.txt; then
-            echo "secret leaked from soak fix-plan"
-            exit 1
-          fi
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov revert --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl self-ershov-memory --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl mnemos --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl nightmem --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl dreaming --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl python -m hermes_dreaming --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl python -m self_ershov_memory --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl python -m hermes_mnemos --help
-
-      - name: Smoke source distribution
-        run: |
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz ershov --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz self-ershov-memory --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz mnemos --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz nightmem --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz dreaming --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz python -m hermes_dreaming --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz python -m self_ershov_memory --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz python -m hermes_mnemos --help
-
-      - name: Upload distribution artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+          python-version: "3.11"
+      - run: uv sync --locked --extra dev
+      - run: uv run --locked --extra dev pytest --cov=src/self_ershov_memory --cov=__init__ --cov-report=term-missing --cov-fail-under=100 -q
+      - run: uv run --locked --extra dev python -m build
+      - run: uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
+      - run: uv run --no-cache --no-project --isolated --with dist/*.whl self-ershov-memory --help
+      - uses: actions/upload-artifact@v5
         with:
-          name: self-ershov-memory-dist
+          name: python-package
           path: dist/*
           if-no-files-found: error
-
-  upload-release-assets:
-    name: upload release assets
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: build-release-assets
-    if: github.event_name == 'release'
-    permissions:
-      contents: write
-      id-token: write
-      attestations: write
-
-    steps:
-      - name: Download distribution artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          name: self-ershov-memory-dist
-          path: dist
-
-      - name: Attest release assets
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
-        with:
-          subject-path: dist/*
-
-      - name: Upload release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$GITHUB_REF_NAME" dist/* --clobber

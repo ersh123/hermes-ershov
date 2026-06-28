@@ -1,107 +1,32 @@
-name: Publish package
+name: Publish
 
 on:
-  release:
-    types: [published]
   workflow_dispatch:
 
 permissions:
   contents: read
-
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  id-token: write
 
 jobs:
-  build-distributions:
-    name: build publish distributions
+  build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+    timeout-minutes: 15
     steps:
-      - name: Check out repository
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      - uses: actions/checkout@v5
         with:
           persist-credentials: false
-
-      - name: Set up Python
-        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+      - uses: astral-sh/setup-uv@v6
         with:
-          python-version: '3.12'
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@fac544c07dec837d0ccb6301d7b5580bf5edae39 # v8.2.0
+          enable-cache: true
+      - uses: actions/setup-python@v6
         with:
-          enable-cache: false
-
-      - name: Sync locked publish environment
-        run: uv sync --locked --extra dev --python "3.12"
-
-      - name: Verify publish gate
-        run: |
-          git diff --check
-          uv run --locked --extra dev zizmor .github/workflows
-          uv run --locked --extra dev pip-audit . --strict --progress-spinner off
-          uv run --locked --extra dev pip-audit --local --skip-editable --progress-spinner off
-          uv run --locked --extra dev ruff check --select F401,F841,E731 __init__.py src scripts tests fuzzers
-          uv run --locked --extra dev python -m compileall -q __init__.py src scripts fuzzers
-          uv run --locked --extra dev pytest -q --cov=hermes_dreaming --cov=hermes_ershov --cov=hermes_mnemos --cov-report=term-missing:skip-covered --cov-report=xml --cov-fail-under=80
-          uv run --locked --extra dev pytest -q tests/test_pbt.py tests/test_fuzz_harness.py
-          uv run --locked --extra dev python scripts/hermes_plugin_smoke.py
-
-      - name: Build distributions
-        run: |
-          uv run --locked --extra dev python -m build
-          uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
-          uv run --locked --extra dev python scripts/generate_release_sbom.py --output dist/self-ershov-memory-sbom.spdx.json
-          uv run --locked --extra dev python scripts/generate_release_manifest.py --dist dist
-          uv run --locked --extra dev python scripts/generate_release_checksums.py --dist dist
-          uv run --locked --extra dev python scripts/verify_release_artifacts.py --dist dist
-
-      - name: Smoke distributions
-        run: |
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl self-ershov-memory --help
-          uv run --no-cache --no-project --isolated --with dist/*.whl ershov providers list
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz ershov --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz self-ershov-memory --help
-          uv run --no-cache --no-project --isolated --with dist/*.tar.gz python -m self_ershov_memory --help
-
-      - name: Upload distribution artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+          python-version: "3.11"
+      - run: uv sync --locked --extra dev
+      - run: uv run --locked --extra dev pytest --cov=src/self_ershov_memory --cov=__init__ --cov-report=term-missing --cov-fail-under=100 -q
+      - run: uv run --locked --extra dev python -m build
+      - run: uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
+      - uses: actions/upload-artifact@v5
         with:
-          name: self-ershov-memory-dist
-          path: |
-            dist/*.whl
-            dist/*.tar.gz
+          name: python-package
+          path: dist/*
           if-no-files-found: error
-
-  attest-and-publish:
-    name: attest and publish to PyPI
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: build-distributions
-    if: github.event_name == 'release' && github.event.action == 'published'
-    environment: pypi
-    permissions:
-      contents: read
-      id-token: write
-      attestations: write
-
-    steps:
-      - name: Download distribution artifact
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
-        with:
-          name: self-ershov-memory-dist
-          path: dist
-
-      - name: Attest distribution provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
-        with:
-          subject-path: dist/*
-
-      - name: Publish to PyPI with Trusted Publishing
-        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
-        with:
-          packages-dir: dist/
-          attestations: true

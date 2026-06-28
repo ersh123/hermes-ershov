@@ -616,12 +616,9 @@ def run_pipeline(mode="quick", dry_run=True):
     else:
         log("✅ Validation passed: both files within limits and valid format")
     
-    # Синхронизация скиллов по всем найденным темам
-    if not dry_run:
-        sync_skills(corrections, dry_run=False)
-    else:
-        log("--- Skills check (dry-run) ---")
-        sync_skills(corrections, dry_run=True)
+    # Синхронизация скиллов по всем найденным темам.
+    # Dry-run returns earlier after printing the proposed delta.
+    sync_skills(corrections, dry_run=False)
     
     conn.close()
     log("Pipeline complete.")
