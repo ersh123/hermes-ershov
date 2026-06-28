@@ -20,9 +20,11 @@ Self-audit memory engine for Hermes operators. It reads Hermes dialogue history,
 ```text
 ~/.hermes/state.db dialogs
   -> correction/rule extraction
+  -> Error Bank extraction for fixed compiler/runtime/test failures
+  -> controlled context checkpoint/rebuild sidecar
   -> topic classification + dedup
   -> snapshot before write
-  -> USER.md / MEMORY.md / skill updates
+  -> USER.md / MEMORY.md / error-bank / context / skill updates
 ```
 
 - **Idempotent**: repeat runs skip already-known corrections.
@@ -70,6 +72,8 @@ The CLI keeps a small compatibility facade in `audit.py`, while the implementati
 - `db.py` — SQLite dialogue reads.
 - `cleaner.py` — compaction / attachment / machine-noise cleanup.
 - `analyzer.py` — correction extraction, topic classification, fuzzy deduplication.
+- `error_bank.py` — Engram-style Error Bank entries (`error_bank/<language>/<code>`) for fixed compiler/runtime/test failures.
+- `checkpoint.py` — MiMo-style `checkpoint.md`, budgeted rebuild packets, and local Markdown FTS5 index under `~/.hermes/context`.
 - `memory_store.py` — `USER.md` / `MEMORY.md` sections, snapshots, validation, compression.
 - `skills.py` — skill creation / sync.
 - `runner.py` — dry-run / execute orchestration.
@@ -93,6 +97,12 @@ self-ershov-memory --dry-run --full
 
 # Apply after review
 self-ershov-memory --execute --full
+
+# MiMo-style controlled context rebuild sidecar
+self-ershov-memory checkpoint --session <session-id>
+self-ershov-memory rebuild --session <session-id> --budget 48000
+self-ershov-memory fts-index
+self-ershov-memory fts-search "MiMo checkpoint"
 ```
 
 
@@ -108,6 +118,7 @@ uv run --locked --extra dev twine check --strict dist/*.whl dist/*.tar.gz
 ## Safety
 
 - Snapshots before memory writes.
+- Error Bank upserts are file-backed and keyed by `error_bank/<language>/<code>` so repeated failures consolidate instead of flooding hot memory.
 - Size validation for memory files.
 - No secret values in docs, logs, or provider doctor output.
 - GitHub CLI credentials are for repository operations only, never LLM access.

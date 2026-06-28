@@ -26,8 +26,26 @@ from .analyzer import (
 from .cleaner import clean_content as clean_content
 from .cleaner import is_machine_noise_line as is_machine_noise_line
 from .context import AuditContext, default_skill_topics
+from .checkpoint import (
+    SECTION_TITLES as SECTION_TITLES,
+    build_checkpoint as build_checkpoint,
+    context_fts_db as context_fts_db,
+    fetch_session_messages as fetch_session_messages,
+    index_context as index_context,
+    rebuild_packet as rebuild_packet,
+    search_context as search_context,
+    session_checkpoint_path as session_checkpoint_path,
+    session_notes_path as session_notes_path,
+    write_checkpoint as write_checkpoint,
+)
 from .db import fetch_user_messages as _fetch_user_messages
 from .db import connect_db as _connect_db
+from .error_bank import (
+    ErrorBankEntry as ErrorBankEntry,
+    find_error_bank_entries as find_error_bank_entries,
+    slugify as slugify,
+    write_error_bank_entries as write_error_bank_entries,
+)
 from .memory_store import (
     compress_corrections_section as compress_corrections_section,
     find_antipatterns_section as find_antipatterns_section,
@@ -48,6 +66,8 @@ USER_MD = MEMORIES / "USER.md"
 MEMORY_MD = MEMORIES / "MEMORY.md"
 SNAPSHOT_DIR = MEMORIES / "snapshots"
 SKILLS_DIR = HOME / ".hermes" / "skills"
+ERROR_BANK_DIR = MEMORIES / "error-bank"
+CONTEXT_DIR = HOME / ".hermes" / "context"
 
 USER_LIMIT = 4000
 MEMORY_LIMIT = 8000
@@ -66,6 +86,8 @@ def current_context() -> AuditContext:
         memory_md=MEMORY_MD,
         snapshot_dir=SNAPSHOT_DIR,
         skills_dir=SKILLS_DIR,
+        error_bank_dir=ERROR_BANK_DIR,
+        context_dir=CONTEXT_DIR,
         user_limit=USER_LIMIT,
         memory_limit=MEMORY_LIMIT,
         skill_topics=SKILL_TOPICS,
@@ -111,16 +133,67 @@ def run_pipeline(mode="quick", dry_run=True, context: AuditContext | None = None
 def main(argv=None):
     import sys
 
-    args = set(sys.argv[1:] if argv is None else argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    args = set(argv)
     if "--help" in args or "-h" in args:
         print("self-ershov-memory — dialog-driven Hermes memory self-audit")
         print("Usage: self-ershov-memory [--dry-run|--execute] [--quick|--full]")
+        print("       self-ershov-memory checkpoint --session <id> [--dry-run]")
+        print("       self-ershov-memory rebuild --session <id> [--budget <chars>]")
+        print("       self-ershov-memory fts-index")
+        print("       self-ershov-memory fts-search <query>")
         print("Default: --dry-run --quick")
         return 0
+    if argv and argv[0] in {"checkpoint", "rebuild", "fts-index", "fts-search"}:
+        return _main_context_command(argv)
     mode = "full" if "--full" in args else "quick"
     dry_run = "--dry-run" in args or "--execute" not in args
     success = run_pipeline(mode=mode, dry_run=dry_run)
     return 0 if success else 1
+
+
+def _main_context_command(argv):
+    command = argv[0]
+    context = current_context()
+    if command == "fts-index":
+        print(
+            f"Indexed {index_context(context)} context docs into {context_fts_db(context)}"
+        )
+        return 0
+    if command == "fts-search":
+        query = " ".join(argv[1:]).strip()
+        for doc in search_context(context, query):
+            print(f"{doc.scope}: {doc.path}")
+        return 0
+    session_id = _option_value(argv, "--session")
+    if not session_id:
+        print("ERROR: --session <id> is required")
+        return 1
+    conn = connect_db(context)
+    if conn is None:
+        return 1
+    try:
+        messages = fetch_session_messages(conn, session_id)
+    finally:
+        conn.close()
+    if command == "checkpoint":
+        write_checkpoint(
+            context, session_id, messages, dry_run="--dry-run" in argv, log=log
+        )
+        return 0
+    budget_raw = _option_value(argv, "--budget")
+    budget = int(budget_raw) if budget_raw else 48_000
+    print(rebuild_packet(context, session_id, messages, budget=budget))
+    return 0
+
+
+def _option_value(argv, name: str) -> str:
+    if name not in argv:
+        return ""
+    index = argv.index(name)
+    if index + 1 >= len(argv):
+        return ""
+    return argv[index + 1]
 
 
 if __name__ == "__main__":

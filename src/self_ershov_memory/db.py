@@ -15,18 +15,23 @@ def connect_db(context: AuditContext, log):
     return conn
 
 
-def fetch_user_messages(conn, days=1):
+def fetch_messages(conn, days=1, roles=("user",)):
     cutoff = datetime.now(timezone.utc).timestamp() - days * 86400
+    placeholders = ",".join("?" for _role in roles)
     cursor = conn.execute(
-        """
-        SELECT m.content, m.timestamp, s.title
+        f"""
+        SELECT m.content, m.timestamp, m.role, s.title
         FROM messages m
         JOIN sessions s ON m.session_id = s.id
         WHERE s.source='telegram'
-          AND m.role='user'
+          AND m.role IN ({placeholders})
           AND s.started_at > ?
         ORDER BY m.timestamp DESC
     """,
-        (cutoff,),
+        (*roles, cutoff),
     )
     return [row for row in cursor.fetchall() if row["content"]]
+
+
+def fetch_user_messages(conn, days=1):
+    return fetch_messages(conn, days=days, roles=("user",))

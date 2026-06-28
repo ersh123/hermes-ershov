@@ -21,11 +21,27 @@ class AuditContext:
     memory_md: Path
     snapshot_dir: Path
     skills_dir: Path
+    error_bank_dir: Path | None = None
+    context_dir: Path | None = None
     user_limit: int = 4000
     memory_limit: int = 8000
     skill_topics: dict[str, dict[str, str]] = field(
         default_factory=default_skill_topics
     )
+
+    def __post_init__(self) -> None:
+        if self.error_bank_dir is None:
+            object.__setattr__(
+                self,
+                "error_bank_dir",
+                self.memory_md.parent / "error-bank",
+            )
+        if self.context_dir is None:
+            object.__setattr__(
+                self,
+                "context_dir",
+                self.memory_md.parent.parent / "context",
+            )
 
     @classmethod
     def from_home(cls, home: Path | None = None) -> "AuditContext":
@@ -35,6 +51,8 @@ class AuditContext:
             state_db=home / ".hermes" / "state.db",
             user_md=memories / "USER.md",
             memory_md=memories / "MEMORY.md",
+            error_bank_dir=memories / "error-bank",
+            context_dir=home / ".hermes" / "context",
             snapshot_dir=memories / "snapshots",
             skills_dir=home / ".hermes" / "skills",
         )

@@ -727,6 +727,7 @@ def test_audit_context_from_home_builds_default_paths(tmp_path: Path) -> None:
     assert context.state_db == tmp_path / ".hermes" / "state.db"
     assert context.user_md == tmp_path / ".hermes" / "memories" / "USER.md"
     assert context.memory_md == tmp_path / ".hermes" / "memories" / "MEMORY.md"
+    assert context.error_bank_dir == tmp_path / ".hermes" / "memories" / "error-bank"
     assert context.snapshot_dir == tmp_path / ".hermes" / "memories" / "snapshots"
     assert context.skills_dir == tmp_path / ".hermes" / "skills"
 
@@ -784,3 +785,168 @@ def test_runner_skips_memory_antipattern_update_when_no_target_section(
     runner._apply_memory_antipatterns(context, ["intro"], [{"text": "neutral text"}])
 
     assert memory_md.read_text(encoding="utf-8") == "intro\n§\n"
+
+
+def test_error_bank_extracts_and_upserts_entries(tmp_path: Path, capsys) -> None:
+    messages = [
+        {
+            "content": "TS2835: Relative import needs .js extension in ESM. Root cause: NodeNext requires explicit extension. Fix: add .js to relative imports. Learned: check Error Bank before tsc.",
+            "role": "assistant",
+            "title": "typescript fix",
+            "timestamp": 1,
+        },
+        {
+            "content": "short TS9999 without fix marker",
+            "role": "assistant",
+            "title": "noise",
+            "timestamp": 2,
+        },
+        {
+            "content": "ModuleNotFoundError happened. исправил импорт, причина была в неверном module path.",
+            "role": "assistant",
+            "title": "python fix",
+            "timestamp": "bad",
+        },
+        {
+            "content": "TS2835 duplicate. Root cause repeated. Fix: same known thing.",
+            "role": "assistant",
+            "title": "duplicate",
+            "timestamp": 3,
+        },
+        {
+            "content": "Root cause was hidden in a long pytest failure. " + "x" * 700,
+            "role": "assistant",
+            "title": "long tooling fix",
+            "timestamp": 4,
+        },
+    ]
+
+    entries = audit.find_error_bank_entries(messages)
+
+    assert [entry.topic_key for entry in entries] == [
+        "error_bank/typescript/ts2835",
+        "error_bank/python/modulenotfounderror",
+        "error_bank/tooling/pytest",
+    ]
+    assert audit.slugify("TS2835: bad") == "ts2835-bad"
+    assert "## Learned" in entries[0].content
+    assert "unknown time" in entries[1].content
+    assert entries[2].topic_key == "error_bank/tooling/pytest"
+    assert "..." in entries[2].content
+    assert (
+        audit.find_error_bank_entries(
+            [
+                {
+                    "content": "Root cause found but no recognizable error code here.",
+                    "role": "assistant",
+                }
+            ]
+        )
+        == []
+    )
+    assert (
+        audit.find_error_bank_entries(
+            [
+                {
+                    "content": "Historical Task Snapshot\npytest failed. Root cause: summary noise",
+                    "role": "assistant",
+                }
+            ]
+        )
+        == []
+    )
+    assert (
+        audit.find_error_bank_entries(
+            [
+                {
+                    "content": "pytest failed root cause [tool:a] [tool:b] [tool:c]",
+                    "role": "assistant",
+                }
+            ]
+        )
+        == []
+    )
+    assert (
+        audit.find_error_bank_entries(
+            [{"content": "TS1234 root cause but user-authored", "role": "user"}]
+        )
+        == []
+    )
+    assert audit.find_error_bank_entries([[]]) == []
+
+    class EmptyMapping:
+        def keys(self):
+            return []
+
+    assert audit.find_error_bank_entries([EmptyMapping()]) == []
+
+    context = audit.AuditContext(
+        state_db=tmp_path / "state.db",
+        user_md=tmp_path / "USER.md",
+        memory_md=tmp_path / "MEMORY.md",
+        snapshot_dir=tmp_path / "snapshots",
+        skills_dir=tmp_path / "skills",
+        error_bank_dir=tmp_path / "error-bank",
+    )
+
+    assert audit.write_error_bank_entries(context, entries[:1], dry_run=True) == 1
+    assert audit.write_error_bank_entries(context, [], dry_run=True) == 0
+    assert not (tmp_path / "error-bank").exists()
+    assert "DRY-RUN" in capsys.readouterr().out
+
+    assert audit.write_error_bank_entries(context, entries[:1], dry_run=False) == 1
+    written = tmp_path / "error-bank" / "typescript" / "ts2835.md"
+    assert "TS2835" in written.read_text(encoding="utf-8")
+    assert audit.write_error_bank_entries(context, entries[:1], dry_run=False) == 0
+    assert "up-to-date" in capsys.readouterr().out
+
+    updated = audit.ErrorBankEntry(
+        code="TS2835",
+        language="typescript",
+        title="updated",
+        content="# TS2835: updated\n",
+    )
+    assert audit.write_error_bank_entries(context, [updated], dry_run=False) == 1
+    assert list((tmp_path / "snapshots").glob("ts2835.md.*.bak"))
+
+
+def test_run_pipeline_writes_error_bank_from_dialogue(
+    tmp_path: Path, monkeypatch, capsys
+) -> None:
+    state_db = tmp_path / "state.db"
+    conn = sqlite3.connect(state_db)
+    conn.execute(
+        "CREATE TABLE sessions (id TEXT PRIMARY KEY, source TEXT, title TEXT, started_at REAL)"
+    )
+    conn.execute(
+        "CREATE TABLE messages (session_id TEXT, role TEXT, content TEXT, timestamp REAL)"
+    )
+    conn.execute(
+        "INSERT INTO sessions VALUES ('s1', 'telegram', 'bugfix session', strftime('%s','now'))"
+    )
+    conn.execute(
+        "INSERT INTO messages VALUES ('s1', 'user', 'запомни на будущее: после ошибки пиши root cause', strftime('%s','now'))"
+    )
+    conn.execute(
+        "INSERT INTO messages VALUES ('s1', 'assistant', 'pytest failed. Root cause: fixture path was wrong. Fix: pass tmp_path explicitly. Learned: search error_bank/python/pytest before pytest.', strftime('%s','now') + 1)"
+    )
+    conn.commit()
+    conn.close()
+
+    user_md = tmp_path / "USER.md"
+    memory_md = tmp_path / "MEMORY.md"
+    user_md.write_text("intro\n§\n", encoding="utf-8")
+    memory_md.write_text("АНТИПАТТЕРНЫ\n§\n", encoding="utf-8")
+
+    monkeypatch.setattr(audit, "STATE_DB", state_db)
+    monkeypatch.setattr(audit, "USER_MD", user_md)
+    monkeypatch.setattr(audit, "MEMORY_MD", memory_md)
+    monkeypatch.setattr(audit, "ERROR_BANK_DIR", tmp_path / "error-bank")
+    monkeypatch.setattr(audit, "SKILLS_DIR", tmp_path / "skills")
+    monkeypatch.setattr(audit, "SNAPSHOT_DIR", tmp_path / "snapshots")
+
+    assert audit.run_pipeline(mode="quick", dry_run=False) is True
+    output = capsys.readouterr().out
+    assert "Found 1 Error Bank candidates" in output
+    assert "Error Bank upserted: error_bank/tooling/pytest" in output
+    assert (tmp_path / "error-bank" / "tooling" / "pytest.md").exists()

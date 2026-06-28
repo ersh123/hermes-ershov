@@ -7,7 +7,8 @@ from .analyzer import (
     is_duplicate,
 )
 from .context import AuditContext
-from .db import connect_db, fetch_user_messages
+from .db import connect_db, fetch_messages, fetch_user_messages
+from .error_bank import find_error_bank_entries, write_error_bank_entries
 from .memory_store import (
     compress_corrections_section,
     find_antipatterns_section,
@@ -30,6 +31,7 @@ def run_pipeline(context: AuditContext, mode="quick", dry_run=True, log=print):
 
     days = 1 if mode == "quick" else 30
     messages = fetch_user_messages(conn, days)
+    dialogue_messages = fetch_messages(conn, days, roles=("user", "assistant"))
     log(f"Fetched {len(messages)} user messages (last {days} days)")
     if not messages:
         log("No messages found, nothing to audit")
@@ -37,7 +39,9 @@ def run_pipeline(context: AuditContext, mode="quick", dry_run=True, log=print):
         return True
 
     corrections = find_corrections(messages)
+    error_bank_entries = find_error_bank_entries(dialogue_messages)
     log(f"Found {len(corrections)} potential corrections/instructions")
+    log(f"Found {len(error_bank_entries)} Error Bank candidates")
     user_sections = read_memory_sections(context.user_md)
     memory_sections = read_memory_sections(context.memory_md)
     existing_norms, _existing_labels = parse_existing_corrections(user_sections)
@@ -52,6 +56,7 @@ def run_pipeline(context: AuditContext, mode="quick", dry_run=True, log=print):
         _handle_no_new_corrections(
             context, corrections, user_sections, dry_run=dry_run, log=log
         )
+        _handle_error_bank(context, error_bank_entries, dry_run=dry_run, log=log)
         conn.close()
         return True
 
@@ -60,6 +65,7 @@ def run_pipeline(context: AuditContext, mode="quick", dry_run=True, log=print):
         log("DRY-RUN: would update USER.md and MEMORY.md")
         log("--- Skills check (dry-run) ---")
         sync_skills(corrections, context=context, dry_run=True, log=log)
+        _handle_error_bank(context, error_bank_entries, dry_run=True, log=log)
         conn.close()
         return True
 
@@ -69,6 +75,7 @@ def run_pipeline(context: AuditContext, mode="quick", dry_run=True, log=print):
     _apply_memory_antipatterns(context, memory_sections, new_corrections)
     _validate_after_write(context, log=log)
     sync_skills(corrections, context=context, dry_run=False, log=log)
+    _handle_error_bank(context, error_bank_entries, dry_run=False, log=log)
     conn.close()
     log("Pipeline complete.")
     return True
@@ -99,6 +106,13 @@ def _log_new_corrections(new_corrections, log=print):
         log(f"  [{correction.get('type', 'correction')}] {preview}")
     if len(new_corrections) > 10:
         log(f"  ... and {len(new_corrections) - 10} more")
+
+
+def _handle_error_bank(context: AuditContext, entries, *, dry_run=True, log=print):
+    if not entries:
+        return
+    log("--- Error Bank ---")
+    write_error_bank_entries(context, entries, dry_run=dry_run, log=log)
 
 
 def _apply_user_corrections(
