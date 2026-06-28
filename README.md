@@ -1,6 +1,8 @@
 # self-ershov-memory
 
-![self-ershov-memory hero](assets/readme/self-ershov-memory-hero.png)
+<p align="center">
+  <img src="assets/readme/hero-memory-factory.png" alt="self-ershov-memory isometric memory factory" width="100%">
+</p>
 
 [![CI](https://github.com/ersh123/self-ershov-memory/actions/workflows/ci.yml/badge.svg)](https://github.com/ersh123/self-ershov-memory/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ersh123/self-ershov-memory/actions/workflows/codeql.yml/badge.svg)](https://github.com/ersh123/self-ershov-memory/actions/workflows/codeql.yml)
@@ -10,6 +12,10 @@
 Self-audit memory engine for Hermes operators. It reads Hermes dialogue history, extracts durable operator corrections, snapshots memory files, and updates `USER.md` / `MEMORY.md` only through explicit, reviewable runs.
 
 ## What it does
+
+<p align="center">
+  <img src="assets/readme/memory-audit-pipeline.png" alt="Memory audit pipeline" width="100%">
+</p>
 
 ```text
 ~/.hermes/state.db dialogs
@@ -27,6 +33,10 @@ Self-audit memory engine for Hermes operators. It reads Hermes dialogue history,
 
 ## Before → approval → after
 
+<p align="center">
+  <img src="assets/readme/before-approval-after.png" alt="Before approval after evidence" width="100%">
+</p>
+
 `self-ershov-memory` is built around an explicit memory approval loop. The engine never silently rewrites operator memory. Real fixture with before/after files and approval transcript: [`docs/before-after-approval.md`](docs/before-after-approval.md).
 
 | Stage | What happens | Write access |
@@ -37,6 +47,10 @@ Self-audit memory engine for Hermes operators. It reads Hermes dialogue history,
 
 
 ## Test evidence
+
+<p align="center">
+  <img src="assets/readme/test-evidence-dashboard.png" alt="Test evidence dashboard" width="100%">
+</p>
 
 Current product gate: **42 pytest tests passing** and **100% coverage for `self_ershov_memory` and the Hermes plugin wrapper**. Legacy staged-memory code is intentionally removed from the public package instead of being kept as dead compatibility surface.
 

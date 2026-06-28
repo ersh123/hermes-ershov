@@ -21,6 +21,25 @@ def test_readme_documents_product_only_contract_and_approval_loop() -> None:
     assert "100% coverage for `self_ershov_memory`" in text
     assert "--cov-fail-under=100" in text
     assert "https://img.shields.io/badge/tests-42%20passing-brightgreen" in text
+    assert "assets/readme/hero-memory-factory.png" in text
+    assert "assets/readme/memory-audit-pipeline.png" in text
+    assert "assets/readme/before-approval-after.png" in text
+    assert "assets/readme/test-evidence-dashboard.png" in text
+    for asset in (
+        "assets/readme/hero-memory-factory.png",
+        "assets/readme/memory-audit-pipeline.png",
+        "assets/readme/before-approval-after.png",
+        "assets/readme/test-evidence-dashboard.png",
+    ):
+        path = REPO_ROOT / asset
+        assert path.exists(), asset
+        assert path.stat().st_size > 100_000, asset
+    for stale_asset in (
+        "assets/readme/self-ershov-memory-hero.png",
+        "assets/readme/hermes-ershov-hero.png",
+    ):
+        assert stale_asset not in text
+        assert not (REPO_ROOT / stale_asset).exists()
 
 
 def test_readme_does_not_advertise_removed_legacy_cli_surface() -> None:
