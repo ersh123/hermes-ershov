@@ -38,7 +38,7 @@ dev = [
   "zizmor>=1.25",
 ]
 llm = [
-  "openai>=1.30.0",
+  "openai>=2.44.0",
 ]
 
 [project.scripts]
